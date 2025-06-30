@@ -5,7 +5,9 @@ import ast
 import configparser
 import itertools
 import os
+import sys
 
+from nkululeko import __version__ as nkululeko_version
 from nkululeko.constants import VERSION
 from nkululeko.utils.util import Util
 
@@ -106,8 +108,9 @@ class OptimizationRunner:
         param_specs = self.parse_optim_params()
         combinations = self.generate_param_combinations(param_specs)
 
+        # print version
         self.util.debug(
-            f"Starting optimization with {len(combinations)} parameter combinations"
+            f"Starting optimization with {len(combinations)} parameter combinations, nkululeko version {nkululeko_version}"
         )
 
         best_result = None
