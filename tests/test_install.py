@@ -22,7 +22,7 @@ def main(python_version=None):
     Test nkululeko installation in a virtual environment.
 
     Args:
-        python_version: Optional Python version to use (e.g., "3.10", "3.11", "3.12")
+        python_version: Optional Python version to use (e.g., "3.14", "3.11", "3.12")
     """
     repo_root = Path(__file__).resolve().parent.parent
 
@@ -38,7 +38,7 @@ def main(python_version=None):
     test_dir = repo_root / "build"
     print(f"Creating test directory: {test_dir}")
 
-    # check if the directory exists, give message to reuse
+    # check if the directory exists, give a message to reuse
     if test_dir.exists():
         print(
             f"Test directory {test_dir}/{python_ver} exists and will be reused. "
@@ -75,7 +75,7 @@ def main(python_version=None):
             f'{pip_cmd} install "torch>=1.0.0" "torchvision>=0.10.0" '
             f'"pandas" "numpy" "scikit-learn" "matplotlib" "seaborn" '
             f'"audformat" "audiofile" "opensmile" "praat-parselmouth" '
-            f'"transformers" "datasets"'
+            f'"transformers" "datasets" "audmetric"'
         )
         if returncode != 0:
             print(f"Failed to install dependencies: {stderr}")
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test nkululeko installation")
     parser.add_argument(
-        "--python", help="Python version to use (e.g., 3.10, 3.11, 3.12)"
+        "--python", help="Python version to use (e.g., 3.14, 3.11, 3.12)"
     )
     args = parser.parse_args()
 
