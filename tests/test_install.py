@@ -94,12 +94,18 @@ def main(python_version=None):
             return 1
         print("Spotlight dependencies installed successfully")
 
-    print("Installing torch dependencies for tests...")
-    stdout, stderr, returncode = run_command(
-        f'{pip_cmd} install "torch>=1.0.0" "torchvision>=0.10.0" "torchaudio>=0.10.0"'
-    )
-    if returncode != 0:
-        print(f"Failed to install torch dependencies: {stderr}")
+    # Skip torch dependencies for Python 3.14+ as PyTorch doesn't support it yet
+    if python_ver >= "3.14":
+        print(
+            f"Python version {python_ver} is not supported for torch dependencies yet."
+        )
+    else:
+        print("Installing torch dependencies for tests...")
+        stdout, stderr, returncode = run_command(
+            f'{pip_cmd} install "torch>=1.0.0" "torchvision>=0.10.0" "torchaudio>=0.10.0"'
+        )
+        if returncode != 0:
+            print(f"Failed to install torch dependencies: {stderr}")
 
     with open("run_tests.py", "w") as f:
         f.write(
