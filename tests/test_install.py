@@ -53,9 +53,13 @@ def main(python_version=None):
         print(f"Failed to create virtual environment ({python_ver} exists): {stderr}")
         return 1
 
-    pip_cmd = f"./{python_ver}/bin/pip"
-
+    # Use uv pip for faster installation
+    pip_cmd = f"uv pip"
     venv_python = f"./{python_ver}/bin/python"
+    
+    # Set the virtual environment for uv
+    os.environ["VIRTUAL_ENV"] = str(Path(test_dir) / python_ver)
+
     print("Installing nkululeko...")
     stdout, stderr, returncode = run_command(f"{pip_cmd} install -e {repo_root}")
     if returncode != 0:
