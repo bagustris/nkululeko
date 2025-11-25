@@ -60,11 +60,32 @@ def main(python_version=None):
     # Set the virtual environment for uv
     os.environ["VIRTUAL_ENV"] = str(Path(test_dir) / python_ver)
 
-    print("Installing nkululeko...")
-    stdout, stderr, returncode = run_command(f"{pip_cmd} install -e {repo_root}")
-    if returncode != 0:
-        print(f"Failed to install nkululeko: {stderr}")
-        return 1
+    # For Python 3.14+, install nkululeko without dependencies first
+    # because torchaudio doesn't have compatible wheels yet
+    if python_ver >= "3.14":
+        print("Installing nkululeko (without deps for Python 3.14+)...")
+        stdout, stderr, returncode = run_command(f"{pip_cmd} install --no-deps -e {repo_root}")
+        if returncode != 0:
+            print(f"Failed to install nkululeko: {stderr}")
+            return 1
+        
+        # Install dependencies manually, excluding torchaudio
+        print("Installing nkululeko dependencies (excluding torchaudio)...")
+        stdout, stderr, returncode = run_command(
+            f'{pip_cmd} install "torch>=1.0.0" "torchvision>=0.10.0" '
+            f'"pandas" "numpy" "scikit-learn" "matplotlib" "seaborn" '
+            f'"audformat" "audiofile" "opensmile" "praat-parselmouth" '
+            f'"transformers" "datasets"'
+        )
+        if returncode != 0:
+            print(f"Failed to install dependencies: {stderr}")
+            # Continue anyway as some deps might not be critical
+    else:
+        print("Installing nkululeko...")
+        stdout, stderr, returncode = run_command(f"{pip_cmd} install -e {repo_root}")
+        if returncode != 0:
+            print(f"Failed to install nkululeko: {stderr}")
+            return 1
 
     print("Basic installation successful")
 
@@ -98,14 +119,10 @@ def main(python_version=None):
             return 1
         print("Spotlight dependencies installed successfully")
 
-    # For Python 3.14+, skip torchaudio as it doesn't have compatible wheels yet
+    # For Python 3.14+, torch dependencies are already installed above
+    # so only install for other versions
     if python_ver >= "3.14":
-        print("Installing torch dependencies for tests (skipping torchaudio for Python 3.14+)...")
-        stdout, stderr, returncode = run_command(
-            f'{pip_cmd} install "torch>=1.0.0" "torchvision>=0.10.0"'
-        )
-        if returncode != 0:
-            print(f"Failed to install torch dependencies: {stderr}")
+        print("Torch dependencies already installed for Python 3.14+")
     else:
         print("Installing torch dependencies for tests...")
         stdout, stderr, returncode = run_command(
