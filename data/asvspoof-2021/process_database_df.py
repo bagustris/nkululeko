@@ -14,8 +14,11 @@ def main(data_dir):
         df = pd.read_csv(key_file, sep=r'\s+', header=None, low_memory=False)
         df = df[[0, 1, 5]].copy()
         df.columns = ['speaker', 'file_id', 'raw_label']
-    except Exception as e:
-        print(f"Error reading metadata: {e}")
+    except FileNotFoundError:
+        print(f"Error: Metadata file not found at {key_file}")
+        return
+    except pd.errors.ParserError as e:
+        print(f"Error parsing metadata file {key_file}: {e}")
         return
 
     df["label"] = df["raw_label"].map({"bonafide": "real", "spoof": "fake"})
