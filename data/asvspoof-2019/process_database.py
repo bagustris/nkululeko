@@ -30,7 +30,11 @@ def main(data_dir):
         audio_path = os.path.join(data_dir, folder)
         
         print(f"Reading {name} metadata from {proto_path}...")
-        df_split = process_protocol(proto_path, audio_path)
+        try:
+            df_split = process_protocol(proto_path, audio_path)
+        except FileNotFoundError:
+            print(f"Warning: Protocol file not found at {proto_path}. Skipping '{name}' split.")
+            continue
 
         output_file = os.path.join(data_dir, f"asv2019_{name}.csv")
         df_split.to_csv(output_file, index=False)
