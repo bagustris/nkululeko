@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 1.2.3 (26-02-23)  
+------------------------
+* refactored optimizer and ADM model
+
 Version 1.2.2 (26-02-10)  
 ------------------------
 * fixed feature_demo -> didn't use model from config
