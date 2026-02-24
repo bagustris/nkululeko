@@ -94,6 +94,8 @@ class NamingMixin:
             return ""
         branches_str = self.config_val("MODEL", "adm.branches", "time,spectral,phase")
         branches = [b.strip() for b in branches_str.split(",") if b.strip()]
+        if not branches:
+            return ""
         return "_" + "".join(b[0] for b in branches)
 
     def _get_aug_suffix(self):
