@@ -35,7 +35,7 @@ class StorageMixin:
         elif format == "csv":
             df.to_csv(storage)
         else:
-            self.error(f"unkown store format: {format}")
+            self.error(f"unknown store format: {format}")
 
     def get_store(self, name, format):
         if format == "pkl":
