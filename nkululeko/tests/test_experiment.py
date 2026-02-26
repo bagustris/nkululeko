@@ -1,10 +1,8 @@
 import pytest
 import configparser
-import os
 import random
 import tempfile
 import pandas as pd
-import numpy as np
 import nkululeko.glob_conf as glob_conf
 
 
