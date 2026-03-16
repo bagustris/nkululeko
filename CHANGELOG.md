@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 1.3.2 (26-03-16)  
+------------------------
+* Fix/skip corrupted audio in feature extractors
+
 Version 1.3.1 (26-03-04)  
 ------------------------
 * simplified code (audformat database loading)
