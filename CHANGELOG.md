@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 1.3.3 (26-03-16)  
+------------------------
+* resample replace now uses the original filename (instead of .wav extension)
+
 Version 1.3.2 (26-03-16)  
 ------------------------
 * Fix/skip corrupted audio in feature extractors

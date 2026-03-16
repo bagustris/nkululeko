@@ -55,7 +55,7 @@ class Resampler:
                 signal = resampler(signal)
                 if replace:
                     torchaudio.save(
-                        os.path.splitext(f)[0] + ".wav",
+                        f,
                         signal,
                         self.SAMPLING_RATE,
                     )
