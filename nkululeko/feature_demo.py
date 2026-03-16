@@ -35,7 +35,7 @@ import tempfile
 import nkululeko.glob_conf as glob_conf
 from nkululeko.constants import VERSION
 from nkululeko.utils.util import Util
-
+from nkululeko.experiment import Experiment
 
 def main():
     parser = argparse.ArgumentParser(
@@ -216,20 +216,112 @@ def main():
 
         files = find_files(args.folder, relative=False, ext=["wav", "mp3", "flac"])
     else:
-        print("=" * 80)
-        print("ERROR: No input option specified!")
-        print("=" * 80)
-        print("\nYou must provide one of the following input options:")
-        print("  --file <path>      Process a single audio file")
-        print("  --list <path>      Process files listed in a text file")
-        print("  --folder <path>    Process all audio files in a folder")
-        print("  --mic              Record from microphone for 5 seconds")
-        print("\nExample usage:")
-        print("  python -m nkululeko.feature_demo --mic --model agender")
-        print("  python -m nkululeko.feature_demo --file audio.wav --model squim")
-        print("  python -m nkululeko.feature_demo --folder ./audio --model mos")
-        print("=" * 80)
-        exit(1)
+        if len(files) == 0 and args.config is not None:
+            util.debug("extracting features for data specified in config")
+
+            expr = Experiment(config)
+            module = "nkululeko"
+            expr.set_module(module)
+            # load the data
+            expr.load_datasets()
+            # split into train and test
+            expr.fill_train_and_tests()
+            df = expr.get_sample_selection()
+
+            # Extract features from the df with audformat segmented index
+            print(f"\nExtracting features for {len(df)} samples from config-specified data...")
+            print(f"\nInitializing {args.model} model...")
+            print("(This may take a while on first run - downloading models...)")
+            feature_extractor = get_feature_extractor(args.model, config)
+            print("Model initialized successfully!")
+
+            features_list = []
+            index_list = []
+            for i, (idx, row) in enumerate(df.iterrows()):
+                # Support both segmented (file, start, end) and file-level index
+                if isinstance(idx, tuple):
+                    file, start, end = idx
+                    offset = start.total_seconds() if hasattr(start, "total_seconds") else float(start)
+                    duration = (end - start).total_seconds() if hasattr(end, "total_seconds") else None
+                    if duration is not None and duration <= 0:
+                        duration = None
+                else:
+                    file = idx
+                    offset = 0
+                    duration = None
+
+                if not os.path.isfile(file):
+                    print(f"WARNING: File not found: {file}, skipping...")
+                    continue
+
+                print(f"[{i+1}/{len(df)}] Extracting features from: {file}")
+
+                try:
+                    signal, sampling_rate = audiofile.read(
+                        file, offset=offset, duration=duration, always_2d=True
+                    )
+                    features = feature_extractor.extract_sample(signal, sampling_rate)
+
+                    if isinstance(features, (int, float)):
+                        features = np.array([features])
+                    elif isinstance(features, tuple):
+                        features = np.array(features)
+                    elif isinstance(features, np.ndarray):
+                        if features.ndim > 1:
+                            features = features.flatten()
+                    elif isinstance(features, pd.Series):
+                        features = features.values
+                    elif isinstance(features, pd.DataFrame):
+                        features = features.values.flatten()
+                    else:
+                        features = np.array(features).flatten()
+
+                    features_list.append(features)
+                    index_list.append(idx)
+
+                    if i == 0:
+                        print(f"Feature dimension: {len(features)}")
+
+                except Exception as e:
+                    print(f"ERROR processing {file}: {str(e)}")
+                    continue
+
+            if len(features_list) > 0:
+                features_array = np.array(features_list)
+                feature_names = [f"feat_{j}" for j in range(features_array.shape[1])]
+                if isinstance(index_list[0], tuple):
+                    feats_index = pd.MultiIndex.from_tuples(index_list, names=df.index.names)
+                else:
+                    feats_index = pd.Index(index_list, name=df.index.name)
+                feats_df = pd.DataFrame(features_array, index=feats_index, columns=feature_names)
+
+                # Combine extracted features with existing columns from df
+                result_df = pd.concat([df.loc[feats_df.index], feats_df], axis=1)
+
+                if args.outfile:
+                    outfile = (
+                        args.outfile if args.outfile.endswith(".csv") else args.outfile + ".csv"
+                    )
+                    result_df.to_csv(outfile)
+                    print(f"\nFeatures saved to {outfile}")
+
+                print("\n" + "=" * 80)
+                print("FEATURE EXTRACTION SUMMARY")
+                print("=" * 80)
+                print(f"Total samples processed: {len(index_list)}")
+                print(f"Feature dimension: {features_array.shape[1]}")
+                print(f"Output shape: {result_df.shape}")
+                print("\nFirst few rows:")
+                print(result_df.head())
+            else:
+                print("ERROR: No features were extracted")
+
+            print("\nDONE")
+            return
+        else:
+            util.error(
+                "No files specified for processing. Please provide --file, --list, --folder, or --mic, or ensure your config file specifies data files."
+            )
 
     print(f"\nProcessing {len(files)} file(s)...")
 

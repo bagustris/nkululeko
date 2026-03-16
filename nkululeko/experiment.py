@@ -605,6 +605,26 @@ class Experiment:
 
         self._check_scale()
 
+    def get_sample_selection(self) -> pd.DataFrame:
+        """Get the dataframe based on the sample selection configuration.
+        
+        Returns:
+            pd.DataFrame: The selected dataframe based on the configuration.
+        """
+        sample_selection = self.util.config_val("DATA", "sample_selection", "all")
+        if sample_selection == "all":
+            df = pd.concat([self.df_train, self.df_test])
+        elif sample_selection == "train":
+            df = self.df_train
+        elif sample_selection == "test":
+            df = self.df_test
+        else:
+            self.util.error(
+                f"unknown selection specifier {sample_selection},"
+                " should be [all | train | test]"
+            )
+        return df
+
     def augment(self, method="audiomentations"):
         """Augment the selected samples."""
         sample_selection = self.util.config_val("AUGMENT", "sample_selection", "all")
