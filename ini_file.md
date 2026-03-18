@@ -207,7 +207,7 @@
   * output_audio = True
 * **audio_format**: output audio format when *output_audio* is True (default: wav)
   * audio_format = wav  # supported values: wav, flac, mp3
-* **audio_dir**: output directory for audio segments, relative to the experiment root (default: segments)
+* **audio_dir**: output directory for audio segments, relative to the experiment data directory (`{root}/{name}`, default: segments)
   * audio_dir = segments
 
 ### FEATS

@@ -23,9 +23,8 @@ import os
 
 import audeer
 import audiofile
-import pandas as pd
-
 import audformat
+import pandas as pd
 
 from nkululeko.constants import VERSION
 from nkululeko.experiment import Experiment
@@ -51,12 +50,15 @@ def extract_audio_segments(df_seg, data_dir, util):
     util.debug(
         f"extracting audio segments to {audio_dir} in format {audio_format}"
     )
-    for idx, (file, start, end) in enumerate(df_seg.index.to_list()):
+    for idx, (file, start, end) in enumerate(df_seg.index):
         start_s = start.total_seconds()
         end_s = end.total_seconds()
         duration = end_s - start_s
         if duration <= 0:
-            util.debug(f"skipping segment {idx} with non-positive duration: {file} [{start_s}-{end_s}]")
+            util.debug(
+                f"skipping segment {idx} with non-positive duration:"
+                f" {file} [{start_s}-{end_s}]"
+            )
             continue
         try:
             signal, sampling_rate = audiofile.read(
