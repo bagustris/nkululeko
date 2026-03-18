@@ -209,6 +209,8 @@
   * audio_format = wav  # supported values: wav, flac, mp3
 * **audio_dir**: output directory for audio segments, relative to the experiment data directory (`{root}/{name}`, default: segments)
   * audio_dir = segments
+* **sampling_rate**: resample exported audio segments to this rate in Hz; omit to preserve the original sample rate
+  * sampling_rate = 16000
 
 ### FEATS
 
