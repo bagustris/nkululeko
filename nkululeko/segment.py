@@ -21,6 +21,8 @@ import argparse
 import configparser
 import os
 
+import audeer
+import audiofile
 import pandas as pd
 
 import audformat
@@ -30,6 +32,50 @@ from nkululeko.experiment import Experiment
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.report_item import ReportItem
 from nkululeko.utils.util import Util
+
+
+def extract_audio_segments(df_seg, data_dir, util):
+    """Extract audio files for each segment in df_seg.
+
+    Args:
+        df_seg: DataFrame with audformat multi-index (file, start, end).
+        data_dir: Experiment data directory used to resolve the audio output path.
+        util: Util instance for configuration access and logging.
+    """
+    audio_dir = util.config_val("SEGMENT", "audio_dir", "segments")
+    audio_format = util.config_val("SEGMENT", "audio_format", "wav")
+    # Resolve relative paths against the experiment data directory
+    if not os.path.isabs(audio_dir):
+        audio_dir = os.path.join(data_dir, audio_dir)
+    audeer.mkdir(audio_dir)
+    util.debug(
+        f"extracting audio segments to {audio_dir} in format {audio_format}"
+    )
+    for idx, (file, start, end) in enumerate(df_seg.index.to_list()):
+        start_s = start.total_seconds()
+        end_s = end.total_seconds()
+        duration = end_s - start_s
+        if duration <= 0:
+            util.debug(f"skipping segment {idx} with non-positive duration: {file} [{start_s}-{end_s}]")
+            continue
+        try:
+            signal, sampling_rate = audiofile.read(
+                file,
+                offset=start_s,
+                duration=duration,
+                always_2d=True,
+            )
+        except (OSError, RuntimeError) as e:
+            util.debug(f"could not read segment {file} [{start_s}-{end_s}]: {e}")
+            continue
+        stem = os.path.splitext(os.path.basename(file))[0]
+        out_name = f"{stem}_segment_{idx:03d}_{start_s:.1f}-{end_s:.1f}.{audio_format}"
+        out_path = os.path.join(audio_dir, out_name)
+        try:
+            audiofile.write(out_path, signal, sampling_rate)
+        except (OSError, PermissionError) as e:
+            util.debug(f"could not write segment {out_path}: {e}")
+    util.debug(f"audio segment extraction complete: {audio_dir}")
 
 
 def main():
@@ -111,6 +157,9 @@ def main():
         # save file
         df_seg["duration"] = df_seg.index.to_series().map(lambda x: calc_dur(x))
         df_seg.to_csv(f"{expr.data_dir}/{segmented_file}")
+
+    if util.config_val("SEGMENT", "output_audio", "False").lower() in ("true", "1", "yes"):
+        extract_audio_segments(df_seg, expr.data_dir, util)
 
     if "duration" not in df.columns:
         df["duration"] = df.index.to_series().map(lambda x: calc_dur(x))
