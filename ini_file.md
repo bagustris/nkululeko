@@ -203,6 +203,14 @@
   * min_length = 2
 * **max_length**: the maximum length of segments; longer ones are cut here.  (in seconds)
   * max_length = 10 # if not set, original segmentation is used
+* **output_audio**: export actual audio files for each detected segment (default: False)
+  * output_audio = True
+* **audio_format**: output audio format when *output_audio* is True (default: wav)
+  * audio_format = wav  # supported values: wav, flac, mp3
+* **audio_dir**: output directory for audio segments, relative to the experiment data directory (`{root}/{name}`, default: segments)
+  * audio_dir = segments
+* **sampling_rate**: resample exported audio segments to this rate in Hz; omit to preserve the original sample rate
+  * sampling_rate = 16000
 
 ### FEATS
 
