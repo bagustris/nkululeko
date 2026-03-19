@@ -3,7 +3,7 @@ Changelog
 
 Version 1.3.5 (26-03-19)  
 ------------------------
-* fixed bug that speaker was expected for empty dataframes
+* Fixed a bug where the speaker column was expected for empty DataFrames
 
 Version 1.3.4 (26-03-16)  
 ------------------------
