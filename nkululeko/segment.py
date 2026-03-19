@@ -37,6 +37,15 @@ from nkululeko.reporting.report_item import ReportItem
 from nkululeko.utils.util import Util
 
 
+def _resample_if_needed(signal, sampling_rate, target_sr, resamplers):
+    """Resample signal to target_sr. Updates resamplers cache in-place."""
+    import torch
+    import torchaudio
+    if sampling_rate not in resamplers:
+        resamplers[sampling_rate] = torchaudio.transforms.Resample(sampling_rate, target_sr)
+    return resamplers[sampling_rate](torch.from_numpy(signal)).numpy(), target_sr
+
+
 def extract_audio_segments(df_seg, data_dir, util):
     """Extract audio files for each segment in df_seg.
 
@@ -57,9 +66,6 @@ def extract_audio_segments(df_seg, data_dir, util):
     util.debug(
         f"extracting audio segments to {audio_dir} in format {audio_format}"
     )
-    if target_sr is not None:
-        import torch
-        import torchaudio
     _resamplers = {}  # cache Resample transforms keyed by source SR
     for idx, (file, start, end) in enumerate(df_seg.index):
         start_s = start.total_seconds()
@@ -82,18 +88,13 @@ def extract_audio_segments(df_seg, data_dir, util):
             util.debug(f"could not read segment {file} [{start_s}-{end_s}]: {e}")
             continue
         if target_sr is not None and target_sr != sampling_rate:
-            if sampling_rate not in _resamplers:
-                _resamplers[sampling_rate] = torchaudio.transforms.Resample(
-                    sampling_rate, target_sr
-                )
-            signal = _resamplers[sampling_rate](torch.from_numpy(signal)).numpy()
-            sampling_rate = target_sr
+            signal, sampling_rate = _resample_if_needed(signal, sampling_rate, target_sr, _resamplers)
         stem = os.path.splitext(os.path.basename(file))[0]
         out_name = f"{stem}_segment_{idx:03d}_{start_s:.1f}-{end_s:.1f}.{audio_format}"
         out_path = os.path.join(audio_dir, out_name)
         try:
             audiofile.write(out_path, signal, sampling_rate)
-        except (OSError, PermissionError) as e:
+        except OSError as e:
             util.debug(f"could not write segment {out_path}: {e}")
     util.debug(f"audio segment extraction complete: {audio_dir}")
 

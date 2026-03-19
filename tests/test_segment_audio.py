@@ -72,7 +72,7 @@ class TestExtractAudioSegmentsBasic:
 
             with patch("nkululeko.segment.audeer.mkdir"), patch(
                 "nkululeko.segment.audiofile.read", return_value=(signal, 16000)
-            ) as mock_read, patch(
+            ), patch(
                 "nkululeko.segment.audiofile.write"
             ) as mock_write:
                 extract_audio_segments(df_seg, tmpdir, util)
@@ -214,10 +214,8 @@ class TestSamplingRateExport:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini_path, "--sampling_rate", "16000"]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured["sampling_rate"] == "16000"
 
@@ -421,10 +419,8 @@ class TestCLIArgumentOverrides:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini, "--max_length", "30"]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured_config["max_length"] == "30.0"
 
@@ -442,10 +438,8 @@ class TestCLIArgumentOverrides:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini, "--min_length", "5"]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured_config["min_length"] == "5.0"
 
@@ -465,10 +459,8 @@ class TestCLIArgumentOverrides:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini, "--output_audio"]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured_config["output_audio"] == "True"
 
@@ -488,10 +480,8 @@ class TestCLIArgumentOverrides:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured_config["output_audio"] == "False"
 
@@ -509,10 +499,8 @@ class TestCLIArgumentOverrides:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured_config["max_length"] == "15"
 
@@ -540,10 +528,8 @@ class TestCLIArgumentOverrides:
         with patch("nkululeko.segment.Experiment", side_effect=fake_experiment), patch(
             "sys.argv", ["segment", "--config", ini_path, "--max_length", "20"]
         ):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         assert captured_config["has_section"] is True
         assert captured_config["max_length"] == "20.0"
