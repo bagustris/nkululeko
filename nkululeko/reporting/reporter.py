@@ -31,6 +31,16 @@ from nkululeko.reporting.result import Result
 from nkululeko.utils.util import Util
 
 
+def _safe_path(fig_dir, basename, fmt, max_len=240):
+    """Return fig_dir+basename with extension, truncating basename to avoid OSError [Errno 36]."""
+    ext = f".{fmt}"
+    if len(basename) > max_len:
+        basename = basename[: max_len - len(ext)] + ext
+    elif not basename.endswith(ext):
+        basename = basename + ext
+    return os.path.join(fig_dir, basename)
+
+
 def equal_error_rate(y_true, y_score):
     """Calculate Equal Error Rate (EER) for binary classification.
 
@@ -238,10 +248,8 @@ class Reporter:
                 # Ensure the file_name goes to the results directory
                 if not os.path.isabs(file_name):
                     res_dir = self.util.get_res_dir()
-                    if not file_name.endswith(".csv"):
-                        file_name = os.path.join(res_dir, file_name + ".csv")
-                    else:
-                        file_name = os.path.join(res_dir, file_name)
+                    basename = file_name if file_name.endswith(".csv") else file_name + ".csv"
+                    file_name = _safe_path(res_dir, os.path.splitext(basename)[0], "csv")
                 else:
                     if not file_name.endswith(".csv"):
                         file_name = file_name + ".csv"
@@ -377,7 +385,7 @@ class Reporter:
         else:
             plt.title(f"Scatter plot: {reg_res}, PCC: {pcc:.3f}")
 
-        img_path = f"{fig_dir}{plot_name}{self.filenameadd}.{self.format}"
+        img_path = _safe_path(fig_dir, f"{plot_name}{self.filenameadd}", self.format)
         plt.savefig(img_path)
         self.util.debug(f"Saved scatter plot to {img_path}")
         fig.clear()
@@ -442,7 +450,7 @@ class Reporter:
         if epoch:
             title_parts.append(f"Epoch: {epoch}")
         plt.title(", ".join(title_parts))
-        img_path = f"{fig_dir}{plot_name}{self.filenameadd}.{self.format}"
+        img_path = _safe_path(fig_dir, f"{plot_name}{self.filenameadd}", self.format)
         plt.tight_layout()
         plt.savefig(img_path)
         self.util.debug(f"Saved confusion plot to {img_path}")
@@ -474,7 +482,9 @@ class Reporter:
             )
         # print(rpt)
         self.util.debug(rpt)
-        file_name = f"{res_dir}{self.util.get_exp_name()}{self.filenameadd}_conf.txt"
+        file_name = _safe_path(
+            res_dir, f"{self.util.get_exp_name()}{self.filenameadd}_conf", "txt"
+        )
         with open(file_name, "w") as text_file:
             text_file.write(rpt)
 
@@ -499,12 +509,14 @@ class Reporter:
         """Print all evaluation values to text file."""
         res_dir = self.util.get_path("res_dir")
         if file_name is None:
-            file_name = (
-                f"{res_dir}{self.util.get_exp_name()}_{epoch}{self.filenameadd}.txt"
+            file_name = _safe_path(
+                res_dir,
+                f"{self.util.get_exp_name()}_{epoch}{self.filenameadd}",
+                "txt",
             )
         else:
             self.util.debug(f"####->{file_name}<-####")
-            file_name = f"{res_dir}{file_name}{self.filenameadd}.txt"
+            file_name = _safe_path(res_dir, f"{file_name}{self.filenameadd}", "txt")
         if self.util.exp_is_classification():
             if glob_conf.label_encoder is not None:
                 labels = glob_conf.label_encoder.classes_
@@ -600,7 +612,7 @@ class Reporter:
         fig = ax.figure
         plt.xlabel("epochs")
         plt.ylabel(f"{self.METRIC}")
-        plot_path = f"{fig_dir}{plot_name}.{self.format}"
+        plot_path = _safe_path(fig_dir, plot_name, self.format)
         plt.savefig(plot_path)
         self.util.debug(f"plotted epoch progression to {plot_path}")
         plt.close(fig)
@@ -632,7 +644,7 @@ class Reporter:
         plt.xlabel("epochs")
         plt.ylabel(f"{self.METRIC}")
         plt.legend()
-        plt.savefig(f"{fig_dir}{out_name}.{self.format}")
+        plt.savefig(_safe_path(fig_dir, out_name, self.format))
         plt.close()
 
     def _scaleresults(self, results: np.ndarray) -> np.ndarray:

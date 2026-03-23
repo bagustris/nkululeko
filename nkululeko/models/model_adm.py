@@ -310,8 +310,13 @@ class ADMModel(Model):
                     ssl_feats.to(device), spec_feats.to(device), phase_feats.to(device)
                 )
 
+                # Clean non-finite logits before storing; move to CPU to match preallocated tensors
+                batch_logits = torch.nan_to_num(
+                    batch_logits, nan=0.0, posinf=10.0, neginf=-10.0
+                ).detach().cpu()
+
                 logits[start_index:end_index] = batch_logits
-                targets[start_index:end_index] = labels
+                targets[start_index:end_index] = labels.detach().cpu()
 
                 loss = self.criterion(
                     batch_logits.to(device), labels.float().to(device)
@@ -334,8 +339,9 @@ class ADMModel(Model):
         classes = self.df_test[self.target].unique()
         classes.sort()
 
-        # Apply sigmoid to get probabilities
-        probs = torch.sigmoid(logits).numpy()
+        # Apply sigmoid to get probabilities; clean non-finite logits first
+        logits_clean = torch.nan_to_num(logits, nan=0.0, posinf=10.0, neginf=-10.0)
+        probs = torch.sigmoid(logits_clean).detach().cpu().numpy()
 
         # Handle NaN values
         if np.isnan(probs).any():

@@ -1,0 +1,5 @@
+name: had
+target: deepfake
+description: Half-Truth Audio Detection (HAD) dataset for detecting partially fake audio in Chinese speech
+access: public
+license: CC BY 4.0

@@ -1,0 +1,7 @@
+name: asvspoof-2021
+target: deepfake
+description: ASVspoof 2021 Logical Access (LA) and Deepfake (DF) evaluation datasets for anti-spoofing countermeasure research
+access: upon request
+license: see LICENSE files in ASVspoof2021_LA_eval/ and ASVspoof2021_DF_eval/
+url: https://www.asvspoof.org/index2021.html
+language: English
