@@ -310,6 +310,11 @@ class ADMModel(Model):
                     ssl_feats.to(device), spec_feats.to(device), phase_feats.to(device)
                 )
 
+                # Clamp logits to prevent NaN in sigmoid for OOD inputs
+                batch_logits = torch.nan_to_num(
+                    batch_logits, nan=0.0, posinf=10.0, neginf=-10.0
+                )
+
                 logits[start_index:end_index] = batch_logits
                 targets[start_index:end_index] = labels
 
@@ -334,8 +339,8 @@ class ADMModel(Model):
         classes = self.df_test[self.target].unique()
         classes.sort()
 
-        # Apply sigmoid to get probabilities
-        probs = torch.sigmoid(logits).numpy()
+        # Apply sigmoid to get probabilities (clamp to prevent NaN for OOD inputs)
+        probs = torch.sigmoid(torch.clamp(logits, min=-10.0, max=10.0)).numpy()
 
         # Handle NaN values
         if np.isnan(probs).any():

@@ -238,7 +238,12 @@ class Plots:
         fig_plots = ax.figure
         # avoid warning
         # plt.tight_layout()
-        img_path = os.path.join(fig_dir, f"{filename}_{type_s}.{self.format}")
+        basename = f"{filename}_{type_s}.{self.format}"
+        # Truncate basename to 240 chars to avoid OSError [Errno 36] on Linux
+        if len(basename) > 240:
+            ext = f".{self.format}"
+            basename = basename[: 240 - len(ext)] + ext
+        img_path = os.path.join(fig_dir, basename)
         plt.savefig(img_path)
         plt.close(fig_plots)
         self.util.debug(f"Saved plot to {img_path}")
