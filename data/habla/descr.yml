@@ -1,0 +1,7 @@
+name: habla
+target: deepfake
+description: Hispanic American Balanced Latin-American voice anti-spoofing dataset
+access: public
+license: CC-BY-4.0
+url: https://zenodo.org/record/7370805
+language: Spanish
