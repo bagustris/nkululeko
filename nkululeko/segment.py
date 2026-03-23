@@ -7,10 +7,14 @@ The module also handles configuration options, such as the segmentation method a
 selection, and reports the segmentation results.
 
 Usage:
-    python3 -m nkululeko.segment [--config CONFIG_FILE]
+    python3 -m nkululeko.segment [--config CONFIG_FILE] [--file AUDIO_FILE]
+                                  [--max_length SECS] [--min_length SECS]
+                                  [--output_audio]
 
 Example:
     nkululeko.segment --config tests/exp_androids_segment.ini
+    nkululeko.segment --config exp.ini --max_length 30 --output_audio
+    nkululeko.segment --file speech.wav --max_length 30 --output_audio
 
 References:
     [1] https://github.com/snakers4/silero-vad
@@ -21,9 +25,10 @@ import argparse
 import configparser
 import os
 
-import pandas as pd
-
+import audeer
+import audiofile
 import audformat
+import pandas as pd
 
 from nkululeko.constants import VERSION
 from nkululeko.experiment import Experiment
@@ -32,10 +37,163 @@ from nkululeko.reporting.report_item import ReportItem
 from nkululeko.utils.util import Util
 
 
+def _resample_if_needed(signal, sampling_rate, target_sr, resamplers):
+    """Resample signal to target_sr. Updates resamplers cache in-place."""
+    import torch
+    import torchaudio
+    if sampling_rate not in resamplers:
+        resamplers[sampling_rate] = torchaudio.transforms.Resample(sampling_rate, target_sr)
+    return resamplers[sampling_rate](torch.from_numpy(signal)).numpy(), target_sr
+
+
+def extract_audio_segments(df_seg, data_dir, util):
+    """Extract audio files for each segment in df_seg.
+
+    Args:
+        df_seg: DataFrame with audformat multi-index (file, start, end).
+        data_dir: Experiment data directory used to resolve the audio output path.
+        util: Util instance for configuration access and logging.
+    """
+    audio_dir = util.config_val("SEGMENT", "audio_dir", "segments")
+    audio_format = util.config_val("SEGMENT", "audio_format", "wav")
+    target_sr = util.config_val("SEGMENT", "sampling_rate", None)
+    if target_sr is not None:
+        target_sr = int(target_sr)
+    # Resolve relative paths against the experiment data directory
+    if not os.path.isabs(audio_dir):
+        audio_dir = os.path.join(data_dir, audio_dir)
+    audeer.mkdir(audio_dir)
+    util.debug(
+        f"extracting audio segments to {audio_dir} in format {audio_format}"
+    )
+    _resamplers = {}  # cache Resample transforms keyed by source SR
+    for idx, (file, start, end) in enumerate(df_seg.index):
+        start_s = start.total_seconds()
+        end_s = end.total_seconds()
+        duration = end_s - start_s
+        if duration <= 0:
+            util.debug(
+                f"skipping segment {idx} with non-positive duration:"
+                f" {file} [{start_s}-{end_s}]"
+            )
+            continue
+        try:
+            signal, sampling_rate = audiofile.read(
+                file,
+                offset=start_s,
+                duration=duration,
+                always_2d=True,
+            )
+        except (OSError, RuntimeError) as e:
+            util.debug(f"could not read segment {file} [{start_s}-{end_s}]: {e}")
+            continue
+        if target_sr is not None and target_sr != sampling_rate:
+            signal, sampling_rate = _resample_if_needed(signal, sampling_rate, target_sr, _resamplers)
+        stem = os.path.splitext(os.path.basename(file))[0]
+        out_name = f"{stem}_segment_{idx:03d}_{start_s:.1f}-{end_s:.1f}.{audio_format}"
+        out_path = os.path.join(audio_dir, out_name)
+        try:
+            audiofile.write(out_path, signal, sampling_rate)
+        except OSError as e:
+            util.debug(f"could not write segment {out_path}: {e}")
+    util.debug(f"audio segment extraction complete: {audio_dir}")
+
+
+def _apply_cli_overrides(args, config):
+    """Inject CLI argument values into a ConfigParser SEGMENT section."""
+    if not config.has_section("SEGMENT"):
+        config.add_section("SEGMENT")
+    if args.max_length is not None:
+        config.set("SEGMENT", "max_length", str(args.max_length))
+    if args.min_length is not None:
+        config.set("SEGMENT", "min_length", str(args.min_length))
+    if args.output_audio:
+        config.set("SEGMENT", "output_audio", "True")
+    if args.sampling_rate is not None:
+        config.set("SEGMENT", "sampling_rate", str(args.sampling_rate))
+
+
+def _run_file_mode(args):
+    """Segment a single audio file without an INI configuration file."""
+    if not os.path.isfile(args.file):
+        print(f"ERROR: no such file: {args.file}")
+        exit()
+
+    # Build a minimal config with only [SEGMENT] so Silero_segmenter can
+    # read max_length / min_length via util.config_val without a full INI.
+    config = configparser.ConfigParser()
+    _apply_cli_overrides(args, config)
+    glob_conf.init_config(config)
+
+    util = Util("segment", has_config=True)
+    util.debug(f"segmenting file: {args.file}")
+
+    files = pd.Series([args.file])
+    df = pd.DataFrame(index=files)
+    df.index = audformat.utils.to_segmented_index(df.index, allow_nat=False)
+
+    from nkululeko.segmenting.seg_silero import Silero_segmenter
+
+    segmenter = Silero_segmenter(not_testing=True)
+    df_seg = segmenter.segment_dataframe(df)
+
+    df_seg["duration"] = df_seg.index.to_series().map(
+        lambda x: (x[2] - x[1]).total_seconds()
+    )
+    print(df_seg.to_string())
+
+    if args.output_audio:
+        data_dir = os.path.dirname(os.path.abspath(args.file))
+        extract_audio_segments(df_seg, data_dir, util)
+
+    print("DONE")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Call the nkululeko framework.")
-    parser.add_argument("--config", default="exp.ini", help="The base configuration")
+    parser.add_argument("--config", default=None, help="The base configuration")
+    parser.add_argument(
+        "--file",
+        default=None,
+        help="Single audio file to segment (no INI file required)",
+    )
+    parser.add_argument(
+        "--max_length",
+        type=float,
+        default=None,
+        metavar="SECS",
+        help="Maximum segment length in seconds (overrides [SEGMENT] max_length in INI)",
+    )
+    parser.add_argument(
+        "--min_length",
+        type=float,
+        default=None,
+        metavar="SECS",
+        help="Minimum segment length in seconds (overrides [SEGMENT] min_length in INI)",
+    )
+    parser.add_argument(
+        "--output_audio",
+        action="store_true",
+        help="Export audio files for each detected segment (overrides [SEGMENT] output_audio in INI)",
+    )
+    parser.add_argument(
+        "--sampling_rate",
+        type=int,
+        default=None,
+        metavar="HZ",
+        help="Resample exported audio to this rate in Hz (overrides [SEGMENT] sampling_rate in INI);"
+        " omit to preserve the original sample rate",
+    )
     args = parser.parse_args()
+
+    if args.file is None and args.config is None:
+        print("ERROR: either --file or --config must be provided.")
+        exit()
+
+    if args.file is not None:
+        _run_file_mode(args)
+        return
+
     config_file = args.config if args.config is not None else "exp.ini"
 
     if not os.path.isfile(config_file):
@@ -44,6 +202,8 @@ def main():
 
     config = configparser.ConfigParser()
     config.read(config_file)
+
+    _apply_cli_overrides(args, config)
     expr = Experiment(config)
     module = "segment"
     expr.set_module(module)
@@ -111,6 +271,9 @@ def main():
         # save file
         df_seg["duration"] = df_seg.index.to_series().map(lambda x: calc_dur(x))
         df_seg.to_csv(f"{expr.data_dir}/{segmented_file}")
+
+    if util.config_val("SEGMENT", "output_audio", "False").lower() in ("true", "1", "yes"):
+        extract_audio_segments(df_seg, expr.data_dir, util)
 
     if "duration" not in df.columns:
         df["duration"] = df.index.to_series().map(lambda x: calc_dur(x))
