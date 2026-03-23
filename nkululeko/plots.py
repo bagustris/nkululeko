@@ -12,6 +12,9 @@ from sklearn.manifold import TSNE
 import audeer
 from audmetric import concordance_cc as ccc
 
+# Maximum length for plot basename (excluding directory path) to avoid OSError [Errno 36]
+PLOT_BASENAME_MAX_LEN = 240
+
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.defines import Header
 from nkululeko.reporting.report_item import ReportItem
@@ -239,10 +242,10 @@ class Plots:
         # avoid warning
         # plt.tight_layout()
         basename = f"{filename}_{type_s}.{self.format}"
-        # Truncate basename to 240 chars to avoid OSError [Errno 36] on Linux
-        if len(basename) > 240:
+        # Truncate basename to PLOT_BASENAME_MAX_LEN to avoid OSError [Errno 36] on Linux
+        if len(basename) > PLOT_BASENAME_MAX_LEN:
             ext = f".{self.format}"
-            basename = basename[: 240 - len(ext)] + ext
+            basename = basename[: PLOT_BASENAME_MAX_LEN - len(ext)] + ext
         img_path = os.path.join(fig_dir, basename)
         plt.savefig(img_path)
         plt.close(fig_plots)

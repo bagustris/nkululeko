@@ -44,9 +44,9 @@ unrar x Latin_America_Spanish_anti_spoofing_dataset.rar
 # Generate CSV files
 python3 process_database.py
 
-# Run experiment with EER metric (default for deepfake detection)
+# Run experiment (use an example INI file as template, e.g. examples/exp_emodb_os_xgb.ini)
 cd ../..
-python3 -m nkululeko.nkululeko --config data/habla/exp.ini
+python3 -m nkululeko.nkululeko --config path/to/your_config.ini
 ```
 
 ## File Naming Convention

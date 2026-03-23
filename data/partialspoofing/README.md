@@ -31,9 +31,9 @@ for i in ./*.tar.gz; do tar -xvzf $i; done
 cd ..
 python3 process_database.py
 
-# Run experiment with EER metric (default for deepfake detection)
+# Run experiment (use an example INI file as template, e.g. examples/exp_emodb_os_xgb.ini)
 cd ../..
-python3 -m nkululeko.nkululeko --config data/partialspoofing/exp.ini
+python3 -m nkululeko.nkululeko --config path/to/your_config.ini
 ```
 
 ## Dataset Structure
