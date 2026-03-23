@@ -391,10 +391,11 @@ class Experiment:
             self.util.debug(
                 f"train/test shape: {self.df_train.shape}/{self.df_test.shape}"
             )
-        if "speaker" in self.df_train.columns:
+        if not self.df_train.empty and "speaker" in self.df_train.columns:
             train_spkrs = list(map(str, self.df_train.speaker.unique()))
-            test_spkrs = list(map(str, self.df_test.speaker.unique()))
             self.util.debug(f"train speakers: {train_spkrs}")
+        if not self.df_test.empty and "speaker" in self.df_test.columns:
+            test_spkrs = list(map(str, self.df_test.speaker.unique()))
             self.util.debug(f"test speakers: {test_spkrs}")
 
         # Build per-dataset test mapping for multi-test-set evaluation
