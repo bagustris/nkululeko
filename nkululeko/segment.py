@@ -186,10 +186,6 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.file is None and args.config is None:
-        print("ERROR: either --file or --config must be provided.")
-        exit()
-
     if args.file is not None:
         _run_file_mode(args)
         return

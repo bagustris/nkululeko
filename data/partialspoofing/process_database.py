@@ -73,8 +73,10 @@ def parse_protocol(protocol_path, wav_dir, data_dir_parent):
             audio_id = parts[1]    # CON_T_XXXXXXX or LA_T_XXXXXXX
             # parts[2] is '-'
             # parts[3] is SYSTEM_ID (CON or - for bonafide)
-            label = parts[4].lower()  # 'spoof' or 'bonafide'
-            
+            raw_label = parts[4].lower()  # 'spoof' or 'bonafide'
+            _label_map = {"bonafide": "real", "spoof": "fake"}
+            label = _label_map.get(raw_label, raw_label)
+
             # Construct audio file path
             audio_file = wav_dir / f"{audio_id}.wav"
             
@@ -148,9 +150,9 @@ def process_database(data_dir, output_dir):
         csv_path = output_dir / f'partialspoofing_{split_name}.csv'
         df.to_csv(csv_path, index=False)
         
-        bonafide_count = len(df[df['label'] == 'bonafide'])
-        spoof_count = len(df[df['label'] == 'spoof'])
-        
+        bonafide_count = len(df[df['label'] == 'real'])
+        spoof_count = len(df[df['label'] == 'fake'])
+
         print(f"✓ Saved {len(df)} samples to {csv_path}")
         print(f"  - Bonafide: {bonafide_count}, Spoof: {spoof_count}")
         
@@ -163,8 +165,8 @@ def process_database(data_dir, output_dir):
         combined_df.to_csv(combined_csv, index=False)
         
         print(f"\n✓ Saved {len(combined_df)} total samples to {combined_csv}")
-        print(f"  - Bonafide: {len(combined_df[combined_df['label'] == 'bonafide'])}")
-        print(f"  - Spoof: {len(combined_df[combined_df['label'] == 'spoof'])}")
+        print(f"  - Bonafide: {len(combined_df[combined_df['label'] == 'real'])}")
+        print(f"  - Spoof: {len(combined_df[combined_df['label'] == 'fake'])}")
         print(f"  - Unique speakers: {combined_df['speaker'].nunique()}")
     
     print("\nDONE")

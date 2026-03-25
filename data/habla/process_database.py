@@ -245,8 +245,8 @@ def process_database(data_dir, output_dir):
         raise ValueError("No audio files found in the dataset directory")
     
     print(f"\nFound {len(df)} total samples")
-    print(f"  - Bonafide: {len(df[df['label'] == 'bonafide'])}")
-    print(f"  - Spoof: {len(df[df['label'] == 'spoof'])}")
+    print(f"  - Bonafide: {len(df[df['label'] == 'real'])}")
+    print(f"  - Spoof: {len(df[df['label'] == 'fake'])}")
     
     # Shuffle and split (60% train, 20% dev, 20% test)
     df_shuffled = df.sample(frac=1, random_state=42).reset_index(drop=True)
@@ -276,9 +276,9 @@ def process_database(data_dir, output_dir):
     print(f"✓ Saved {len(df_shuffled)} samples to {all_file}")
     
     print("\nLabel distribution:")
-    print(f"  Train - Bonafide: {len(df_train[df_train['label'] == 'bonafide'])}, Spoof: {len(df_train[df_train['label'] == 'spoof'])}")
-    print(f"  Dev   - Bonafide: {len(df_dev[df_dev['label'] == 'bonafide'])}, Spoof: {len(df_dev[df_dev['label'] == 'spoof'])}")
-    print(f"  Test  - Bonafide: {len(df_test[df_test['label'] == 'bonafide'])}, Spoof: {len(df_test[df_test['label'] == 'spoof'])}")
+    print(f"  Train - Bonafide: {len(df_train[df_train['label'] == 'real'])}, Spoof: {len(df_train[df_train['label'] == 'fake'])}")
+    print(f"  Dev   - Bonafide: {len(df_dev[df_dev['label'] == 'real'])}, Spoof: {len(df_dev[df_dev['label'] == 'fake'])}")
+    print(f"  Test  - Bonafide: {len(df_test[df_test['label'] == 'real'])}, Spoof: {len(df_test[df_test['label'] == 'fake'])}")
     
     # Print unique speakers
     print(f"\nUnique speakers: {df['speaker'].nunique()}")
