@@ -28,7 +28,7 @@ class TestModules(unittest.TestCase):
 
         try:
             import nkululeko.resample
-        except ImportError:
+        except (ImportError, OSError):
             print("Skipping resample module import (requires torchaudio)")
 
         try:
