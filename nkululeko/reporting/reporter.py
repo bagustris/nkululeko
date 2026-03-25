@@ -39,6 +39,16 @@ from nkululeko.reporting.result import Result
 from nkululeko.utils.util import Util
 
 
+def _safe_path(fig_dir, basename, fmt, max_len=240):
+    """Return fig_dir+basename with extension, truncating basename to avoid OSError [Errno 36]."""
+    ext = f".{fmt}"
+    if len(basename) > max_len:
+        basename = basename[: max_len - len(ext)] + ext
+    elif not basename.endswith(ext):
+        basename = basename + ext
+    return os.path.join(fig_dir, basename)
+
+
 def equal_error_rate(y_true, y_score):
     """Calculate Equal Error Rate (EER) for binary classification.
 

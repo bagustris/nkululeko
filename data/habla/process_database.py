@@ -83,19 +83,21 @@ def parse_protocol(protocol_path, data_dir, file_map):
                 continue
             
             speaker_id = parts[0]
-            label = parts[-1].lower()  # 'spoof' or 'bonafide'
+            raw_label = parts[-1].lower()  # 'spoof' or 'bonafide'
             
             # Extract filename (second element, may contain hyphens)
             # Find filename by looking for the pattern before " - "
             match = re.match(r'^(\S+)\s+(\S+)\s+-\s+(\S+)\s+(\S+)$', line)
+            _label_map = {"bonafide": "real", "spoof": "fake"}
             if match:
                 speaker_id = match.group(1)
                 filename = match.group(2)
                 spoof_type = match.group(3)
-                label = match.group(4).lower()
+                raw_label = match.group(4).lower()
             else:
                 # Fallback: assume second part is filename
                 filename = parts[1]
+            label = _label_map.get(raw_label, raw_label)
             
             # Find the actual file path
             file_path = None
@@ -171,7 +173,8 @@ def process_from_directory(data_dir):
         
         # Check if any parent folder is a spoof method
         is_spoof = any(folder in SPOOF_FOLDERS for folder in rel_parts)
-        label = 'spoof' if is_spoof else 'bonafide'
+        # Normalize labels to match other deepfake datasets: bonafide->real, spoof->fake
+        label = 'fake' if is_spoof else 'real'
         
         # Extract speaker ID from filename
         # Format: accent_speaker (e.g., arf_00295)
