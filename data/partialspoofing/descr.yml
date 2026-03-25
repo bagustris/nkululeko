@@ -1,0 +1,7 @@
+name: partialspoofing
+target: deepfake
+description: PartialSpoof database for detecting partially spoofed audio
+access: public
+license: CC-BY-4.0
+url: https://zenodo.org/record/5766198
+language: English

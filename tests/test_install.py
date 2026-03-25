@@ -127,6 +127,7 @@ def main(python_version=None):
         print("Installing torch dependencies for tests...")
         stdout, stderr, returncode = run_command(
             f'{pip_cmd} install "torch>=1.0.0" "torchvision>=0.10.0" "torchaudio>=0.10.0"'
+            f" --index-url https://download.pytorch.org/whl/cpu"
         )
         if returncode != 0:
             print(f"Failed to install torch dependencies: {stderr}")

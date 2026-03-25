@@ -22,6 +22,8 @@ To support open science and reproducible research, we encourage you to submit PR
 |[androids](androids/)|depression|Italian|public|research|
 |[ased](ased/)|emotion|Amharic Speech Emotion Dataset|public|unknown|
 |[asvp-esd](asvp-esd/)|emotion|The Audio, Speech and Vision Processing Lab Emotional Sound database. Multilingual, also contain vocal bursts|public|Custom academic/research use|
+|[asvspoof-2019](asvspoof-2019/)|deepfake|ASVspoof 2019 Logical Access (LA) dataset for anti-spoofing countermeasure research|upon request|CC-BY-4.0|
+|[asvspoof-2021](asvspoof-2021/)|deepfake|ASVspoof 2021 Logical Access (LA) and Deepfake (DF) evaluation datasets for anti-spoofing countermeasure research|upon request|see LICENSE files in ASVspoof2021_LA_eval/ and ASVspoof2021_DF_eval/|
 |[banglaser](banglaser/)|emotion|Bengali|public|unknown|
 |[baved](baved/)|emotion|Basic-Arabic-Vocal-Emotions-Dataset|public|CC BY 4.0|
 |[cafe](cafe/)|emotion|Canadian French Emotional (CaFE) speech dataset. Childrenspeech, CanadianFrench|public|Custom academic/research use|
@@ -49,6 +51,8 @@ To support open science and reproducible research, we encourage you to submit PR
 |[esd](esd/)|emotion|English,Chinese|public|unknown|
 |[for-2sec](for-2sec/)|deepfake|Fake-or-Real (FoR) dataset - 2 seconds version|public|unknown|
 |[gerparas](gerparas/)|valence,arousal,dominance|German|restricted|unknown|
+|[habla](habla/)|deepfake|Hispanic American Balanced Latin-American voice anti-spoofing dataset|public|CC-BY-4.0|
+|[had](had/)|deepfake|Half-Truth Audio Detection (HAD) dataset for detecting partially fake audio in Chinese speech|public|CC BY 4.0|
 |[iemocap](iemocap/)|emotion,VAD|English|restricted|Custom academic/research use|
 |[in-the-wild](itw/)|deepfake|audio deepfakes (and corresponding benign audio) for a set of politicians and other public figures|public|Apache-2.0|
 |[indowave](indowave/)|emotion,intensity|Indonesian audio dataset for emotion classification|public|CC BY 4.0|
@@ -73,6 +77,7 @@ To support open science and reproducible research, we encourage you to submit PR
 |[odyssey-cat-2024](odyssey-cat-2024/)|emotion|Data for Odyssey 2024 challenge, needs MSPPodcast|restricted|unknown|
 |[ogvc](ogvc/)|emotion,intensity|Acted emotional speech with 8 emotions and 4 intensity levels|public|unknown|
 |[oreau2](oreau2/)|emotion|French|public|unknown|
+|[partialspoofing](partialspoofing/)|deepfake|PartialSpoof database for detecting partially spoofed audio|public|CC-BY-4.0|
 |[polish](polish/)|emotion|Polish|public|unknown|
 |[portuguese](portuguese/)|emotion|Portuguese|public|Custom academic/research use|
 |[ravdess](ravdess/)|emotion,speaker|English|public|CC BY 4.0|
@@ -90,7 +95,7 @@ To support open science and reproducible research, we encourage you to submit PR
 |[vivae](vivae/)|emotion|Variably Intense Vocalizations of Affect and Emotion Corpus (VIVAE). English vocal bursts|public|unknown|
 
 
-This recipe contains information about 70 datasets.
+This recipe contains information about 75 datasets.
 ## Performance
 
 ![Nkululeko performance](../meta/images/nkululeko_ser_20240719.png)

@@ -62,9 +62,6 @@ dependencies = [
     "shap==0.50.0",
     "sounddevice>=0.4.0",
     "splitutils",
-    "torchaudio==2.6.0",
-    "torchvision==0.21.0",
-    "torch==2.6.0",
     "transformers>=4.0.0",
     "umap-learn>=0.5.0",
     "xgboost>=1.0.0",
@@ -76,11 +73,13 @@ torch = [
     "torch>=1.0.0",
     "torchvision>=0.10.0",
     "torchaudio>=0.10.0",
+    "silero-vad>=6.2.1",
 ]
 torch-cpu = [
     "torch>=1.0.0",
     "torchvision>=0.10.0",
     "torchaudio>=0.10.0",
+    "silero-vad>=6.2.1",
 ]
 spotlight = [
     "renumics-spotlight>=1.6.13",
