@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 1.4.0 (26-03-25)  
+------------------------
+* Add more support/config for the segment module. Now, it can output an audio file and work directly on a file or folder without a config file (similar to the resample module)
+
 Version 1.3.5 (26-03-19)  
 ------------------------
 * Fixed a bug where the speaker column was expected for empty DataFrames
