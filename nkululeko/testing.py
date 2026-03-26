@@ -33,7 +33,7 @@ def do_it(config_file, outfile):
     # load the experiment
     expr.load(f"{util.get_save_name()}")
     expr.fill_tests()
-    expr.extract_test_feats()
+    expr.extract_feats()
     result = expr.predict_test_and_save(outfile)
 
     print("DONE")
