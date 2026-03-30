@@ -1,6 +1,7 @@
 # util.py
 import ast
 import configparser
+import datetime
 import logging
 import os.path
 import sys
@@ -70,22 +71,43 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
     def setup_logging(self):
         # Setup logging
         logger = logging.getLogger(__name__)
+
+        # Create a simple formatter that only shows the message
+        class SimpleFormatter(logging.Formatter):
+            def format(self, record):
+                return record.getMessage()
+
         if not logger.hasHandlers():
             logger.setLevel(logging.DEBUG)  # Set the desired logging level
 
             # Create a console handler
             console_handler = logging.StreamHandler()
-
-            # Create a simple formatter that only shows the message
-            class SimpleFormatter(logging.Formatter):
-                def format(self, record):
-                    return record.getMessage()
-
-            # Set the formatter for the console handler
             console_handler.setFormatter(SimpleFormatter())
 
             # Add the console handler to the logger
             logger.addHandler(console_handler)
+
+        # Add a file handler if config is available and no file handler exists yet
+        if self.config is not None:
+            has_file_handler = any(
+                isinstance(h, logging.FileHandler) for h in logger.handlers
+            )
+            if not has_file_handler:
+                try:
+                    root = self.config["EXP"]["root"]
+                    name = self.config["EXP"]["name"]
+                    log_dir = os.path.join(root, name)
+                    audeer.mkdir(log_dir)
+                    timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
+                    log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
+                    file_handler = logging.FileHandler(log_file)
+                    file_handler.setFormatter(SimpleFormatter())
+                    logger.addHandler(file_handler)
+                except KeyError:
+                    logger.debug(
+                        "File logging skipped: EXP configuration (root/name) incomplete"
+                    )
+
         self.logger = logger
 
     def get_path(self, entry):
