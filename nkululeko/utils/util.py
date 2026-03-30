@@ -87,26 +87,40 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             # Add the console handler to the logger
             logger.addHandler(console_handler)
 
-        # Add a file handler if config is available and no file handler exists yet
+        # Add or replace file handler when config is available
         if self.config is not None:
-            has_file_handler = any(
-                isinstance(h, logging.FileHandler) for h in logger.handlers
-            )
-            if not has_file_handler:
-                try:
-                    root = self.config["EXP"]["root"]
-                    name = self.config["EXP"]["name"]
-                    log_dir = os.path.join(root, name)
-                    audeer.mkdir(log_dir)
-                    timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
-                    log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
+            try:
+                root = self.config["EXP"]["root"]
+                name = self.config["EXP"]["name"]
+                log_dir = os.path.abspath(os.path.join(root, name))
+                audeer.mkdir(log_dir)
+                # Include seconds to avoid filename collisions between close-together runs
+                timestamp = datetime.datetime.now().strftime("%m%d_%H%M%S")
+                log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
+
+                # Remove any existing file handlers that belong to a different
+                # experiment directory so that multi-experiment processes each
+                # write to their own log file.
+                for handler in list(logger.handlers):
+                    if isinstance(handler, logging.FileHandler):
+                        if os.path.dirname(handler.baseFilename) != log_dir:
+                            handler.close()
+                            logger.removeHandler(handler)
+
+                # Only attach a new file handler if none for this experiment exists
+                has_file_handler = any(
+                    isinstance(h, logging.FileHandler) for h in logger.handlers
+                )
+                if not has_file_handler:
                     file_handler = logging.FileHandler(log_file)
                     file_handler.setFormatter(SimpleFormatter())
                     logger.addHandler(file_handler)
-                except KeyError:
-                    logger.debug(
-                        "File logging skipped: EXP configuration (root/name) incomplete"
-                    )
+            except KeyError:
+                logger.debug(
+                    "File logging skipped: EXP configuration (root/name) incomplete"
+                )
+            except OSError as e:
+                logger.debug(f"File logging skipped: could not create log file ({e})")
 
         self.logger = logger
 
