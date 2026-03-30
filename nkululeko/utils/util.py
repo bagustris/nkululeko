@@ -1,6 +1,7 @@
 # util.py
 import ast
 import configparser
+import datetime
 import logging
 import os.path
 import sys
@@ -70,22 +71,56 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
     def setup_logging(self):
         # Setup logging
         logger = logging.getLogger(__name__)
+
+        # Create a simple formatter that only shows the message
+        class SimpleFormatter(logging.Formatter):
+            def format(self, record):
+                return record.getMessage()
+
         if not logger.hasHandlers():
             logger.setLevel(logging.DEBUG)  # Set the desired logging level
 
             # Create a console handler
             console_handler = logging.StreamHandler()
-
-            # Create a simple formatter that only shows the message
-            class SimpleFormatter(logging.Formatter):
-                def format(self, record):
-                    return record.getMessage()
-
-            # Set the formatter for the console handler
             console_handler.setFormatter(SimpleFormatter())
 
             # Add the console handler to the logger
             logger.addHandler(console_handler)
+
+        # Add or replace file handler when config is available
+        if self.config is not None:
+            try:
+                root = self.config["EXP"]["root"]
+                name = self.config["EXP"]["name"]
+                log_dir = os.path.abspath(os.path.join(root, name))
+                audeer.mkdir(log_dir)
+                # Include seconds to avoid filename collisions between close-together runs
+                timestamp = datetime.datetime.now().strftime("%m%d_%H%M%S")
+                log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
+
+                # Collect stale file handlers (different experiment dir) then remove them
+                # to avoid mutating the handlers list during iteration.
+                stale = [
+                    h
+                    for h in logger.handlers
+                    if isinstance(h, logging.FileHandler)
+                    and os.path.dirname(h.baseFilename) != log_dir
+                ]
+                for handler in stale:
+                    handler.close()
+                    logger.removeHandler(handler)
+
+                if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
+                    file_handler = logging.FileHandler(log_file)
+                    file_handler.setFormatter(SimpleFormatter())
+                    logger.addHandler(file_handler)
+            except KeyError:
+                logger.debug(
+                    "File logging skipped: EXP configuration (root/name) incomplete"
+                )
+            except OSError as e:
+                logger.debug(f"File logging skipped: could not create log file ({e})")
+
         self.logger = logger
 
     def get_path(self, entry):

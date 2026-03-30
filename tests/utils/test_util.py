@@ -1,6 +1,7 @@
 """Unit tests for Util class (nkululeko/utils/util.py)."""
 
 import configparser
+import logging
 
 import pytest
 
@@ -178,3 +179,91 @@ class TestNumericHelpers:
 
         u = Util("test")
         assert u.to_4_digits_str(float("nan")) == "nan"
+
+
+# ---------------------------------------------------------------------------
+# setup_logging / file handler
+# ---------------------------------------------------------------------------
+
+
+class TestSetupLogging:
+    def _reset_logger(self):
+        """Remove all handlers from the shared module logger between tests."""
+        import nkululeko.utils.util as util_mod
+
+        logger = logging.getLogger(util_mod.__name__)
+        for h in logger.handlers[:]:
+            h.close()
+            logger.removeHandler(h)
+
+    def setup_method(self):
+        self._reset_logger()
+
+    def teardown_method(self):
+        self._reset_logger()
+
+    def test_file_handler_created_when_exp_config_present(self, tmp_path):
+        import nkululeko.utils.util as util_mod
+
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "logtest"
+        Util("test")
+        logger = logging.getLogger(util_mod.__name__)
+        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        assert len(file_handlers) == 1
+        assert file_handlers[0].baseFilename.endswith(".log")
+
+    def test_no_duplicate_file_handler_on_second_util(self, tmp_path):
+        import nkululeko.utils.util as util_mod
+
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "logtest"
+        Util("test")
+        Util("test2")
+        logger = logging.getLogger(util_mod.__name__)
+        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        assert len(file_handlers) == 1
+
+    def test_file_handler_replaced_when_experiment_changes(self, tmp_path):
+        import nkululeko.utils.util as util_mod
+
+        # First experiment
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "exp_one"
+        Util("test")
+        logger = logging.getLogger(util_mod.__name__)
+        first_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        assert len(first_handlers) == 1
+        first_path = first_handlers[0].baseFilename
+
+        # Second experiment with different name
+        glob_conf.config["EXP"]["name"] = "exp_two"
+        Util("test")
+        second_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        assert len(second_handlers) == 1
+        assert second_handlers[0].baseFilename != first_path
+        assert "exp_two" in second_handlers[0].baseFilename
+
+    def test_no_file_handler_without_config(self, tmp_path):
+        import nkululeko.utils.util as util_mod
+
+        glob_conf.config = None
+        Util("test", has_config=False)
+        logger = logging.getLogger(util_mod.__name__)
+        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        assert len(file_handlers) == 0
+
+    def test_oserror_falls_back_to_console_only(self, tmp_path, monkeypatch):
+        import nkululeko.utils.util as util_mod
+        import audeer
+
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "logtest"
+        def raise_oserror(*a, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(audeer, "mkdir", raise_oserror)
+        Util("test")  # Should not raise
+        logger = logging.getLogger(util_mod.__name__)
+        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        assert len(file_handlers) == 0
