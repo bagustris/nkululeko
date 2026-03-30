@@ -1,0 +1,304 @@
+{
+  "repo_notes": [
+    {
+      "content": ""
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce Nkululeko, explaining what it is, its purpose in speaker characteristics detection, and how it fits into the ML audio processing ecosystem",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "What is Nkululeko",
+      "purpose": "Detailed explanation of Nkululeko as a machine learning framework for speaker characteristics detection (emotion, age, gender, etc.)",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Key Features and Capabilities",
+      "purpose": "Enumerate and explain the main features: 20+ feature extractors, multiple models, configuration-driven design, visualization, ensemble methods, etc.",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "System Architecture Overview",
+      "purpose": "High-level architectural diagrams showing the Experiment class, module ecosystem, and data flow through the system",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Getting Started",
+      "purpose": "Guide users through installation, first experiment, and basic concepts",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Installation and Dependencies",
+      "purpose": "Installation instructions including conda/venv setup, required and optional dependencies, version compatibility",
+      "parent": "Getting Started",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Quick Start Tutorial",
+      "purpose": "A complete walkthrough of a simple experiment from INI file creation to results interpretation",
+      "parent": "Getting Started",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Understanding the Experiment Lifecycle",
+      "purpose": "Explain the sequential pipeline: configuration → data loading → feature extraction → training → evaluation → reporting",
+      "parent": "Getting Started",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuration System",
+      "purpose": "Comprehensive guide to the INI-based configuration system that drives all experiments",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "INI File Structure and glob_conf",
+      "purpose": "Explain the INI format, how configparser works, the role of glob_conf as a global singleton, and the Util class for configuration access",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "EXP Section - Experiment Settings",
+      "purpose": "Document all EXP section parameters: root, name, type, runs, epochs, save options, random_state, etc.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "DATA Section - Dataset Configuration",
+      "purpose": "Comprehensive documentation of DATA section: databases, tests, split strategies, targets, labels, filtering, etc.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "FEATS Section - Feature Configuration",
+      "purpose": "Document FEATS section parameters: type, scale, balancing, needs_feature_extraction, store_format, etc.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "MODEL Section - Model Configuration",
+      "purpose": "Document MODEL section: type, hyperparameters, early stopping, cross-validation, evaluation metrics, etc.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Additional Configuration Sections",
+      "purpose": "Document AUGMENT, SEGMENT, EXPL, PREDICT, EXPORT, CROSSDB, PLOT, RESAMPLE, REPORT sections",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "FLAGS Section - Parameter Grid Search",
+      "purpose": "Explain the FLAGS system for running multiple experiments with different parameter combinations efficiently",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Management",
+      "purpose": "Guide to loading, splitting, filtering, and preprocessing datasets in Nkululeko",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Dataset Loading and Formats",
+      "purpose": "Explain Dataset and Dataset_CSV classes, audformat vs CSV formats, and how data is standardized",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Splitting Strategies",
+      "purpose": "Document all 8 split strategies: database, specified, speaker_split, random, balanced, reuse, train/test/dev, speakers_stated",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Filtering and Validation",
+      "purpose": "Explain DataFilter, column mapping, sample filtering, speaker filtering, check_vad, check_size, etc.",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Audio Segmentation (VAD)",
+      "purpose": "Document the segment module, Silero and Pyannote VAD methods, and segmentation configuration",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Augmentation",
+      "purpose": "Explain augment and aug_train modules, audiomentations, auglib, random_splice methods",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Audio Resampling",
+      "purpose": "Document the resample module for standardizing audio sampling rates to 16kHz",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Balancing Techniques",
+      "purpose": "Explain DataBalancer class and all balancing methods: SMOTE, ROS, ADASYN, undersampling, etc.",
+      "parent": "Data Management",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Feature Extraction",
+      "purpose": "Comprehensive guide to the feature extraction system with 20+ feature types",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Feature Extraction Architecture",
+      "purpose": "Explain FeatureExtractor orchestrator, factory pattern, Featureset base class, lazy loading, and caching strategy",
+      "parent": "Feature Extraction",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Traditional Audio Features",
+      "purpose": "Document OpenSmile (os), Praat (praat), SPTK, MLD, and spectra feature extractors",
+      "parent": "Feature Extraction",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Self-Supervised Learning Embeddings",
+      "purpose": "Document Wav2Vec2, HuBERT, WavLM, Whisper, and Emotion2vec extractors including layer selection",
+      "parent": "Feature Extraction",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Specialized Feature Extractors",
+      "purpose": "Document audModel, CLAP, TRILL, AST, speaker recognition, and quality metrics (SNR, MOS, PESQ, STOI, SQUIM)",
+      "parent": "Feature Extraction",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Linguistic Features with BERT",
+      "purpose": "Explain text feature extraction using BERT variants, requiring text column or transcription",
+      "parent": "Feature Extraction",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
