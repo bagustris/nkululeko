@@ -1,7 +1,7 @@
 {
   "repo_notes": [
     {
-      "content": ""
+      "content": "Nkululeko is a Python (3.11+) audio/speech ML framework (current version: 1.4.0) built around a declarative INI-file interface. Users author `.ini` config files split into sections ([EXP], [DATA], [FEATS], [MODEL], [EXPL], [PREDICT], [AUGMENT], [SEGMENT], [PLOT], [REPORT], [EXPORT], [CROSSDB], [RESAMPLE], [OPTIM], [FLAGS]) rather than writing Python code. The framework handles end-to-end pipelines: data loading → feature extraction → model training → evaluation → reporting.\n\nKey architectural facts for wiki generation:\n- Central class: `nkululeko/experiment.py::Experiment` — orchestrates everything, stores `df_train`/`df_test`/`df_dev`, calls FeatureExtractor, Runmanager.\n- Global state singleton: `nkululeko/glob_conf.py` — holds `config` (ConfigParser), `label_encoder`, `util`, `module`, `report`, `labels`, `target`. Accessed everywhere via `import nkululeko.glob_conf as glob_conf`.\n- Configuration accessor: `Util.config_val(section, key, default)` — the standard way to read INI values with defaults.\n- Data formats: audformat databases (folder with audformat schema) OR CSV files (columns: file, speaker, task label). Handled by `Dataset` and `Dataset_CSV` respectively.\n- Feature extraction: `FeatureExtractor` delegates to `Featureset` subclasses in `nkululeko/feat_extract/`. All extracted features are cached in the `store/` directory using the database+feature_type+split as the cache key. Formats: pkl (default) or csv.\n- Feature types (INI key `[FEATS] type`): os, praat, wav2vec2-*, hubert-*, wavlm-*, whisper-*, bert-*, ast, emotion2vec-*, audmodel, audwav2vec2, auddim, agender, agender_agender, clap, trill, xbow, snr, mos, squim, mld, spectra, spkrec, sptk, import (pre-computed CSV).\n- Models in `nkululeko/models/`: classic ML (svm, svr, xgb, xgr, knn, knn_reg, tree, tree_reg, nb, gmm, lin_reg) and neural (mlp, mlp_regression, cnn, finetune/TunedModel). Classic models inherit from `Model`; neural models set `model_type = 'ann'` or `'finetuned'`.\n- Model evaluation: `Reporter` (nkululeko/reporting/reporter.py) computes UAR/EER for classification and MSE/MAE/CCC for regression. Confidence intervals via `confidence_intervals` package. Reports stored as `Report` (collection of `ReportItem` objects), serialized as `report.pkl`.\n- Data splitting strategies: database, specified (explicit tables), speaker_split, random, balanced, reuse, train, test, dev, speakers_stated, list of speaker IDs.\n- DataFilter (`filter_data.py`): supports limit_samples, limit_speakers, filter_value, filter_duration, min/max_duration, check_vad, check_size.\n- Scaler (`scaler.py`): standard, robust, minmax, maxabs, normalizer, powertransformer, quantiletransformer, speaker, bins.\n- DataBalancer (`balance.py`): smote, adasyn, ros, borderlinesmote, svmsmote, smoteenn, smotetomek, clustercentroids, randomundersampler, editednearestneighbours, tomeklinks.\n- CLI entry points (all accept `--config <file.ini>`): nkululeko.nkululeko, nkululeko.explore, nkululeko.demo, nkululeko.predict, nkululeko.augment, nkululeko.aug_train, nkululeko.segment, nkululeko.resample, nkululeko.ensemble, nkululeko.multidb, nkululeko.optim, nkululeko.export, nkululeko.feature_demo, nkululeko.flags.\n- Autopredict module (`autopredict/`): pre-trained predictors for age, gender, emotion, arousal, valence, dominance, SNR, MOS, PESQ, SDR, STOI, speaker-id, text transcription (Whisper), translation, text classification.\n- Segmentation (`segment.py`, `segmenting/`): Silero VAD, Pyannote, INA speech segmenter. Can export audio clips.\n- Augmentation (`augmenting/`): audiomentations (traditional transforms), auglib (audeering), random_splice.\n- Ensemble module (`ensemble.py`): late fusion of multiple experiment outputs via majority_voting, mean, max, sum, uncertainty, uncertainty_weighted, confidence_weighted, performance_weighted.\n- Multidb module (`multidb.py`): cross-database train/test matrix, generates heatmap of results.\n- FLAGS module (`flags.py`): grid over any INI parameter combinations for batch experiments, with intelligent feature-extraction reuse.\n- Optim module (`optimizationrunner.py`): hyperparameter optimization via grid/random/halving_random/halving_grid strategies.\n- Plots: `nkululeko/plots.py` for data distributions, scatter (t-SNE/UMAP/PCA), confusion matrices, value counts, speaker plots, animated GIF progressions.\n- LaTeX reporting: `nkululeko/reporting/latex_writer.py` generates PDF reports from collected ReportItems.\n- All output paths are relative to the experiment root (`[EXP] root`): `store/` for caches, `images/` for plots, `results/` for CSVs, `models/` for saved models.\n- Constants: `SAMPLING_RATE = 16000`, `COL_SEX = 'gender'`, `COL_AGE = 'age'`, `COL_SPEAKER = 'speaker'`.\n- When writing wiki pages, use concrete code/config examples. Prefer showing example INI snippets over abstract descriptions. Reference actual class names and file paths."
     }
   ],
   "pages": [
@@ -10,7 +10,7 @@
       "purpose": "Introduce Nkululeko, explaining what it is, its purpose in speaker characteristics detection, and how it fits into the ML audio processing ecosystem",
       "page_notes": [
         {
-          "content": ""
+          "content": "Lead with a clear one-paragraph definition: Nkululeko is a Python framework that lets researchers run audio/speech ML experiments end-to-end using only INI configuration files — no Python coding required for standard workflows. Mention the target use cases: emotion recognition, age estimation, gender detection, speaker ID, and other paralinguistic tasks. Briefly describe the ecosystem: built on top of audformat (audeering), scikit-learn, PyTorch, HuggingFace Transformers, and OpenSMILE. Include a high-level diagram of the pipeline (config → data → features → model → report). End with links to child pages."
         }
       ]
     },
@@ -20,7 +20,7 @@
       "parent": "Overview",
       "page_notes": [
         {
-          "content": ""
+          "content": "Explain the name ('Nkululeko' means freedom/liberty in Zulu/Xhosa, reflecting freedom from boilerplate ML code). Describe the core philosophy: experiment-as-config — one INI file fully specifies a reproducible experiment. Describe the target audience: speech/audio researchers with limited ML engineering experience. Call out that VERSION = 1.4.0 (from nkululeko/constants.py). Mention that all outputs are written to the experiment root folder under subdirectories (store/, images/, results/, models/) named by the experiment. Show a minimal working INI example covering [EXP], [DATA], [FEATS], [MODEL] sections."
         }
       ]
     },
@@ -30,7 +30,7 @@
       "parent": "Overview",
       "page_notes": [
         {
-          "content": ""
+          "content": "Structure as a feature matrix. Group features into categories: (1) Feature extractors — 25+ types: classic (os/OpenSMILE eGeMAPSv02/ComParE_2016, praat, sptk, mld, spectra/melspec), SSL embeddings (wav2vec2-*, hubert-*, wavlm-*, whisper-*, emotion2vec-*, ast), specialized (audmodel, audwav2vec2, auddim, agender, agender_agender, clap, trill, xbow/openXBOW BoAW, spkrec/speechbrain), quality metrics (snr, mos, squim), text/BERT, import (pre-computed CSV). (2) Models — classic ML: svm, svr, xgb, xgr, knn, knn_reg, tree, tree_reg, nb, gmm, lin_reg; neural: mlp, mlp_regression, cnn, finetune (HuggingFace wav2vec2/HuBERT fine-tuning). (3) Automation — autopredict module with 14 pre-trained predictors (emotion, age, gender, arousal, valence, dominance, SNR, MOS, PESQ, SDR, STOI, speaker-id, transcription, translation). (4) Advanced workflows — ensemble (8 fusion strategies), multidb cross-database matrix, FLAGS grid search, optim hyperparameter search. (5) Visualization — t-SNE/UMAP/PCA scatter, confusion matrices (static + animated GIF), distribution plots, SHAP, spotlight. (6) Reproducibility — feature caching in store/, experiment serialization as pickle, report.pkl accumulation, LaTeX/PDF report generation."
         }
       ]
     },
@@ -40,7 +40,7 @@
       "parent": "Overview",
       "page_notes": [
         {
-          "content": ""
+          "content": "Show two diagrams: (1) Data flow — INI file → configparser → glob_conf.config → Experiment → Dataset/Dataset_CSV → DataFilter → FeatureExtractor → [Featureset subclass → store/ cache] → Scaler → Runmanager → Modelrunner → Model → Reporter → Result → Report → report.pkl / plots / LaTeX. (2) Module map — show the CLI entry points (nkululeko, explore, demo, predict, augment, aug_train, segment, resample, ensemble, multidb, optim, export, feature_demo, flags) as nodes all connecting to the central Experiment class. Explain the singleton pattern: glob_conf holds config, label_encoder, util, module, report, labels, target — all modules read from it via 'import nkululeko.glob_conf as glob_conf'. Note that nkululeko/modelrunner.py sits between Runmanager and Model, managing epoch loops. Explain the runs×epochs structure: outer loop = runs (for averaging over random seeds), inner loop = epochs (for ANN training / early stopping)."
         }
       ]
     },
@@ -49,7 +49,7 @@
       "purpose": "Guide users through installation, first experiment, and basic concepts",
       "page_notes": [
         {
-          "content": ""
+          "content": "Landing page for new users. Brief 2-sentence intro, then link to the three child pages in order: Installation → Quick Start Tutorial → Understanding the Experiment Lifecycle. Add a note that all experiments need a .ini config file and can be run with 'python -m nkululeko.<module> --config myexp.ini'. Mention that the framework prints 'DONE' on success, which is also what the CI checks for."
         }
       ]
     },
@@ -59,7 +59,7 @@
       "parent": "Getting Started",
       "page_notes": [
         {
-          "content": ""
+          "content": "Show two installation paths: (1) uv (preferred, from CLAUDE.md): 'uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e .' (2) pip: 'pip install -e .' or 'pip install nkululeko'. Minimum Python: 3.9+; recommended: 3.12. Required system deps for Ubuntu: sox, libportaudio2. Core required packages (from requirements.txt/setup.cfg): audformat, audeer, opensmile, pandas, scikit-learn, matplotlib, seaborn. Optional heavy deps: torch + torchaudio (for neural models and SSL embeddings), transformers (HuggingFace, for wav2vec2/HuBERT/WavLM/Whisper/BERT/AST), tensorflow (for TRILL). Note: Spotlight (nkululeko.explore spotlight=True) is unsupported on Python 3.13+. Dev deps: pip install -r requirements-test.txt. Test the install: python tests/test_modules.py."
         }
       ]
     },
@@ -69,7 +69,7 @@
       "parent": "Getting Started",
       "page_notes": [
         {
-          "content": ""
+          "content": "Walk through a complete working example using emodb (German emotion database) as the reference dataset, since it appears in examples/exp_emodb_os_xgb.ini. Show the full .ini file with all four required sections: [EXP] (root, name, runs), [DATA] (databases, emodb path, target=emotion, labels list), [FEATS] (type=['os']), [MODEL] (type=xgb). Show the command: 'python -m nkululeko.nkululeko --config examples/exp_emodb_os_xgb.ini'. Explain what each step prints: loading database, extracting features (first run → writes to store/), training model, reporting UAR. Show where outputs land: store/ for feature cache pkl, images/ for confusion matrix PNG, results/ for CSV with predictions. Explain that re-running is fast because features are cached. Reference examples/ directory for more .ini samples."
         }
       ]
     },
@@ -79,7 +79,7 @@
       "parent": "Getting Started",
       "page_notes": [
         {
-          "content": ""
+          "content": "Walk through the exact call sequence in nkululeko/nkululeko.py::doit(): (1) configparser reads INI → glob_conf.init_config(). (2) Experiment.__init__() — sets name/root, creates data_dir with audeer.mkdir(), loads or creates Report from report.pkl. (3) expr.load_datasets() — instantiates Dataset or Dataset_CSV per database entry in DATA.databases, calls data.load() then data.prepare(), sets up LabelEncoder, populates glob_conf.labels and glob_conf.target. (4) expr.fill_train_and_tests() — applies split strategy per database, concatenates multi-database splits into df_train/df_test. (5) expr.extract_feats() — instantiates FeatureExtractor, calls extract(), which iterates over FEATS.type list, checks store/ cache, extracts if needed, then optionally applies Scaler and DataBalancer. (6) expr.run_experiment() — creates Runmanager, calls do_runs() → per run: Modelrunner → do_epochs() → Model.train() + Model.predict(). (7) Reporter computes metrics, stores Result in Report. (8) expr.store_report() — serializes report.pkl, optionally generates LaTeX PDF."
         }
       ]
     },
@@ -88,7 +88,7 @@
       "purpose": "Comprehensive guide to the INI-based configuration system that drives all experiments",
       "page_notes": [
         {
-          "content": ""
+          "content": "Overview page for the configuration system. Explain that Python's built-in configparser.ConfigParser is used: case-insensitive keys, string values, no type coercion. List all valid sections: [EXP], [DATA], [FEATS], [MODEL], [EXPL], [PREDICT], [AUGMENT], [SEGMENT], [PLOT], [REPORT], [EXPORT], [CROSSDB], [RESAMPLE], [OPTIM], [FLAGS]. Explain that virtually all values have defaults accessed via Util.config_val(section, key, default) — only the minimal set ([EXP] root/name, [DATA] databases/target, one [FEATS] type, one [MODEL] type) is strictly required. Mention per-database keys use the pattern 'dbname.key = value' (e.g., 'emodb.split_strategy = speaker_split'). Point to ini_file.md in the repo root as the canonical reference, and reference child pages for each section."
         }
       ]
     },
@@ -98,7 +98,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "Explain the two-layer config system: (1) configparser.ConfigParser object — standard Python INI parser, all values are strings, lists/dicts must be Python literals parseable by ast.literal_eval(). (2) glob_conf module (nkululeko/glob_conf.py) — module-level globals: config, label_encoder, util, module, report, labels, target. Initialized by Experiment.set_globals() calling glob_conf.init_config(config_obj). All other modules import it as 'import nkululeko.glob_conf as glob_conf'. Show Util.config_val(section, key, default) signature — returns string or default. Show Util.config_val_data(db_name, key, default) for per-database keys (looks up 'db_name.key' in DATA section). Explain that DATA section per-database keys are all stored flat: e.g. DATA section contains 'emodb = /path/to/emodb' (database path), 'emodb.split_strategy = speaker_split', 'emodb.filter = {gender: [female]}'. Show a minimal annotated INI file skeleton. Mention root_folders: an optional secondary .ini file for centralizing database paths across experiments (DATA.root_folders key)."
         }
       ]
     },
@@ -108,7 +108,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "Document as a parameter table with name, default, and description. Key parameters: root (required, experiment root folder, e.g. './'), name (required, experiment subfolder name, also used in output file naming), type (classification [default] or regression — determines loss functions and metrics), store (relative to root, default './store/', feature cache location), fig_dir (default './images/'), res_dir (default './results/'), models_dir (default './models/'), runs (default 1, number of independent runs for averaging), epochs (default 1, training epochs for ANN models), save (default False, save experiment as pickle for later loading), save_test (default False or filename — save test predictions as CSV), traindevtest (default False — enable 3-way train/dev/test split for early stopping in neural nets), databases (for multidb module: list of database names to compare in cross-database matrix), use_splits (for multidb: use original database splits vs whole db), no_warnings (suppress Python warnings). Explain that 'name' uniquely identifies experiment outputs — changing it starts a fresh cache. Show example snippet."
         }
       ]
     },
@@ -118,7 +118,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "This is the most complex section. Structure content as: (1) Global DATA keys: databases (required, Python list literal of database names), tests (extra test-only databases not in train), target (required, column name e.g. 'emotion', 'age'), labels (Python list of category names for classification; auto-detected if omitted), bins/type (for binning continuous targets to categorical), no_reuse (default False, force fresh data loading), root_folders (path to secondary INI for database paths), limit_samples, limit_samples_per_speaker, min/max_duration_of_sample, check_size, check_vad, filter.sample_selection. (2) Per-database keys (prefix 'dbname.'): path (dbname = /path/to/db), type (audformat [default] or csv), split_strategy (see Data Splitting Strategies page), mapping (dict for cross-db label remapping), colnames (dict for column renaming), columns (list to load), label (target column override), target_tables/files_tables/train_tables/test_tables/dev_tables, as_test/as_train/as_dev, limit_samples, limit_samples_per_speaker, min/max_duration_of_sample, filter (dict), scale/reverse (for numeric targets), rename_speakers, required, absolute_path, audio_path. Show a multi-database INI example."
         }
       ]
     },
@@ -128,7 +128,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "Key parameters: type (required, Python list e.g. ['os'] or ['os','praat'] — multiple types are concatenated column-wise by FeatureExtractor), scale (standard/robust/minmax/maxabs/normalizer/powertransformer/quantiletransformer/speaker/bins), balancing (smote/adasyn/ros/borderlinesmote/svmsmote/smoteenn/smotetomek/clustercentroids/randomundersampler/editednearestneighbours/tomeklinks), no_reuse (default False, force re-extraction), needs_feature_extraction (alias for no_reuse), store_format (pkl [default] or csv), print_feats (default True, print feature names for os/praat), features (list of feature names to select/filter). Feature-type-specific sub-keys: set/level for os; wav2vec2.model/wav2vec2.layer; hubert.model; bert.model/bert.layer/bert.text_column; agender.model; audmodel.id/audmodel.embeddings_name; mld.model/min_syls; xbow.model/size/assignments; fft_win_dur/fft_hop_dur/fft_nbands for spectra; import_file/import_files_append. Explain the caching mechanism: cache key = '{db_name}_{feats_type}_{split}.pkl' stored in store/. Set no_reuse=True to force re-extraction without renaming the experiment."
         }
       ]
     },
@@ -138,7 +138,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "Group parameters by model category. Universal: type (svm/svr/xgb/xgr/knn/knn_reg/tree/tree_reg/nb/gmm/lin_reg/mlp/mlp_regression/cnn/finetune), n_jobs (default 8), logo (leave-one-group-out, set to number of speaker groups), k_fold_cross (stratified k-fold cross-validation), loso (leave-one-speaker-out), measure (uar [classification default]/mse [regression default]/mae/ccc/eer), class_weight (True/False for imbalanced SVM/XGB), save (True/False, store model checkpoints). SVM/SVR: C_val, gamma, kernel (linear/poly/rbf/sigmoid). XGB/XGR: n_estimators, max_depth, subsample, colsample_bytree. KNN: K_val, weights (uniform/distance). Neural (MLP/CNN): layers (list e.g. [64,16]), drop (dropout rate 0–1), batch_size (default 8), learning_rate (default 0.0001), optimizer (adam/adamw/sgd), scheduler (cosine/step/exponential/none), loss (cross/bce/f1/focal/1-ccc/mse/mae/weighted_bce), activation (relu/sigmoid/tanh/leaky_relu), device (cpu/cuda), patience (early stopping), random_seed. Finetune-specific: pretrained_model (HF model ID), push_to_hub, max_duration, balancing. Show example SVM and MLP INI snippets side-by-side."
         }
       ]
     },
@@ -148,7 +148,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "Cover each section concisely with its purpose and key parameters. AUGMENT: augment (list: traditional/auglib/random_splice), sample_selection (train/test/all), result (output CSV filename), augmentations (audiomentations Compose string), transformations (auglib list), p_reverse, top_db. SEGMENT: method (silero/pyannote/ina), sample_selection, segment_result (output CSV), min_length/max_length (seconds), output_audio (True/False), audio_format (wav/flac/mp3), audio_dir, sampling_rate. EXPL: feature_distributions, tsne/umap/pca/scatter (True/False), model (for feature importance), max_feats, permutation, shap, spotlight, value_counts, regplot, print_stats, print_colvals, dist_type (kde/hist), ignore_gender, sample_selection. PREDICT: targets (list: emotion/age/gender/arousal/valence/dominance/snr/mos/pesq/sdr/stoi/speaker/text/translation/textclassification), sample_selection. EXPORT: target_root, orig_root, data_name, segments_as_files. CROSSDB: train_extra (add extra training data to all cross-db runs). PLOT: name, epochs, anim_progression, fps, epoch_progression, best_model, combine_per_speaker (mode/mean), format (png/eps), ccc, fill_areas, uncertainty_threshold, runs_compare (features/models/databases), titles. RESAMPLE: sample_selection, replace, target (output CSV). REPORT: show, fresh, latex (document name), title, author."
         }
       ]
     },
@@ -158,7 +158,7 @@
       "parent": "Configuration System",
       "page_notes": [
         {
-          "content": ""
+          "content": "Explain the FLAGS section as a batch experiment runner. Any INI key can be varied: add a [FLAGS] section listing keys with Python list values: e.g. 'type = [svm, xgb]', 'features = [os, praat]'. The flags.py module (nkululeko.flags entry point) uses itertools.product to generate all combinations and runs each as a full experiment. Key optimization: features are extracted ONCE for the first feature type and reused across model-varied experiments to avoid redundant extraction. Implementation: nkululeko/flags.py::run_flags_experiments() creates a base Experiment, calls load_datasets()/fill_train_and_tests()/extract_feats() once, then reuses extracted features when iterating over combinations. Results are collected and printed as a summary table. Show example INI with [FLAGS] section alongside a base config. Useful for comparing multiple feature types or model hyperparameters systematically without maintaining multiple config files."
         }
       ]
     },
@@ -167,7 +167,7 @@
       "purpose": "Guide to loading, splitting, filtering, and preprocessing datasets in Nkululeko",
       "page_notes": [
         {
-          "content": ""
+          "content": "Overview/landing page for the Data Management section. Explain that all data is represented as pandas DataFrames with audformat-style MultiIndex (file, start, end) for segmented audio or simple file-path Index for whole-file audio. The standard columns are: target (e.g. 'emotion'), 'speaker' (COL_SPEAKER), 'gender' (COL_SEX), 'age' (COL_AGE) — from nkululeko/constants.py. Mention that multiple databases are loaded and concatenated into unified df_train and df_test. Point to child pages for detailed coverage of each data management aspect. Note important constraint: all audio is expected at 16kHz mono (SAMPLING_RATE = 16000) — use the resample module to pre-process if needed."
         }
       ]
     },
@@ -177,7 +177,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Cover both dataset types: (1) audformat (nkululeko/data/dataset.py::Dataset) — loads via audformat.Database.load(root). Databases must have an audformat-compliant folder structure. Tables are loaded via db.get(), combining target_tables, files_tables, train_tables, test_tables, dev_tables. Column loading controlled by 'columns' key. Column renaming via 'colnames' dict. (2) CSV (nkululeko/data/dataset_csv.py::Dataset_CSV) — reads CSV with header. Required columns: 'file' (audio path), and target column. Optional: 'speaker', 'gender', 'age', 'start'/'end' (for segmented audio). Set 'type = csv' in DATA section. Paths are relative to CSV file parent folder unless absolute_path=True. audio_path key adds a common subfolder prefix. After loading, both classes call prepare() which: maps labels (via 'mapping' key), bins continuous targets (via 'bins' key), applies DataFilter.all_filters() for limit_samples/speakers/duration/value filtering, sets is_labeled/got_speaker/got_gender/got_age flags. Show example CSV format and example audformat INI config."
         }
       ]
     },
@@ -187,7 +187,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Document each split_strategy value as a separate subsection with purpose, required/optional sub-keys, and an INI example. (1) database (default) — uses audformat table names ending in .train/.dev/.test. (2) specified — explicitly name tables: train_tables, dev_tables, test_tables lists. (3) speaker_split — random but speaker-disjunct: test_size (default 20%), dev_size (for traindevtest). Saves speaker assignments for reuse. (4) random — sample-level random split, NOT speaker-disjunct: tests_size (default 20%). (5) balanced — stratified split balancing class distribution: balance dict e.g. {'emotion':2,'age':1,'gender':1}, age_bins for continuous age. (6) reuse — reuses speaker assignments from a prior speaker_split run to save extraction time. (7) train/test/dev — use entire database for that role only (useful for combining databases where one is always train and another always test). (8) speakers_stated — explicit speaker lists: test=[id1,id2], dev=[id3], train=[id4,id5,...]. (9) list literal — e.g. split_strategy=[12,14,15,16] uses those speaker IDs as test set. Note: traindevtest=True in [EXP] enables 3-way splits for early stopping in neural networks."
         }
       ]
     },
@@ -197,7 +197,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Document the DataFilter class (nkululeko/filter_data.py). It is called via DataFilter.all_filters(db_name) which chains: limit_samples (random sample cap), limit_speakers (max samples per speaker), filter_value (row filter by column value e.g. {'gender':['female']}), filter_duration (min/max_duration_of_sample in seconds — converts to segmented MultiIndex if needed). Global DATA-level filtering keys apply across all databases; per-database 'dbname.filter' overrides/extends them. filter.sample_selection controls whether filters apply to train, test, or all splits. Additional validation: check_size removes files smaller than N bytes (DATA.check_size), check_vad removes samples with no detected speech using silero VAD (DATA.check_vad=True). Column remapping (colnames) happens before filtering during dataset prepare(). The required key ('emodb.required = gender') ensures all samples have a non-null value in that column. Explain that DataFilter creates a copy of the DataFrame and uses util.copy_flags() to propagate audformat metadata flags."
         }
       ]
     },
@@ -207,7 +207,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Explain the nkululeko.segment module (nkululeko/segment.py). Purpose: apply Voice Activity Detection to long audio files and produce a CSV of speech segments. Can be run as a pre-processing step before experiments. Command: 'python -m nkululeko.segment --config exp.ini' or with flags '--file speech.wav --max_length 30 --output_audio'. Three VAD backends in nkululeko/segmenting/: silero (seg_silero.py, default — uses snakers4/silero-vad via torch), pyannote (seg_pyannote.py — requires pyannote.audio and HF token), ina (seg_inaspeechsegmenter.py — inaSpeechSegmenter). Configuration ([SEGMENT] section): method, sample_selection (train/test/all), segment_result (output CSV filename), min_length (minimum segment duration in seconds), max_length (cut segments longer than this), output_audio (export audio clips to disk), audio_format (wav/flac/mp3), audio_dir (relative to experiment data_dir), sampling_rate (resample exported clips). The output CSV has audformat segmented MultiIndex columns (file, start, end) and can be fed back in as a new dataset via dataset.type=csv. Plots duration distributions before and after segmentation."
         }
       ]
     },
@@ -217,7 +217,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Two augmentation entry points: (1) nkululeko.augment — augments existing data and saves to a CSV (for later use as additional training data). (2) nkululeko.aug_train — augments data during/before training. Three augmentation methods configured via AUGMENT.augment list: 'traditional' uses the audiomentations library (nkululeko/augmenting/augmenter_audiomentations.py) — default transforms include AddGaussianNoise, Shift, BandPassFilter, configurable via AUGMENT.augmentations; 'auglib' uses audeering's auglib library (nkululeko/augmenting/augmenter_auglib.py) — adds room noise, music, babble, cough, etc., configurable via AUGMENT.transformations; 'random_splice' (nkululeko/augmenting/randomsplicer.py) randomly reorders speech segments to obfuscate lexical content while preserving prosody, configurable via AUGMENT.p_reverse and AUGMENT.top_db. AUGMENT.sample_selection controls which split is augmented (train/test/all). AUGMENT.result is the output CSV path. The resampler (nkululeko/augmenting/resampler.py) handles sample rate conversion during augmentation pipeline."
         }
       ]
     },
@@ -227,7 +227,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Document the nkululeko.resample module (nkululeko/resample.py). Purpose: pre-process audio files to the standard 16kHz mono format required by SSL feature extractors (SAMPLING_RATE = 16000 in constants.py). Run as a standalone step before feature extraction. Command: 'python -m nkululeko.resample --config exp.ini'. [RESAMPLE] section keys: sample_selection (train/test/all), replace (default False — if True, overwrites original files in-place; if False, creates copies), target (output CSV filename when replace=False, default 'data_resampled.csv'). The output CSV can then be used as the database path in subsequent experiments. Uses audiofile for reading and writing audio. The resampler in nkululeko/augmenting/resampler.py is also used internally by the segment module when output_audio=True and sampling_rate is set."
         }
       ]
     },
@@ -237,7 +237,7 @@
       "parent": "Data Management",
       "page_notes": [
         {
-          "content": ""
+          "content": "Document the DataBalancer class (nkululeko/balance.py). Configured via FEATS.balancing (for feature-level balancing) or MODEL.balancing (for fine-tuning). Oversampling methods (from imbalanced-learn): ros (RandomOverSampler — duplicates minority samples), smote (SMOTE — synthetic interpolation between minority neighbors), adasyn (ADASYN — adaptive synthetic sampling focusing on hard-to-learn regions), borderlinesmote (SMOTE on borderline samples only), svmsmote (uses SVM decision boundary to generate samples). Undersampling methods: clustercentroids (replaces clusters with centroids), randomundersampler (random majority removal), editednearestneighbours (removes majority samples misclassified by KNN), tomeklinks (removes overlapping borderline pairs). Combination methods: smoteenn (SMOTE + Edited Nearest Neighbours), smotetomek (SMOTE + Tomek Links). Requires imbalanced-learn package. Balancing is applied to TRAINING data only — test set is never resampled. Show INI example with FEATS.balancing = smote, and note that MODEL.balancing applies specifically during the fine-tune training loop."
         }
       ]
     },
@@ -246,7 +246,7 @@
       "purpose": "Comprehensive guide to the feature extraction system with 20+ feature types",
       "page_notes": [
         {
-          "content": ""
+          "content": "Landing page for the Feature Extraction section. Emphasize that feature extraction is the most computationally expensive step and is **always cached** — extracted features are stored as .pkl (or .csv) files in the store/ directory, named '{db_name}_{feats_type}_{split}.pkl'. Re-running the same experiment reuses the cache unless FEATS.no_reuse=True or FEATS.needs_feature_extraction=True. Multiple feature types are concatenated column-wise by FeatureExtractor before being passed to the model. Mention that FEATS.scale applies after concatenation, and FEATS.balancing applies to the scaled features. Point to child pages for specific feature type groups. Standard expected input: 16kHz mono WAV audio files, addressed via audformat MultiIndex."
         }
       ]
     },
@@ -256,7 +256,7 @@
       "parent": "Feature Extraction",
       "page_notes": [
         {
-          "content": ""
+          "content": "Explain the two-layer architecture: (1) FeatureExtractor (nkululeko/feature_extractor.py) — orchestrator. Takes data_df, feats_types list, data_name, feats_designation (train/test/dev). Its extract() method iterates over feats_types, calls _get_feat_extractor_class(feats_type) as a factory, instantiates the Featureset subclass, calls .extract() then .filter(), and pd.concat()s results column-wise. Uses lazy import inside the factory to avoid loading heavy dependencies (torch, transformers) unless that feature type is actually requested. (2) Featureset (nkululeko/feat_extract/featureset.py) — base class. Key method: extract() — each subclass implements this; checks for cached file first, extracts if missing, calls util.write_store()/get_store(). filter() applies FEATS.features selection list if provided. _extract_embeddings_with_error_handling() is a helper for SSL models that skips failed files gracefully with a warning, uses tqdm progress bar if available. Naming convention for subclasses: feats_{type}.py, class named {Type}Set or {Type} (e.g. Opensmileset, Wav2vec2, PraatSet). Feature type strings with hyphens (e.g. 'wav2vec2-large-robust') are split on '-' to find the class via _get_feat_extractor_by_prefix()."
         }
       ]
     },
@@ -266,7 +266,7 @@
       "parent": "Feature Extraction",
       "page_notes": [
         {
-          "content": ""
+          "content": "Cover each traditional extractor: (1) os (feats_opensmile.py::Opensmileset) — uses opensmile Python package. FEATS.set controls the feature set (eGeMAPSv02 [default], ComParE_2016, GeMAPSv01a, eGeMAPSv01a). FEATS.level controls aggregation (functionals [default] — one vector per utterance; lld — frame-level). FEATS.os.features to select subset. 88 features for eGeMAPSv02 functionals. (2) praat (feats_praat.py::PraatSet) — uses parselmouth Python interface to Praat. Based on David R. Feinberg's scripts (https://osf.io/6dwr3/). Extracts pitch stats, HNR, formants, MFCCs, intensity. FEATS.praat.features to select subset. FEATS.print_feats to print names. (3) sptk (feats_sptk.py::SptkSet) — SPTK-based speech features via feats_sptk_core.py. (4) mld (feats_mld.py::MLD_set) — Mid-Level Descriptors (rhythmic, melodic features). Requires FEATS.mld.model path and FEATS.min_syls. Reference: http://www.essv.de/paper.php?id=447. (5) spectra (feats_spectra.py) / melspec (feats_melspec.py) / stft (feats_stft.py) — spectrogram features for CNN models. FEATS.fft_win_dur/fft_hop_dur/fft_nbands. Show example INI snippets for os and praat."
         }
       ]
     },
@@ -276,7 +276,7 @@
       "parent": "Feature Extraction",
       "page_notes": [
         {
-          "content": ""
+          "content": "Cover all SSL embedding extractors. All use HuggingFace transformers, run on CPU or CUDA (MODEL.device), and cache results. Layer selection: FEATS.{model}.layer=N selects Nth-from-last hidden layer (0=last [default]). (1) wav2vec2 (feats_wav2vec2.py::Wav2vec2) — INI key 'wav2vec2-{variant}' e.g. wav2vec2-large-robust-ft-swbd-300h. FEATS.wav2vec2.model to override HF model path. FEATS.wav2vec2.layer. (2) hubert (feats_hubert.py::Hubert) — 'hubert-base-ls960', 'hubert-large-ll60k', 'hubert-large-ls960-ft', 'hubert-xlarge-ll60k', 'hubert-xlarge-ls960-ft'. FEATS.hubert.model, FEATS.hubert.layer. (3) wavlm (feats_wavlm.py) — 'wavlm-base', 'wavlm-base-plus', 'wavlm-large'. (4) whisper (feats_whisper.py) — 'whisper-base', 'whisper-tiny', 'whisper-small', 'whisper-medium', 'whisper-large'. Extracts encoder embeddings (not transcriptions). (5) emotion2vec (feats_emotion2vec.py) — 'emotion2vec-base', 'emotion2vec-large'. Chinese emotion model with strong multilingual transfer. (6) ast (feats_ast.py) — Audio Spectrogram Transformer from MIT. All can also be used for fine-tuning as MODEL.type=finetune with MODEL.pretrained_model pointing to the HF model ID."
         }
       ]
     },
@@ -286,7 +286,7 @@
       "parent": "Feature Extraction",
       "page_notes": [
         {
-          "content": ""
+          "content": "Cover specialized extractors not in SSL or traditional categories. (1) audmodel (feats_audmodel.py::AudmodelSet) — generic audEERING audmodel format; FEATS.audmodel.id for model ID, FEATS.audmodel.embeddings_name (default 'hidden_states'). (2) audwav2vec2 (feats_audwav2vec2.py) — audeering emotion model embeddings (wav2vec2 finetuned on MSPPodcast). FEATS.aud.model path. (3) auddim (feats_auddim.py) — same model but outputs arousal/dominance/valence dimensions. (4) agender (feats_agender.py::AgenderSet) — audeering age+gender model embeddings. FEATS.agender.model path. (5) agender_agender (feats_agender_agender.py) — outputs age, female-prob, male-prob, child-prob predictions. (6) clap (feats_clap.py) — LAION CLAP audio-language embeddings. (7) trill (feats_trill.py::TRILLset) — Google Research TRILL embeddings (requires TensorFlow). (8) spkrec (feats_spkrec.py) — SpeechBrain speaker recognition x-vectors (speechbrain/spkrec-xvect-voxceleb). (9) snr (feats_snr.py) — estimated signal-to-noise ratio per file. (10) mos (feats_mos.py) — estimated MOS (Mean Opinion Score). (11) squim (feats_squim.py) — TorchAudio SQUIM speech quality metrics (MOS, STOI, PESQ estimates without reference). (12) xbow (feats_oxbow.py::Openxbow) — openXBOW Bag-of-Audio-Words codebook on top of openSMILE LLDs; FEATS.xbow.model, FEATS.size (codebook size), FEATS.assignments. (13) import (feats_import.py) — load pre-computed features from CSV files; FEATS.import_file list, FEATS.import_files_append."
         }
       ]
     },
@@ -296,7 +296,7 @@
       "parent": "Feature Extraction",
       "page_notes": [
         {
-          "content": ""
+          "content": "Document BERT-based text feature extraction (feats_bert.py). INI key: 'bert-{variant}' e.g. 'bert-base-uncased', 'bert-large-uncased', 'roberta-base'. FEATS.bert.model sets the HuggingFace model path (without google-bert/ prefix). FEATS.bert.layer selects the hidden layer (0=last). FEATS.bert.text_column specifies the DataFrame column containing transcriptions (default 'text'). Prerequisites: the dataset must have a text column — either (a) already present in the audformat/CSV data, or (b) generated by running nkululeko.predict with PREDICT.targets=['text'] first (using Whisper ASR via autopredict/ap_text.py and autopredict/whisper_transcriber.py). The textclassifier feature (feats_textclassifier.py) and ap_textclassifier.py use a zero-shot NLI model (joeddav/xlm-roberta-large-xnli) for text-based label prediction. Show a two-step pipeline example: first run predict to get transcriptions, then use bert features in main experiment."
         }
       ]
     }
