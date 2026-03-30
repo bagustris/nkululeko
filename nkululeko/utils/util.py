@@ -71,20 +71,21 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
     def setup_logging(self):
         # Setup logging
         logger = logging.getLogger(__name__)
+        # Always set DEBUG so messages reach all handlers regardless of whether
+        # an ancestor logger (e.g. root logger in notebooks) already has handlers.
+        logger.setLevel(logging.DEBUG)
 
         # Create a simple formatter that only shows the message
         class SimpleFormatter(logging.Formatter):
             def format(self, record):
                 return record.getMessage()
 
-        if not logger.hasHandlers():
-            logger.setLevel(logging.DEBUG)  # Set the desired logging level
-
-            # Create a console handler
+        # Only add a console handler if this logger has none yet.
+        # Use logger.handlers (direct handlers) rather than hasHandlers()
+        # so the check is scoped to this logger only, not the full hierarchy.
+        if not logger.handlers:
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(SimpleFormatter())
-
-            # Add the console handler to the logger
             logger.addHandler(console_handler)
 
         # Add or replace file handler when config is available
