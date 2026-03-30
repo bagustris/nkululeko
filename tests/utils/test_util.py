@@ -192,7 +192,7 @@ class TestSetupLogging:
         import nkululeko.utils.util as util_mod
 
         logger = logging.getLogger(util_mod.__name__)
-        for h in list(logger.handlers):
+        for h in logger.handlers[:]:
             h.close()
             logger.removeHandler(h)
 
@@ -259,7 +259,10 @@ class TestSetupLogging:
 
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "logtest"
-        monkeypatch.setattr(audeer, "mkdir", lambda *a, **kw: (_ for _ in ()).throw(OSError("disk full")))
+        def raise_oserror(*a, **kw):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(audeer, "mkdir", raise_oserror)
         Util("test")  # Should not raise
         logger = logging.getLogger(util_mod.__name__)
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]

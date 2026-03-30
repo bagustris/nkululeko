@@ -98,20 +98,19 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
                 timestamp = datetime.datetime.now().strftime("%m%d_%H%M%S")
                 log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
 
-                # Remove any existing file handlers that belong to a different
-                # experiment directory so that multi-experiment processes each
-                # write to their own log file.
-                for handler in list(logger.handlers):
-                    if isinstance(handler, logging.FileHandler):
-                        if os.path.dirname(handler.baseFilename) != log_dir:
-                            handler.close()
-                            logger.removeHandler(handler)
+                # Collect stale file handlers (different experiment dir) then remove them
+                # to avoid mutating the handlers list during iteration.
+                stale = [
+                    h
+                    for h in logger.handlers
+                    if isinstance(h, logging.FileHandler)
+                    and os.path.dirname(h.baseFilename) != log_dir
+                ]
+                for handler in stale:
+                    handler.close()
+                    logger.removeHandler(handler)
 
-                # Only attach a new file handler if none for this experiment exists
-                has_file_handler = any(
-                    isinstance(h, logging.FileHandler) for h in logger.handlers
-                )
-                if not has_file_handler:
+                if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
                     file_handler = logging.FileHandler(log_file)
                     file_handler.setFormatter(SimpleFormatter())
                     logger.addHandler(file_handler)
