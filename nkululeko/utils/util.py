@@ -4,6 +4,7 @@ import configparser
 import datetime
 import logging
 import os.path
+import shutil
 import sys
 
 import numpy as np
@@ -96,7 +97,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
                 log_dir = os.path.abspath(os.path.join(root, name))
                 audeer.mkdir(log_dir)
                 # Include seconds to avoid filename collisions between close-together runs
-                timestamp = datetime.datetime.now().strftime("%m%d_%H%M%S")
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
 
                 # Collect stale file handlers (different experiment dir) then remove them
@@ -115,6 +116,21 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
                     file_handler = logging.FileHandler(log_file)
                     file_handler.setFormatter(SimpleFormatter())
                     logger.addHandler(file_handler)
+
+                    # Save a timestamped config snapshot alongside the log file.
+                    # Reads --config from sys.argv so no entry-point changes are needed.
+                    # Preserves the original file's extension (format-independent).
+                    src = None
+                    if "--config" in sys.argv:
+                        idx = sys.argv.index("--config")
+                        if idx + 1 < len(sys.argv):
+                            src = sys.argv[idx + 1]
+                    if src and os.path.isfile(src):
+                        ext = os.path.splitext(src)[1]
+                        config_snapshot = os.path.join(
+                            log_dir, f"{name}_{timestamp}{ext}"
+                        )
+                        shutil.copy2(src, config_snapshot)
             except KeyError:
                 logger.debug(
                     "File logging skipped: EXP configuration (root/name) incomplete"
