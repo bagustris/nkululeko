@@ -1,127 +1,131 @@
 Changelog
 =========
 
-Version 1.4.0 (26-03-25)  
+Version 1.4.1 (26-04-09)
+------------------------
+* Added logfile storage
+
+Version 1.4.0 (26-03-25)
 ------------------------
 * Add more support/config for the segment module. Now, it can output an audio file and work directly on a file or folder without a config file (similar to the resample module)
 
-Version 1.3.5 (26-03-19)  
+Version 1.3.5 (26-03-19)
 ------------------------
 * Fixed a bug where the speaker column was expected for empty DataFrames
 
-Version 1.3.4 (26-03-16)  
+Version 1.3.4 (26-03-16)
 ------------------------
 * add data selection from config to feature_demo module
 
-Version 1.3.3 (26-03-16)  
+Version 1.3.3 (26-03-16)
 ------------------------
 * resample replace now uses the original filename (instead of .wav extension)
 
-Version 1.3.2 (26-03-16)  
+Version 1.3.2 (26-03-16)
 ------------------------
 * Fix/skip corrupted audio in feature extractors
 
-Version 1.3.1 (26-03-04)  
+Version 1.3.1 (26-03-04)
 ------------------------
 * simplified code (audformat database loading)
 
-Version 1.3.0 (26-03-02)  
+Version 1.3.0 (26-03-02)
 ------------------------
 * multiple test sets with per-dataset result reporting
 
-Version 1.2.3 (26-02-23)  
+Version 1.2.3 (26-02-23)
 ------------------------
 * refactored optimizer and ADM model
 
-Version 1.2.2 (26-02-10)  
+Version 1.2.2 (26-02-10)
 ------------------------
 * fixed feature_demo -> didn't use model from config
 * fixed feature_demo -> didn't work without args.folder
 * fixed bug in demo -> no output for microphone results
 
-Version 1.2.1 (26-02-09)  
+Version 1.2.1 (26-02-09)
 ------------------------
 * Refactored google_translator.py to batch translate texts instead of one-by-one, significantly improving performance for multi-segment transcriptions
 
-Version 1.2.0 (26-02-08)  
+Version 1.2.0 (26-02-08)
 ------------------------
-* added ADM model for deepfake artifact detection  
-* added focal loss function  
-* added binary cross entropy loss  
-* added weighted binary cross entropy loss  
+* added ADM model for deepfake artifact detection
+* added focal loss function
+* added binary cross entropy loss
+* added weighted binary cross entropy loss
 
-Version 1.1.9 (26-01-26)  
+Version 1.1.9 (26-01-26)
 ------------------------
 * fixed bug that data without speaker column caused error
 
-Version 1.1.8 (26-01-26)  
+Version 1.1.8 (26-01-26)
 ------------------------
 * added EER
 
-Version 1.1.7 (26-01-21)  
+Version 1.1.7 (26-01-21)
 ------------------------
 * print out speaker ids
 
-Version 1.1.6 (26-01-20)  
+Version 1.1.6 (26-01-20)
 ------------------------
 * fixed bug that csv databases didn't get binned
 
-Version 1.1.5 (26-01-20)  
+Version 1.1.5 (26-01-20)
 ------------------------
 * added auglib augmentation methods
 
-Version 1.1.4 (26-01-19)  
+Version 1.1.4 (26-01-19)
 ------------------------
 * fixed stratification problems
 * moved cont2cat mapping to general data loading
 
-Version 1.1.3 (26-01-14)  
+Version 1.1.3 (26-01-14)
 ------------------------
 * added demo feature extractor functionality
 * added ANN activation to distinguishable results
 
-Version 1.1.2 (26-01-08)  
+Version 1.1.2 (26-01-08)
 ------------------------
 * added different activation functions
 * added short layer notation for CNN networks
 
-Version 1.1.1 (25-12-11)  
+Version 1.1.1 (25-12-11)
 ------------------------
 * fixed bug that logo didn't work with xgb model
 
 
-Version 1.1.0 (25-11-20)  
+Version 1.1.0 (25-11-20)
 ------------------------
 * added regression plots for two continuous features and a 3rd target variable
 
-Version 1.0.3 (25-11-06)  
+Version 1.0.3 (25-11-06)
 ------------------------
 * added implementation to demo segmented index databases
 * made experiment.save = True default
 
 
-Version 1.0.2 (25-11-03)  
+Version 1.0.2 (25-11-03)
 ------------------------
 * Applied consistent label decoding logic across t-SNE, UMAP, PCA, and custom scatter plot generation
 * Added automatic label decoding for visualization in scatter plots when labels have been encoded for classification tasks
 
 
-Version 1.0.1 (25-10-16)  
+Version 1.0.1 (25-10-16)
 ------------------------
 * added text classification as predictor
 
-Version 1.0.0 (25-10-14)  
+Version 1.0.0 (25-10-14)
 ------------------------
 * added sptk example
 * removed unused files from distribution
 
-Version 0.99.0 (25-10-10)  
+Version 0.99.0 (25-10-10)
 -------------------------
-* added EATD dataset  
-* added English Dialect corpus  
+* added EATD dataset
+* added English Dialect corpus
 * added SPTK features
 * fixed BERT test files
-* fixed missing DOI in paper.bib  
+* fixed missing DOI in paper.bib
 
 Version 0.98.6 (25-10-01)
 -------------------------
@@ -296,7 +300,7 @@ Version 0.94.1 (25-04-03)
 -------------------------
 * fixed bug: plot uncertainties had wrong file path
 * added possibility to filter several values for type, e.g. [type = [a, b]]
-  
+
 Version 0.94.0 (25-03-26)
 -------------------------
 * added train/dev/test experiments
@@ -359,7 +363,7 @@ Version 0.93.4
 Version 0.93.3
 --------------
 * bugfix in plot
-  
+
 Version 0.93.2
 --------------
 * changed class_label in plots to actual target
@@ -427,7 +431,7 @@ Version 0.90.0
 Version 0.89.2
 --------------
 * fix shap value calculation
-  
+
 Version 0.89.1
 --------------
 * print and save result of feature importance
@@ -505,7 +509,7 @@ Version 0.86.8
 Version 0.86.7
 --------------
 * handles now audformat tables where the target is in a file index
-  
+
 Version 0.86.6
 --------------
 * now best (not last) result is shown at end
@@ -749,7 +753,7 @@ Version 0.77.3
 Version 0.77.2
 --------------
 * added models for features importance computation
-  
+
 Version 0.77.1
 --------------
 * added permutation algorithm to compute feature importance
@@ -788,7 +792,7 @@ Version 0.74.3
 Version 0.74.2
 --------------
 * combined augmentation methods
-  
+
 Version 0.74.1
 --------------
 * fixed various bugs with augmentation
@@ -872,7 +876,7 @@ Version 0.66.13
 Version 0.66.12
 ---------------
 * fixed bug that prevented Praat features to be selected 
-  
+
 Version 0.66.11
 ---------------
 * removed torch from automatic install. depends on cpu/gpu machine
@@ -922,7 +926,7 @@ Version 0.66.1
 Version 0.66.0
 --------------
 * added speechbrain speakerID embeddings 
-  
+
 Version 0.65.9
 --------------
 * added a filter that ensures that the labels have the same size as the features
@@ -1023,7 +1027,7 @@ Version 0.62.0
 Version 0.61.0
 --------------
 * added HUBERT embeddings
-  
+
 Version 0.60.0
 --------------
 * some bugfixes
@@ -1038,7 +1042,7 @@ Version 0.59.1
 * added no_warnings
 * changed print() to util.debug()
 * added progress to opensmile extract
-  
+
 Version 0.59.0
 --------------
 * introduced SQUIM features
@@ -1224,7 +1228,7 @@ Version 0.40.0
 Version 0.39.0
 --------------
 * added feature distribution plots
-* added  plot format
+* added plot format
 
 Version 0.38.3
 --------------
@@ -1292,7 +1296,7 @@ Version 0.32.0
 Version 0.31.0
 --------------
 * added models: tree and tree_reg
-  
+
 Version 0.30.0
 --------------
 * added models: bayes, knn and knn_reg
@@ -1386,7 +1390,7 @@ Version 0.18.5
 --------------
 
 * added support for epoch number as argument
-  
+
 Version 0.18.4
 --------------
 
@@ -1403,7 +1407,7 @@ Version 0.18.2
 --------------
 
 * added preference of local dataset specs to global ones
-  
+
 Version 0.18.1
 --------------
 
