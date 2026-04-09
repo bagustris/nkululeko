@@ -9,7 +9,6 @@ import time
 import audeer
 import audformat
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
 
 import nkululeko.glob_conf as glob_conf
 from nkululeko.data.dataset import Dataset
@@ -17,9 +16,6 @@ from nkululeko.data.dataset_csv import Dataset_CSV
 from nkululeko.data.datasplitter import Datasplitter
 from nkululeko.demo_predictor import Demo_predictor
 from nkululeko.feat_extract.feats_analyser import FeatureAnalyser
-from nkululeko.feature_extractor import FeatureExtractor
-from nkululeko.file_checker import FileChecker
-from nkululeko.filter_data import DataFilter
 from nkululeko.plots import Plots
 from nkululeko.reporting.report import Report
 from nkululeko.runmanager import Runmanager
@@ -193,11 +189,12 @@ class Experiment:
 
     def fill_train_and_tests(self):
         if self.split3:
-            self.df_train, self.df_test, self.df_dev = self.datasplitter.fill_train_and_tests()
+            self.df_train, self.df_test, self.df_dev = (
+                self.datasplitter.fill_train_and_tests()
+            )
         else:
             self.df_train, self.df_test = self.datasplitter.fill_train_and_tests()
         self.label_encoder = glob_conf.label_encoder
-
 
     def evaluate_per_test_set(self):
         """Evaluate the best model on each test dataset individually.
@@ -223,9 +220,7 @@ class Experiment:
                 self.feats_test.index.isin(df_test_ds.index)
             ]
             if feats_test_ds.shape[0] == 0:
-                self.util.warn(
-                    f"{ds_name}: no features found for test set, skipping"
-                )
+                self.util.warn(f"{ds_name}: no features found for test set, skipping")
                 continue
             df_test_aligned = df_test_ds[df_test_ds.index.isin(feats_test_ds.index)]
             if df_test_aligned.shape[0] == 0:
@@ -287,7 +282,6 @@ class Experiment:
         if self.got_speaker:
             plot.plot_distributions_speaker(df_labels)
 
-
     def extract_feats(self):
         """Extract the features for train, test and dev sets.
 
@@ -297,7 +291,9 @@ class Experiment:
 
         """
         if self.split3:
-            self.feats_train, self.feats_test, self.feats_dev = self.datasplitter.extract_feats()
+            self.feats_train, self.feats_test, self.feats_dev = (
+                self.datasplitter.extract_feats()
+            )
         else:
             self.feats_train, self.feats_test = self.datasplitter.extract_feats()
         if self.feats_train is None:
@@ -520,7 +516,11 @@ class Experiment:
         list_of_dimreds = eval(self.util.config_val("EXPL", "scatter", "False"))
 
         # Priority: use [EXPL][scatter.target] if available, otherwise use [DATA][target] value
-        if hasattr(self, "target") and self.target is not None and self.target != "none":
+        if (
+            hasattr(self, "target")
+            and self.target is not None
+            and self.target != "none"
+        ):
             default_scatter_target = f"['{self.target}']"
         else:
             default_scatter_target = "['class_label']"
@@ -701,7 +701,7 @@ class Experiment:
     def plot_confmat_per_speaker(self, function):
         if self.loso or self.logo or self.xfoldx:
             self.util.debug(
-                "plot combined speaker predictions not possible for cross" " validation"
+                "plot combined speaker predictions not possible for cross validation"
             )
             return
         best = self.get_best_report(self.reports)
@@ -715,8 +715,7 @@ class Experiment:
         df = pd.DataFrame(data={"truths": truths, "preds": preds, "speakers": speakers})
         plot_name = f"{self.util.get_exp_name()}_speakercombined_{function}"
         self.util.debug(
-            f"plotting speaker combination ({function}) confusion matrix to"
-            f" {plot_name}"
+            f"plotting speaker combination ({function}) confusion matrix to {plot_name}"
         )
         best.plot_per_speaker(df, plot_name, function)
 

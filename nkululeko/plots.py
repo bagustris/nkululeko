@@ -12,14 +12,14 @@ from sklearn.manifold import TSNE
 import audeer
 from audmetric import concordance_cc as ccc
 
-# Maximum length for plot basename (excluding directory path) to avoid OSError [Errno 36]
-PLOT_BASENAME_MAX_LEN = 240
-
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.defines import Header
 from nkululeko.reporting.report_item import ReportItem
 import nkululeko.utils.stats as su
 from nkululeko.utils.util import Util
+
+# Maximum length for plot basename (excluding directory path) to avoid OSError [Errno 36]
+PLOT_BASENAME_MAX_LEN = 240
 
 
 class Plots:
@@ -341,7 +341,7 @@ class Plots:
         model_type = self.util.get_model_type()
         if dist_type == "hist" and model_type != "tree":
             ax = sns.histplot(plot_df, x=cont_col, hue=cat_col, kde=True)
-            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}):" f" {es}"
+            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}): {es}"
             ax.set_title(caption)
             ax.set_xlabel(f"{cont_col}")
             ax.set_ylabel(f"number of {ylab}")
@@ -355,7 +355,7 @@ class Plots:
                 warn_singular=False,
             )
             ax.set(xlabel=f"{cont_col}")
-            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}):" f" {es}"
+            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}): {es}"
             ax.figure.suptitle(caption)
         return ax, caption
 

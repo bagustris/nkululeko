@@ -44,10 +44,12 @@ def set_target(target_obj):
     global target
     target = target_obj
 
+
 def set_split3(split3_obj):
     global split3
     split3 = split3_obj
 
+
 def set_got_speaker(got_speaker_obj):
     global got_speaker
-    got_speaker = got_speaker_obj 
+    got_speaker = got_speaker_obj

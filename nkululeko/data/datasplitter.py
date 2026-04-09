@@ -2,19 +2,15 @@
 import ast
 import os
 import os.path
-from random import sample
 
-import numpy as np
 import pandas as pd
-import audformat
 from sklearn.preprocessing import LabelEncoder
 import pickle
 from nkululeko.filter_data import DataFilter
 import nkululeko.glob_conf as glob_conf
 from nkululeko.file_checker import FileChecker
-from nkululeko.feature_extractor import FeatureExtractor
 from nkululeko.utils.util import Util
-import nkululeko.glob_conf as glob_conf
+
 
 class Datasplitter:
     def __init__(self, datasets):
@@ -24,11 +20,9 @@ class Datasplitter:
         self.target = glob_conf.target
         self.got_speaker = glob_conf.got_speaker
 
-
-
     def get_sample_selection(self) -> pd.DataFrame:
         """Get the dataframe based on the sample selection configuration.
-        
+
         Returns:
             pd.DataFrame: The selected dataframe based on the configuration.
         """
@@ -46,10 +40,13 @@ class Datasplitter:
             )
         return df
 
-
     def fill_train_and_tests(self):
         """Set up train and development sets. The method should be specified in the config."""
-        self.df_train, self.df_test, self.df_dev = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        self.df_train, self.df_test, self.df_dev = (
+            pd.DataFrame(),
+            pd.DataFrame(),
+            pd.DataFrame(),
+        )
         if self.split3:
             self.df_dev = pd.DataFrame()
         else:
@@ -233,7 +230,7 @@ class Datasplitter:
             return self.df_train, self.df_test, self.df_dev
         else:
             return self.df_train, self.df_test
-        
+
     def _build_test_ds_df(self):
         """Build a dict mapping dataset name to its portion of the (encoded) test set.
 
@@ -276,7 +273,6 @@ class Datasplitter:
         self.util.debug(f"All dataset features shape: {all_feats.shape}")
         return all_feats
 
-
     def extract_feats(self):
         """Extract the features for train and dev sets.
 
@@ -301,7 +297,7 @@ class Datasplitter:
         if not self.df_train.empty:
             self.feats_train = all_feats[all_feats.index.isin(self.df_train.index)]
         if not self.df_test.empty:
-            self.feats_test = all_feats[all_feats.index.isin(self.df_test.index)]   
+            self.feats_test = all_feats[all_feats.index.isin(self.df_test.index)]
         if self.split3:
             if not self.df_dev.empty:
                 self.feats_dev = all_feats[all_feats.index.isin(self.df_dev.index)]

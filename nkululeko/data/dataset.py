@@ -42,7 +42,7 @@ class Dataset:
                 f"{self.name}: 'target_tables_append' is no longer supported "
                 "and has no effect. Tables are now merged automatically via "
                 "audformat db.get(). Please remove it from your config."
-            )        
+            )
         self.start_fresh = eval(self.util.config_val("DATA", "no_reuse", "False"))
         self.is_labeled, self.got_speaker, self.got_gender, self.got_age = (
             False,
@@ -183,7 +183,9 @@ class Dataset:
             self.df = df
             return
         if df.shape[0] == 0:
-            self.util.error(f"{self.name}: no data found in database for tables {tables}")
+            self.util.error(
+                f"{self.name}: no data found in database for tables {tables}"
+            )
         if self.is_labeled:
             # remember the target in case they get labelencoded later
             df["class_label"] = df[self.target]
@@ -214,7 +216,7 @@ class Dataset:
             post = self.df.shape[0]
             self.util.debug(
                 f"{self.name}: kept {post} samples with {required} (from {pre},"
-                f" filtered {pre-post})"
+                f" filtered {pre - post})"
             )
 
         datafilter = DataFilter(self.df)
@@ -666,7 +668,7 @@ class Dataset:
             if self.util.config_val_data(self.name, "value_counts", False):
                 if not self.got_gender or not self.got_speaker:
                     self.util.error(
-                        "can't plot value counts if no speaker or gender is" " given"
+                        "can't plot value counts if no speaker or gender is given"
                     )
                 else:
                     self.plot.describe_df(
@@ -683,7 +685,7 @@ class Dataset:
         if self.util.config_val_data(self.name, "value_counts", False):
             if not self.got_gender or not self.got_speaker:
                 self.util.error(
-                    "can't plot value counts if no speaker or gender is" " given"
+                    "can't plot value counts if no speaker or gender is given"
                 )
             else:
                 self.plot.describe_df(

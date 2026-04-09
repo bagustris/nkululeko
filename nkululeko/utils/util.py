@@ -154,7 +154,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
                 except KeyError:
                     if default not in self.stopvals:
                         self.debug(
-                            f"value for {key} not found, using default:" f" {default}"
+                            f"value for {key} not found, using default: {default}"
                         )
                     return default
             if default not in self.stopvals:
