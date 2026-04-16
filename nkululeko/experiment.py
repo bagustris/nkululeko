@@ -194,6 +194,7 @@ class Experiment:
             )
         else:
             self.df_train, self.df_test = self.datasplitter.fill_train_and_tests()
+        self.test_ds_df = getattr(self.datasplitter, "test_ds_df", {})
         self.label_encoder = glob_conf.label_encoder
 
     def evaluate_per_test_set(self):
