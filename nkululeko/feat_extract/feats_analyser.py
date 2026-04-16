@@ -366,7 +366,7 @@ class FeatureAnalyser:
             plot_feats_list = ast.literal_eval(plot_feats_list)
             features_to_plot.extend(plot_feats_list)
             self.util.debug(f"also plotting additional features: {plot_feats_list}")
-        sample_selection = self.util.config_val("EXPL", "sample_selection", "all")
+        sample_selection = self.util.config_val("EXP", "sample_selection", "all")
         for feature in features_to_plot:
             # plot_feature(self, title, feature, label, df_labels, df_features):
             self.plots.plot_feature(

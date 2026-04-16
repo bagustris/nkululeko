@@ -493,7 +493,7 @@ class Plots:
         dim_num = int(self.util.config_val("EXPL", "scatter.dim", 2))
         # one up because of the runs (for explore module)
         fig_dir = os.path.join(self.util.get_path("fig_dir"), "..")
-        sample_selection = self.util.config_val("EXPL", "sample_selection", "all")
+        sample_selection = self.util.config_val("EXP", "sample_selection", "all")
         exp_name = self.util.get_name()
         filename = f"{label}_{exp_name}_{self.util.get_feattype_name()}_{sample_selection}_{dimred_type}_{str(dim_num)}d"
         filename = os.path.join(fig_dir, f"{filename}.{self.format}")

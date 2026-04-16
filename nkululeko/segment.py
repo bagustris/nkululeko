@@ -227,7 +227,7 @@ def main():
     segmented_file = util.config_val("SEGMENT", "result", "segmented.csv")
 
     method = util.config_val("SEGMENT", "method", "silero")
-    sample_selection = util.config_val("SEGMENT", "sample_selection", "all")
+    sample_selection = util.config_val("EXP", "sample_selection", "all")
     if sample_selection == "all":
         df = pd.concat([expr.df_train, expr.df_test])
     elif sample_selection == "train":
