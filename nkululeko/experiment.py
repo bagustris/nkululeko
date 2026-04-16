@@ -243,14 +243,6 @@ class Experiment:
             )
             self.runmgr.print_report(report, plot_name)
 
-    def _add_random_target(self, df):
-        labels = glob_conf.labels
-        a = [None] * len(df)
-        for i in range(0, len(df)):
-            a[i] = random.choice(labels)
-        df[self.target] = a
-        return df
-
     def _decode_labels(self, df_labels, column_name):
         """Decode encoded labels for visualization.
 

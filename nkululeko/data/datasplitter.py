@@ -4,6 +4,7 @@ import os
 import os.path
 
 import pandas as pd
+import random
 from sklearn.preprocessing import LabelEncoder
 import pickle
 from nkululeko.filter_data import DataFilter
@@ -38,6 +39,14 @@ class Datasplitter:
                 f"unknown selection specifier {sample_selection},"
                 " should be [all | train | test]"
             )
+        return df
+
+    def _add_random_target(self, df):
+        labels = glob_conf.labels
+        a = [None] * len(df)
+        for i in range(0, len(df)):
+            a[i] = random.choice(labels)
+        df[self.target] = a
         return df
 
     def fill_train_and_tests(self):
