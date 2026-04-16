@@ -76,9 +76,11 @@ class Datasplitter:
                     self.df_dev = pd.concat([self.df_dev, d.df_dev])
                     self.util.copy_flags(d, self.df_dev)
 
-        # Return early for unlabeled/unsupervised runs
+        # Return early for unlabeled/unsupervised runs, but still return the split dataframes
         if self.target is None or self.target == "none":
-            return
+            if self.split3:
+                return self.df_train, self.df_test, self.df_dev
+            return self.df_train, self.df_test
         self.util.copy_flags(self, self.df_test)
         self.util.copy_flags(self, self.df_train)
         if self.split3:
