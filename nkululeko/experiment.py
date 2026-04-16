@@ -301,6 +301,13 @@ class Experiment:
             return
         self._check_scale()
 
+    def get_sample_selection(self):
+        """Return the configured sample selection.
+
+        This delegates to ``Datasplitter.get_sample_selection()`` to preserve
+        the previous ``Experiment`` API expected by existing callers.
+        """
+        return self.datasplitter.get_sample_selection()
     def augment(self, method="audiomentations"):
         """Augment the selected samples."""
         sample_selection = self.util.config_val("DATA", "sample_selection", "all")
