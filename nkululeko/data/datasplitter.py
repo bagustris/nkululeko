@@ -237,15 +237,21 @@ class Datasplitter:
         """Build a dict mapping dataset name to its portion of the (encoded) test set.
 
         This enables per-dataset evaluation when multiple datasets contribute test
-        samples.  Individual split caches (``{name}_testdf.pkl``) created by
-        :meth:`~nkululeko.data.dataset.Dataset.split` are used to identify which
-        test samples belong to which dataset.
+        samples. The mapping is built from the in-memory dataset splits
+        (``dataset.df_test``) and falls back to legacy ``{name}_testdf.pkl``
+        caches if needed.
         """
         self.test_ds_df = {}
         if self.df_test.empty:
             return
         store_path = self.util.get_path("store")
-        for name in self.datasets:
+        for name, dataset in self.datasets.items():
+            ds_test_source = getattr(dataset, "df_test", None)
+            if ds_test_source is not None and ds_test_source.shape[0] > 0:
+                ds_test = self.df_test[self.df_test.index.isin(ds_test_source.index)]
+                if ds_test.shape[0] > 0:
+                    self.test_ds_df[name] = ds_test
+                continue
             storage_test = f"{store_path}{name}_testdf.pkl"
             if os.path.isfile(storage_test):
                 try:
