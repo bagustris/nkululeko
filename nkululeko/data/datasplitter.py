@@ -1,4 +1,4 @@
-# dataset.py
+# datasplitter.py
 import ast
 import os
 import os.path
@@ -285,10 +285,11 @@ class Datasplitter:
         if len(feats_types) == 0:
             return all_feats
         for d in self.datasets.values():
-            d_feats = d.extract_features(feats_types)
+            d_feats, self.feature_extractor = d.extract_features(feats_types)
             all_feats = pd.concat([all_feats, d_feats])
         self.util.debug(f"All dataset features shape: {all_feats.shape}")
         return all_feats
+
 
     def extract_feats(self):
         """Extract the features for train and dev sets.

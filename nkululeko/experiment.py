@@ -197,6 +197,17 @@ class Experiment:
         self.test_ds_df = getattr(self.datasplitter, "test_ds_df", {})
         self.label_encoder = glob_conf.label_encoder
 
+    def extract_test_feats(self):
+        self.feats_test = pd.DataFrame()
+        feats_name = "_".join(ast.literal_eval(glob_conf.config["DATA"]["tests"]))
+        feats_types = self.util.config_val_list("FEATS", "type", ["os"])
+        self.feature_extractor = FeatureExtractor(
+            self.df_test, feats_types, feats_name, "test"
+        )
+        self.feats_test = self.feature_extractor.extract()
+        self.util.debug(f"Test features shape:{self.feats_test.shape}")
+
+
     def evaluate_per_test_set(self):
         """Evaluate the best model on each test dataset individually.
 
@@ -207,7 +218,7 @@ class Experiment:
         """
         if not hasattr(self, "test_ds_df") or len(self.test_ds_df) <= 1:
             return
-        if self.test_empty:
+        if self.datasplitter.df_test.empty:
             return
         if not hasattr(self, "runmgr") or not hasattr(self.runmgr, "modelrunner"):
             return
@@ -291,6 +302,11 @@ class Experiment:
             self.feats_train, self.feats_test = self.datasplitter.extract_feats()
         if self.feats_train is None:
             return
+        # sync back dataframes to the experiment object, as they might have changed
+        self.df_train = self.datasplitter.df_train
+        self.df_test = self.datasplitter.df_test
+        if self.split3:
+            self.df_dev = self.datasplitter.df_dev
         self._check_scale()
 
     def get_sample_selection(self):
@@ -733,7 +749,7 @@ class Experiment:
         except AttributeError:
             pass
         demo = Demo_predictor(
-            model, file, is_list, self.feature_extractor, lab_enc, outfile
+            model, file, is_list, self.datasplitter.feature_extractor, lab_enc, outfile
         )
         demo.run_demo()
 

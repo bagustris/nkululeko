@@ -14,7 +14,6 @@ from nkululeko.plots import Plots
 from nkululeko.reporting.report_item import ReportItem
 from nkululeko.utils.util import Util
 from nkululeko.constants import COL_AGE, COL_SEX, COL_SPEAKER
-from nkululeko.feature_extractor import FeatureExtractor
 
 
 class Dataset:
@@ -550,11 +549,12 @@ class Dataset:
 
     def extract_features(self, feats_types):
         if self.feats is None:
+            from nkululeko.feature_extractor import FeatureExtractor
             self.feature_extractor = FeatureExtractor(
                 self.df, feats_types, self.name, "all"
             )
             self.feats = self.feature_extractor.extract()
-        return self.feats
+        return self.feats, self.feature_extractor
 
     def assign_speakers(self, speakers):
         """One way to split train and eval sets: Specify test speaker names."""

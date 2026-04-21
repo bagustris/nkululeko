@@ -13,7 +13,6 @@ from nkululeko.utils.dataframe import DataFrameMixin
 from nkululeko.utils.naming import NamingMixin
 from nkululeko.utils.storage import StorageMixin
 
-
 class Util(NamingMixin, StorageMixin, DataFrameMixin):
     # a list of words that need not to be warned upon if default values are
     # used
