@@ -349,7 +349,6 @@ class Model:
             onnx_path (str): Path to save the ONNX model.
             input_shape (tuple, optional): Shape of the input features. If None, inferred from feats_train.
         """
-        import skl2onnx
         from skl2onnx import convert_sklearn
         from skl2onnx.common.data_types import FloatTensorType
 
