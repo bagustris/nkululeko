@@ -4,7 +4,7 @@ import os
 import os.path
 
 import pandas as pd
-import random
+import secrets
 from sklearn.preprocessing import LabelEncoder
 import pickle
 from nkululeko.filter_data import DataFilter
@@ -45,7 +45,7 @@ class Datasplitter:
         labels = glob_conf.labels
         a = [None] * len(df)
         for i in range(0, len(df)):
-            a[i] = random.choice(labels)
+            a[i] = secrets.choice(labels)
         df[self.target] = a
         return df
 
