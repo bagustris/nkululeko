@@ -91,9 +91,9 @@ class DataFilter:
                 self.df.index = audformat.utils.to_segmented_index(
                     self.df.index, allow_nat=False
                 )
+            df = self.df.copy()
             if min_dur:
-                old_samples = self.df.shape[0]
-                df = self.df.copy()
+                old_samples = df.shape[0]
                 for i in self.df.index:
                     start = i[1]
                     end = i[2]
@@ -106,9 +106,8 @@ class DataFilter:
                     f" {df.shape[0]}"
                 )
             if max_dur:
-                old_samples = self.df.shape[0]
-                df = self.df.copy()
-                for i in self.df.index:
+                old_samples = df.shape[0]
+                for i in df.index:
                     start = i[1]
                     end = i[2]
                     dur = (end - start).total_seconds()

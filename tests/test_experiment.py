@@ -140,21 +140,21 @@ class TestBuildTestDsDf:
 
     def test_build_test_ds_df_empty_when_test_empty(self, mock_config, tmp_path):
         """_build_test_ds_df should leave test_ds_df empty when test is empty."""
-        from nkululeko.experiment import Experiment
+        from nkululeko.data.datasplitter import Datasplitter
 
         glob_conf.init_config(mock_config)
-        exp = Experiment.__new__(Experiment)
-        exp.util = type("U", (), {
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = type("U", (), {
             "get_path": lambda self, k: str(tmp_path) + "/",
         })()
-        exp.test_empty = True
-        exp.datasets = {"ds_a": None, "ds_b": None}
-        exp._build_test_ds_df()
-        assert exp.test_ds_df == {}
+        ds.df_test = pd.DataFrame()
+        ds.datasets = {"ds_a": None, "ds_b": None}
+        ds._build_test_ds_df()
+        assert ds.test_ds_df == {}
 
     def test_build_test_ds_df_filters_by_dataset_index(self, mock_config, tmp_path):
         """_build_test_ds_df should assign each test row to its source dataset."""
-        from nkululeko.experiment import Experiment
+        from nkululeko.data.datasplitter import Datasplitter
 
         glob_conf.init_config(mock_config)
 
@@ -175,22 +175,21 @@ class TestBuildTestDsDf:
         df_a.to_pickle(f"{store}ds_a_testdf.pkl")
         df_b.to_pickle(f"{store}ds_b_testdf.pkl")
 
-        exp = Experiment.__new__(Experiment)
-        exp.util = type("U", (), {
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = type("U", (), {
             "get_path": lambda self, k: store,
         })()
-        exp.test_empty = False
-        exp.datasets = {"ds_a": None, "ds_b": None}
-        exp.df_test = df_test
+        ds.datasets = {"ds_a": None, "ds_b": None}
+        ds.df_test = df_test
 
-        exp._build_test_ds_df()
+        ds._build_test_ds_df()
 
-        assert set(exp.test_ds_df.keys()) == {"ds_a", "ds_b"}
-        assert len(exp.test_ds_df["ds_a"]) == 2
-        assert len(exp.test_ds_df["ds_b"]) == 2
+        assert set(ds.test_ds_df.keys()) == {"ds_a", "ds_b"}
+        assert len(ds.test_ds_df["ds_a"]) == 2
+        assert len(ds.test_ds_df["ds_b"]) == 2
         # Verify only the correct rows end up in each slice
-        assert all(exp.test_ds_df["ds_a"].index.isin(idx_a))
-        assert all(exp.test_ds_df["ds_b"].index.isin(idx_b))
+        assert all(ds.test_ds_df["ds_a"].index.isin(idx_a))
+        assert all(ds.test_ds_df["ds_b"].index.isin(idx_b))
 
     def test_evaluate_per_test_set_noop_single_dataset(self, mock_config, tmp_path):
         """evaluate_per_test_set should be a no-op with only one test dataset."""
@@ -210,7 +209,10 @@ class TestBuildTestDsDf:
         glob_conf.init_config(mock_config)
         exp = Experiment.__new__(Experiment)
         exp.test_ds_df = {"ds_a": pd.DataFrame(), "ds_b": pd.DataFrame()}
-        exp.test_empty = False
+        # Provide a datasplitter mock with a non-empty df_test
+        datasplitter_mock = type("DS", (), {})()
+        datasplitter_mock.df_test = pd.DataFrame({"emotion": [0]})
+        exp.datasplitter = datasplitter_mock
         # No runmgr attribute – must not raise
         exp.evaluate_per_test_set()
 
@@ -221,7 +223,10 @@ class TestBuildTestDsDf:
         glob_conf.init_config(mock_config)
         exp = Experiment.__new__(Experiment)
         exp.test_ds_df = {"ds_a": pd.DataFrame(), "ds_b": pd.DataFrame()}
-        exp.test_empty = False
+        # Provide a datasplitter mock with a non-empty df_test
+        datasplitter_mock = type("DS", (), {})()
+        datasplitter_mock.df_test = pd.DataFrame({"emotion": [0]})
+        exp.datasplitter = datasplitter_mock
         exp.runmgr = object()  # no 'modelrunner' attribute
         # Must not raise
         exp.evaluate_per_test_set()

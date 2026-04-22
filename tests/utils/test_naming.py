@@ -279,6 +279,125 @@ type = ["os"]
         u2 = Util("test")
         self.assertEqual(u2.get_feattype_name(), "os")
 
+    # --- Additional tests for uncovered lines ---
+
+    def test_get_save_name(self):
+        u = make_util()
+        save_name = u.get_save_name()
+        self.assertIn("test", save_name)
+        self.assertTrue(save_name.endswith(".pkl"))
+
+    def test_get_pred_name(self):
+        u = make_util()
+        pred_name = u.get_pred_name()
+        self.assertIn("pred", pred_name)
+        self.assertIn("emotion", pred_name)
+
+    def test_print_results_to_store(self):
+        import tempfile
+        import os
+
+        u = make_util()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            u.config["EXP"]["root"] = tmpdir
+            u.config["EXP"]["name"] = "myexp"
+            result_path = u.print_results_to_store("test", "test content")
+            # file must exist
+            self.assertTrue(os.path.exists(result_path))
+            # must live under {root}/{name}/results/
+            self.assertIn(os.path.join(tmpdir, "myexp", "results"), result_path)
+            # file must contain the written text
+            with open(result_path) as fh:
+                self.assertIn("test content", fh.read())
+
+    def test_get_value_descript_with_value(self):
+        c = configparser.ConfigParser()
+        c.read_string("""
+[EXP]
+name = test
+root = /tmp
+[DATA]
+databases = ["emodb"]
+target = emotion
+[MODEL]
+type = svm
+C_val = 1.0
+[FEATS]
+type = os
+""")
+        glob_conf.config = c
+        u = Util("test")
+        result = u._get_value_descript("MODEL", "C_val")
+        self.assertIn("C_val", result)
+        self.assertIn("1", result)
+
+    def test_get_value_descript_without_value(self):
+        u = make_util()
+        result = u._get_value_descript("MODEL", "nonexistent")
+        self.assertEqual(result, "")
+
+    def test_get_exp_name_with_only_train(self):
+        c = configparser.ConfigParser()
+        c.read_string("""
+[EXP]
+name = test
+root = /tmp
+[DATA]
+databases = ["emodb", "emodb2"]
+trains = ["emodb"]
+target = emotion
+[MODEL]
+type = svm
+[FEATS]
+type = os
+""")
+        glob_conf.config = c
+        u = Util("test")
+        name = u.get_exp_name(only_train=True)
+        self.assertIn("emodb", name)
+        self.assertNotIn("emodb2", name)
+
+    def test_adm_branch_suffix_empty(self):
+        c = configparser.ConfigParser()
+        c.read_string("""
+[EXP]
+name = test
+root = /tmp
+[DATA]
+databases = ["emodb"]
+target = emotion
+[MODEL]
+type = adm
+adm.branches = 
+[FEATS]
+type = os
+""")
+        glob_conf.config = c
+        u = Util("test")
+        self.assertEqual(u._get_adm_branch_suffix(), "")
+
+    def test_aug_suffix_invalid_syntax(self):
+        c = configparser.ConfigParser()
+        c.read_string("""
+[EXP]
+name = test
+root = /tmp
+[DATA]
+databases = ["emodb"]
+target = emotion
+[MODEL]
+type = svm
+[FEATS]
+type = os
+[AUGMENT]
+augment = not_a_list
+""")
+        glob_conf.config = c
+        u = Util("test")
+        # Should handle invalid syntax gracefully
+        result = u._get_aug_suffix()
+        self.assertIn("aug", result)
+
 
 if __name__ == "__main__":
     unittest.main()
