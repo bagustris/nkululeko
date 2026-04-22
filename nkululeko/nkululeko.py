@@ -58,7 +58,7 @@ def doit(config_file):
     # check if we want to export the model
     o_path = util.config_val("EXP", "export_onnx", "False")
     if o_path.lower() in ["true", "1", "yes"]:
-        print(f"Exporting ONNX model to {o_path}")
+        util.info(f"Exporting ONNX model to {o_path}")
         o_path = o_path.replace('"', '')
         expr.runmgr.get_best_model().export_onnx(str(o_path))
 
