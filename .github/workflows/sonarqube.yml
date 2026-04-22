@@ -35,5 +35,11 @@ jobs:
       - name: Run pytest with coverage
         run: |
           source .venv/bin/activate
-          pytest --cov=nkululeko tests/
+          pytest --cov=nkululeko --cov-report=xml --cov-branch tests/
+        continue-on-error: true
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
