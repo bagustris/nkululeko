@@ -296,13 +296,19 @@ type = ["os"]
     def test_print_results_to_store(self):
         import tempfile
         import os
-        
+
         u = make_util()
         with tempfile.TemporaryDirectory() as tmpdir:
             u.config["EXP"]["root"] = tmpdir
-            u.config["EXP"]["name"] = "test"
+            u.config["EXP"]["name"] = "myexp"
             result_path = u.print_results_to_store("test", "test content")
+            # file must exist
             self.assertTrue(os.path.exists(result_path))
+            # must live under {root}/{name}/results/
+            self.assertIn(os.path.join(tmpdir, "myexp", "results"), result_path)
+            # file must contain the written text
+            with open(result_path) as fh:
+                self.assertIn("test content", fh.read())
 
     def test_get_value_descript_with_value(self):
         c = configparser.ConfigParser()

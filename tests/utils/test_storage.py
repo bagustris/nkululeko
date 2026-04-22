@@ -165,15 +165,15 @@ class TestStorageMixin(unittest.TestCase):
 
         u = make_util()
         df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
-            path = f.name
-        try:
-            # Just test that write_store works with CSV format
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "store.csv")
+            self.assertFalse(os.path.exists(path))
             u.write_store(df, path, "csv")
             self.assertTrue(os.path.exists(path))
-        finally:
-            if os.path.exists(path):
-                os.unlink(path)
+            result = pd.read_csv(path, index_col=0)
+            self.assertEqual(list(result.columns), ["a", "b"])
+            self.assertEqual(list(result["a"]), [1, 2])
+            self.assertEqual(list(result["b"]), [3, 4])
 
     def test_write_store_unknown_format(self):
         import pandas as pd

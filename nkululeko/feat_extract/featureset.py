@@ -2,7 +2,12 @@
 import ast
 
 import pandas as pd
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    def tqdm(iterable, **kwargs):
+        return iterable
 
 import nkululeko.glob_conf as glob_conf
 from nkululeko.utils.util import Util

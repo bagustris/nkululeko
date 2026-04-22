@@ -189,14 +189,12 @@ class TestFilterDuration:
         assert len(result) == 3
 
     def test_min_and_max_duration_combined(self, segmented_df):
-        # When both are set, each filter starts from self.df independently;
-        # max_dur overwrites min_dur's result, so only max_dur is effective.
         glob_conf.config["DATA"]["min_duration_of_sample"] = "1.0"
         glob_conf.config["DATA"]["max_duration_of_sample"] = "5.0"
         f = DataFilter(segmented_df)
         result = f.filter_duration()
-        # max_dur removes only the 10.0 s sample → 3 remain
-        assert len(result) == 3
+        # both filters applied sequentially: 0.5 s (< 1.0) and 10.0 s (> 5.0) removed
+        assert len(result) == 2
 
 
 class TestAllFilters:
