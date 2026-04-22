@@ -1,4 +1,4 @@
-name: SonarQube Cloud
+name: pytest with coverage
 
 on:
   push:
@@ -35,7 +35,6 @@ jobs:
       - name: Run pytest with coverage
         run: |
           source .venv/bin/activate
-          set -o pipefail
-          pytest --cov=nkululeko tests/
-        continue-on-error: true
+          pytest --cov=nkululeko --cov-branch tests/
+        continue-on-error: false
 

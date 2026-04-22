@@ -31,6 +31,7 @@ class NamingMixin:
         path = os.path.join(results_dir, f"{name}_{pred_name}.txt")
         with open(path, "a") as f:
             f.write(contents)
+        return path
 
     def _get_value_descript(self, section, name):
         if self.config_val(section, name, False):

@@ -187,6 +187,73 @@ class TestDataFrameMixin(unittest.TestCase):
         result = u.map_labels(df, "emotion", mapping)
         self.assertEqual(list(result["emotion"]), ["pos", "pos"])
 
+    # --- Additional tests for uncovered lines ---
+
+    def test_is_numeric(self):
+        u = make_util()
+        s = pd.Series([1.0, 2.0, 3.0])
+        self.assertTrue(u.is_numeric(s))
+        
+        s_str = pd.Series(["a", "b", "c"])
+        self.assertFalse(u.is_numeric(s_str))
+
+    def test_make_segmented_index_empty(self):
+        u = make_util()
+        df = pd.DataFrame()
+        result = u.make_segmented_index(df)
+        self.assertTrue(result.empty)
+
+    def test_get_labels(self):
+        c = configparser.ConfigParser()
+        c.read_string("""
+[EXP]
+name = test
+root = /tmp
+[DATA]
+databases = ["emodb"]
+target = emotion
+labels = ["happy", "sad"]
+[MODEL]
+type = svm
+[FEATS]
+type = os
+""")
+        glob_conf.config = c
+        u = Util("test")
+        result = u.get_labels()
+        self.assertEqual(result, ["happy", "sad"])
+
+    def test_df_to_cont_dict_missing_column1(self):
+        u = make_util()
+        df = pd.DataFrame({"y": [3.0, 4.0]})
+        with self.assertRaises(SystemExit):
+            u.df_to_cont_dict(df, "x", "y")
+
+    def test_df_to_cont_dict_missing_column2(self):
+        u = make_util()
+        df = pd.DataFrame({"x": [1.0, 2.0]})
+        with self.assertRaises(SystemExit):
+            u.df_to_cont_dict(df, "x", "y")
+
+    def test_df_to_categorical_dict_missing_categorical_column(self):
+        u = make_util()
+        df = pd.DataFrame({"score": [0.8, 0.6]})
+        with self.assertRaises(SystemExit):
+            u.df_to_categorical_dict(df, "emotion", "score")
+
+    def test_df_to_categorical_dict_missing_value_column(self):
+        u = make_util()
+        df = pd.DataFrame({"emotion": ["happy", "sad"]})
+        with self.assertRaises(SystemExit):
+            u.df_to_categorical_dict(df, "emotion", "score")
+
+    def test_is_dict_with_string_values_exception(self):
+        u = make_util()
+        # Create a dict that might trigger exception in all() check
+        # This tests the exception handling
+        result = u.is_dict_with_string_values({"a": object()})
+        self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()
