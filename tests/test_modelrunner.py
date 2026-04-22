@@ -161,7 +161,7 @@ class TestEvalSpecificModel:
             store_path = "fake"
 
             def reset_test(self, df, feats):
-                pass
+                pass  # no-op stub: test only verifies split_name is restored
 
             def predict(self):
                 import types

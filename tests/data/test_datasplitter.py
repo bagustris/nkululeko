@@ -203,7 +203,7 @@ class TestFillTrainAndTestsEarlyReturn:
                 self.df_test.got_speaker = False
 
             def prepare_labels(self):
-                pass
+                pass  # no-op: unsupervised run has no labels to encode
 
             df_train = pd.DataFrame()
             df_test = pd.DataFrame()

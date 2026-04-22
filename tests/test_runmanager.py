@@ -54,17 +54,17 @@ class TestSearchBestResultAscending:
             _make_report(0.5),
         ]
         best = runmanager.search_best_result(reports, "ascending")
-        assert best.result.test == 0.7
+        assert best.result.test == pytest.approx(0.7)
 
     def test_returns_first_with_all_equal(self, runmanager):
         reports = [_make_report(0.5), _make_report(0.5)]
         best = runmanager.search_best_result(reports, "ascending")
-        assert best.result.test == 0.5
+        assert best.result.test == pytest.approx(0.5)
 
     def test_single_report(self, runmanager):
         reports = [_make_report(0.42)]
         best = runmanager.search_best_result(reports, "ascending")
-        assert best.result.test == 0.42
+        assert best.result.test == pytest.approx(0.42)
 
 
 class TestSearchBestResultDescending:
@@ -75,12 +75,12 @@ class TestSearchBestResultDescending:
             _make_report(0.1),
         ]
         best = runmanager.search_best_result(reports, "descending")
-        assert best.result.test == 0.1
+        assert best.result.test == pytest.approx(0.1)
 
     def test_single_report(self, runmanager):
         reports = [_make_report(0.05)]
         best = runmanager.search_best_result(reports, "descending")
-        assert best.result.test == 0.05
+        assert best.result.test == pytest.approx(0.05)
 
 
 class TestGetBestResult:
@@ -88,14 +88,14 @@ class TestGetBestResult:
         """UAR is higher-is-better, so get_best_result should return the max."""
         reports = [_make_report(0.2), _make_report(0.9), _make_report(0.5)]
         best = runmanager.get_best_result(reports)
-        assert best.result.test == 0.9
+        assert best.result.test == pytest.approx(0.9)
 
     def test_classification_eer_uses_descending(self, runmanager):
         """EER is lower-is-better."""
         glob_conf.config["MODEL"]["measure"] = "eer"
         reports = [_make_report(0.2), _make_report(0.9), _make_report(0.05)]
         best = runmanager.get_best_result(reports)
-        assert best.result.test == 0.05
+        assert best.result.test == pytest.approx(0.05)
 
     def test_regression_mse_uses_descending(self, runmanager):
         """MSE is lower-is-better."""
@@ -103,7 +103,7 @@ class TestGetBestResult:
         glob_conf.config["MODEL"]["measure"] = "mse"
         reports = [_make_report(10.0), _make_report(0.5), _make_report(3.0)]
         best = runmanager.get_best_result(reports)
-        assert best.result.test == 0.5
+        assert best.result.test == pytest.approx(0.5)
 
 
 class TestRunmanagerInit:

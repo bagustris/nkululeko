@@ -234,7 +234,7 @@ class TestStorageMixin(unittest.TestCase):
         try:
             # The function calls sys.exit() on error, so it raises SystemExit
             with self.assertRaises(SystemExit):
-                result = u.read_first_line_floats(path)
+                u.read_first_line_floats(path)
         finally:
             os.unlink(path)
 
@@ -242,7 +242,7 @@ class TestStorageMixin(unittest.TestCase):
         u = make_util()
         # Should handle FileNotFoundError by calling sys.exit()
         with self.assertRaises(SystemExit):
-            result = u.read_first_line_floats("/nonexistent/file.txt")
+            u.read_first_line_floats("/nonexistent/file.txt")
 
     def test_read_first_line_floats_io_error(self):
         u = make_util()
@@ -251,7 +251,7 @@ class TestStorageMixin(unittest.TestCase):
             path = os.path.join(tmpdir, "file.txt")
             os.mkdir(path)  # Make it a directory
             with self.assertRaises(SystemExit):
-                result = u.read_first_line_floats(path)
+                u.read_first_line_floats(path)
 
 
 if __name__ == "__main__":
