@@ -1,4 +1,4 @@
-name: SonarQube Cloud
+name: pytest with coverage
 
 on:
   push:
@@ -36,15 +36,5 @@ jobs:
         run: |
           source .venv/bin/activate
           pytest --cov=nkululeko --cov-report=xml --cov-branch tests/
-        continue-on-error: true
-
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        with:
-          args: >
-            -Dsonar.projectKey=bagustris_nkululeko
-            -Dsonar.organization=bagustris
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: false
 
