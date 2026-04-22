@@ -32,8 +32,11 @@ def do_it(config_file, outfile):
 
     # load the experiment
     expr.load(f"{util.get_save_name()}")
-    expr.fill_tests()
-    expr.extract_test_feats()
+    # initialize the experiment splits before feature extraction:
+    # extract_feats() now relies on the datasplitter train/test dataframes
+    # being prepared via fill_train_and_tests()
+    expr.fill_train_and_tests()
+    expr.extract_feats()
     result = expr.predict_test_and_save(outfile)
 
     print("DONE")

@@ -59,6 +59,8 @@
   * use_splits = True
 * **traindevtest**: set to true if you want to specify an extra dev set, that will be used for early stopping (patience) in neural net experiments.
   * traindevtest = False
+* **sample_selection**: select the samples to process (e.g. for augmentation, re-sampling, etc.): either *train*, *test*, or *all*
+  * sample_selection = all
   
 ### DATA
 
@@ -182,8 +184,6 @@
     * *random_splice*: randomly re-orders short splices (obfuscates the words)
 * **p_reverse**: for random_splice: probability of some samples to be in reverse order (default: 0.3)
 * **top_db**: for random_splice: top db level for silence to be recognized (default: 12)
-* **sample_selection**: select the samples to augment: either *train*, *test*, or *all*
-  * sample_selection = all
 * **result**: file name to store the augmented data (can then be added to training)
   * result = augmented.csv
 * **augmentations**: select the augmentation methods for the audiomentation module. Default provided.
@@ -193,8 +193,6 @@
 
 ### SEGMENT
 
-* **sample_selection**: select the samples to segment: either *train*, *test*, or *all*
-  * sample_selection = all
 * **segment_result**: name of the segmented data table as a result
   * segment_target = segmented.csv
 * **method**: select the model
@@ -448,8 +446,6 @@ Model and training specifications. In general, default values should work for cl
   * model = ['log_reg'] # can be all models from the [MODEL](#model) section, If they are combined, the mean result is used.
 * **max_feats**: Maximal number of important features
   * max_feats = 10
-* **sample_selection**: Which sample set/split to use for feature importance, sample distribution, spotlight and feature distributions
-  * sample_selection = all # either all, train or test
 * **permutation**: use [feature permutation](https://scikit-learn.org/stable/modules/permutation_importance.html) to determine the best features. Make sure to test the models before.
   * permutation = True
 * **scatter**: make a scatter plot of combined train and test data, colored by label.
@@ -484,8 +480,6 @@ Model and training specifications. In general, default values should work for cl
 * **targets**: Speaker/speech characteristics to be predicted by some models
   * targets = ['text', 'translation', 'textclassification', 'speaker', 'gender', 'age', 'snr', 'arousal', 'valence', 'dominance', 'pesq', 'mos']
   * textclassifier.candidates = ["sadness", "anger", "neutral"]: for target *textclassification*: the labels for the categories that should be predicted (using [joeddav/xlm-roberta-large-xnli](https://huggingface.co/joeddav/xlm-roberta-large-xnli))
-* **sample_selection**: which split: [train, test, all]
-  * sample_selection = all
 * **target_language**: target language for the translation prediction
   * target_language = en
   
@@ -537,8 +531,6 @@ Model and training specifications. In general, default values should work for cl
 
 ### RESAMPLE
 
-* **sample_selection**: which split: [train, test, all]
-  * sample_selection = all
 * **replace**: whether samples should be replaced right where they are, or copies done and a new dataframe given
   * replace = False
 * **target**: the name of the new dataframe, if replace==false

@@ -15,6 +15,7 @@ from nkululeko.reporting.report_item import ReportItem
 from nkululeko.utils.util import Util
 from nkululeko.constants import COL_AGE, COL_SEX, COL_SPEAKER
 
+
 class Dataset:
     """Class to represent datasets"""
 
@@ -40,7 +41,7 @@ class Dataset:
                 f"{self.name}: 'target_tables_append' is no longer supported "
                 "and has no effect. Tables are now merged automatically via "
                 "audformat db.get(). Please remove it from your config."
-            )        
+            )
         self.start_fresh = eval(self.util.config_val("DATA", "no_reuse", "False"))
         self.is_labeled, self.got_speaker, self.got_gender, self.got_age = (
             False,
@@ -48,7 +49,8 @@ class Dataset:
             False,
             False,
         )
-        self.split3 = eval(self.util.config_val("EXP", "traindevtest", "False"))
+        self.split3 = glob_conf.split3
+        self.feats = None
 
     def _get_tables(self):
         tables = []
@@ -130,21 +132,7 @@ class Dataset:
 
     def load(self):
         """Load the dataframe with files, speakers and task labels"""
-        # store the dataframe
-        store = self.util.get_path("store")
-        store_format = self.util.config_val("FEATS", "store_format", "pkl")
-        store_file = f"{store}{self.name}.{store_format}"
         self.root = self._load_db()
-        if not self.start_fresh and os.path.isfile(store_file):
-            self.util.debug(f"{self.name}: reusing previously stored file {store_file}")
-            self.df = self.util.get_store(store_file, store_format)
-            self.is_labeled = self.target in self.df
-            self.got_gender = COL_SEX in self.df
-            self.got_age = COL_AGE in self.df
-            self.got_speaker = COL_SPEAKER in self.df
-            self.util.copy_flags(self, self.df)
-            self._report_load()
-            return
         tables = self._get_tables()
         # map the audio file paths
         self.db.map_files(lambda x: os.path.join(self.root, x))
@@ -194,7 +182,9 @@ class Dataset:
             self.df = df
             return
         if df.shape[0] == 0:
-            self.util.error(f"{self.name}: no data found in database for tables {tables}")
+            self.util.error(
+                f"{self.name}: no data found in database for tables {tables}"
+            )
         if self.is_labeled:
             # remember the target in case they get labelencoded later
             df["class_label"] = df[self.target]
@@ -225,7 +215,7 @@ class Dataset:
             post = self.df.shape[0]
             self.util.debug(
                 f"{self.name}: kept {post} samples with {required} (from {pre},"
-                f" filtered {pre-post})"
+                f" filtered {pre - post})"
             )
 
         datafilter = DataFilter(self.df)
@@ -267,52 +257,14 @@ class Dataset:
                 self.df[self.target].values.reshape(-1, 1)
             )
 
-        # store the dataframe
-        store = self.util.get_path("store")
-        store_format = self.util.config_val("FEATS", "store_format", "pkl")
-        store_file = f"{store}{self.name}.{store_format}"
-        self.util.write_store(self.df, store_file, store_format)
-
     def split(self):
         """Split the datbase into train and development set"""
-        store = self.util.get_path("store")
-        storage_test = f"{store}{self.name}_testdf.pkl"
-        storage_train = f"{store}{self.name}_traindf.pkl"
         split_strategy = self.util.config_val_data(
             self.name, "split_strategy", "speaker_split"
         )
         self.util.debug(
             f"splitting database {self.name} with strategy {split_strategy}"
         )
-        # 'database' (default), 'speaker_split', 'specified', 'reuse'
-        if split_strategy != "speaker_split" and not self.start_fresh:
-            # check if the splits have been computed previously (not for speaker split)
-            if os.path.isfile(storage_train) and os.path.isfile(storage_test):
-                # if self.util.config_val_data(self.name, 'test_tables', False):
-                self.util.debug(
-                    "splits: reusing previously stored test file" f" {storage_test}"
-                )
-                self.df_test = pd.read_pickle(storage_test)
-                self.util.debug(
-                    "splits: reusing previously stored train file" f" {storage_train}"
-                )
-                self.df_train = pd.read_pickle(storage_train)
-
-                return
-            elif os.path.isfile(storage_train):
-                self.util.debug(
-                    "splits: reusing previously stored train file" f" {storage_train}"
-                )
-                self.df_train = pd.read_pickle(storage_train)
-                self.df_test = pd.DataFrame()
-                return
-            elif os.path.isfile(storage_test):
-                self.util.debug(
-                    "splits: reusing previously stored test file" f" {storage_test}"
-                )
-                self.df_test = pd.read_pickle(storage_test)
-                self.df_train = pd.DataFrame()
-                return
         if split_strategy == "database":
             #  use the splits from the database
             testdf = self.db.tables[self.target + ".test"].df
@@ -371,10 +323,6 @@ class Dataset:
             self.speakers_stated()
         elif split_strategy == "random":
             self.random_split()
-        elif split_strategy == "reuse":
-            self.util.debug(f"{self.name}: trying to reuse data splits")
-            self.df_test = pd.read_pickle(storage_test)
-            self.df_train = pd.read_pickle(storage_train)
         else:
             try:
                 if isinstance(ast.literal_eval(split_strategy), list):
@@ -392,16 +340,12 @@ class Dataset:
             self.df_test = pd.DataFrame()
 
         if self.df_test.shape[0] > 0:
-            self.df_test = self.finish_up(self.df_test, storage_test)
+            self.df_test.is_labeled = self.is_labeled
         if self.df_train.shape[0] > 0:
-            self.df_train = self.finish_up(self.df_train, storage_train)
+            self.df_train.is_labeled = self.is_labeled
         self._report_split_size()
 
     def _report_split_size(self):
-        self.util.debug(
-            f"{self.name}: {self.df_test.shape[0]} samples in test and"
-            f" {self.df_train.shape[0]} samples in train"
-        )
         if self.split3:
             self.util.debug(
                 f"{self.name}: {self.df_test.shape[0]} samples in test,"
@@ -416,10 +360,6 @@ class Dataset:
 
     def split_3(self):
         """Split the database into train, test and dev set."""
-        store = self.util.get_path("store")
-        storage_test = f"{store}{self.name}_testdf.pkl"
-        storage_train = f"{store}{self.name}_traindf.pkl"
-        storage_dev = f"{store}{self.name}_devdf.pkl"
         split_strategy = self.util.config_val_data(
             self.name, "split_strategy", "speaker_split"
         )
@@ -427,51 +367,6 @@ class Dataset:
             f"splitting database {self.name} into train/dev/test with strategy {split_strategy}"
         )
         # 'database' (default), 'speaker_split', 'specified', 'reuse'
-        if split_strategy != "speaker_split" and not self.start_fresh:
-            # check if the splits have been computed previously (not for speaker split)
-            if (
-                os.path.isfile(storage_train)
-                and os.path.isfile(storage_test)
-                and os.path.isfile(storage_dev)
-            ):
-                # if self.util.config_val_data(self.name, 'test_tables', False):
-                self.util.debug(
-                    "splits: reusing previously stored test file" f" {storage_test}"
-                )
-                self.df_test = pd.read_pickle(storage_test)
-                self.util.debug(
-                    "splits: reusing previously stored train file" f" {storage_train}"
-                )
-                self.df_train = pd.read_pickle(storage_train)
-                self.util.debug(
-                    "splits: reusing previously stored dev file" f" {storage_dev}"
-                )
-                self.df_dev = pd.read_pickle(storage_train)
-                return
-            elif os.path.isfile(storage_train):
-                self.util.debug(
-                    "splits: reusing previously stored train file" f" {storage_train}"
-                )
-                self.df_train = pd.read_pickle(storage_train)
-                self.df_test = pd.DataFrame()
-                self.df_dev = pd.DataFrame()
-                return
-            elif os.path.isfile(storage_test):
-                self.util.debug(
-                    "splits: reusing previously stored test file" f" {storage_test}"
-                )
-                self.df_test = pd.read_pickle(storage_test)
-                self.df_train = pd.DataFrame()
-                self.df_dev = pd.DataFrame()
-                return
-            elif os.path.isfile(storage_dev):
-                self.util.debug(
-                    "splits: reusing previously stored dev file" f" {storage_dev}"
-                )
-                self.df_dev = pd.read_pickle(storage_dev)
-                self.df_train = pd.DataFrame()
-                self.df_test = pd.DataFrame()
-                return
         if split_strategy == "database":
             #  use the splits from the database
             testdf = self.db.tables[self.target + ".test"].df
@@ -542,11 +437,6 @@ class Dataset:
             self.speakers_stated_3()
         elif split_strategy == "random":
             self.random_split_3()
-        elif split_strategy == "reuse":
-            self.util.debug(f"{self.name}: trying to reuse data splits")
-            self.df_test = pd.read_pickle(storage_test)
-            self.df_train = pd.read_pickle(storage_train)
-            self.df_dev = pd.read_pickle(storage_dev)
         else:
             try:
                 if isinstance(ast.literal_eval(split_strategy), list):
@@ -565,18 +455,7 @@ class Dataset:
             self.df_test = pd.DataFrame()
             self.df_dev = pd.DataFrame()
 
-        if self.df_test.shape[0] > 0:
-            self.df_test = self.finish_up(self.df_test, storage_test)
-        if self.df_train.shape[0] > 0:
-            self.df_train = self.finish_up(self.df_train, storage_train)
-        if self.df_dev.shape[0] > 0:
-            self.df_dev = self.finish_up(self.df_dev, storage_dev)
         self._report_split_size()
-
-    def finish_up(self, df, storage):
-        df.is_labeled = self.is_labeled
-        df.to_pickle(storage)
-        return df
 
     def balanced_split(self, with_dev=False):
         """Split train and eval sets: Generate dataframes for some balancing criterion."""
@@ -667,14 +546,15 @@ class Dataset:
             self.util.debug(f"stratification info;\n{info}")
             self.df_train = df.iloc[train_i]
             self.df_test = df.iloc[test_i]
-            msg = (
-                f"{self.name} (balanced split): "
-                f"[{self.df_train.shape[0]}/{self.df_test.shape[0]}] samples in train/test"
+
+    def extract_features(self, feats_types):
+        if self.feats is None:
+            from nkululeko.feature_extractor import FeatureExtractor
+            self.feature_extractor = FeatureExtractor(
+                self.df, feats_types, self.name, "all"
             )
-            self.util.debug(msg)
-        # because this generates new train/test sample quantities,
-        # the feature extraction has to be done again
-        glob_conf.config["FEATS"]["needs_feature_extraction"] = "True"
+            self.feats = self.feature_extractor.extract()
+        return self.feats, self.feature_extractor
 
     def assign_speakers(self, speakers):
         """One way to split train and eval sets: Specify test speaker names."""
@@ -682,13 +562,6 @@ class Dataset:
         if len(self.df_test) == 0:
             self.util.error(f"no speakers found in {speakers}")
         self.df_train = self.df[~self.df.index.isin(self.df_test.index)]
-        self.util.debug(
-            f"{self.name} (speakers assigned): "
-            f"[{self.df_train.shape[0]}/{self.df_test.shape[0]}] samples in train/test"
-        )
-        # because this generates new train/test sample quantaties,
-        # the feature extraction has to be done again
-        glob_conf.config["FEATS"]["needs_feature_extraction"] = "True"
 
     def speakers_stated(self):
         test_speakers = self.util.config_val_data(self.name, "test", False)
@@ -704,10 +577,6 @@ class Dataset:
         else:
             train_speakers = ast.literal_eval(train_speakers)
             self.df_train = self.df[self.df.speaker.isin(train_speakers)]
-        self.util.debug(
-            f"{self.name} (speakers stated): "
-            f"[{self.df_train.shape[0]}/{self.df_test.shape[0]}] samples in train/test"
-        )
 
     def speakers_stated_3(self):
         test_speakers = self.util.config_val_data(self.name, "test", False)
@@ -730,10 +599,6 @@ class Dataset:
         else:
             train_speakers = ast.literal_eval(train_speakers)
             self.df_train = self.df[self.df.speaker.isin(train_speakers)]
-        self.util.debug(
-            f"{self.name} (speakers stated): "
-            f"[{self.df_train.shape[0]}/{self.df_dev.shape[0]}/{self.df_test.shape[0]}] samples in train/dev/test"
-        )
 
     def split_speakers(self):
         """One way to split train and eval sets: Specify percentage of evaluation speakers"""
@@ -744,18 +609,6 @@ class Dataset:
         test_spkrs = sample(list(df.speaker.unique()), test_num)
         self.df_test = df[df.speaker.isin(test_spkrs)]
         self.df_train = df[~df.index.isin(self.df_test.index)]
-        msg = (
-            f"{self.name} (speaker splits): "
-            f"[{self.df_train.shape[0]}/{self.df_test.shape[0]}]"
-            " samples in train/test"
-        )
-        self.util.debug(msg)
-        # because this generates new train/test sample quantaties,
-        # the feature extraction has to be done again
-        try:
-            glob_conf.config["FEATS"]["needs_feature_extraction"] = "True"
-        except KeyError:
-            pass
 
     def split_speakers_3(self):
         """One way to split train, dev and test sets: Specify percentage speakers."""
@@ -772,18 +625,6 @@ class Dataset:
         self.df_test = df[df.speaker.isin(test_spkrs)]
         self.df_dev = df[df.speaker.isin(dev_spkrs)]
         self.df_train = df[~df.speaker.isin(testdev_spkrs)]
-        msg = (
-            f"{self.name} (speaker splits): "
-            f"[{self.df_train.shape[0]}/{self.df_dev.shape[0]}/{self.df_test.shape[0]}]"
-            " samples in train/dev/test"
-        )
-        self.util.debug(msg)
-        # because this generates new train/test sample quantaties,
-        # the feature extraction has to be done again
-        try:
-            glob_conf.config["FEATS"]["needs_feature_extraction"] = "True"
-        except KeyError:
-            pass
 
     def random_split(self):
         """One way to split train and eval sets: Specify percentage of random samples."""
@@ -794,13 +635,6 @@ class Dataset:
         test_smpls = sample(list(df.index), test_num)
         self.df_test = df[df.index.isin(test_smpls)]
         self.df_train = df[~df.index.isin(self.df_test.index)]
-        self.util.debug(
-            f"{self.name}: [{self.df_train.shape[0]}/{self.df_test.shape[0]}]"
-            " samples in train/test"
-        )
-        # because this generates new train/test sample quantaties,
-        # the feature extraction has to be done again
-        glob_conf.config["FEATS"]["needs_feature_extraction"] = "True"
 
     def random_split_3(self):
         """One way to split train, dev and test sets: Specify random samples."""
@@ -816,15 +650,6 @@ class Dataset:
         self.df_test = df[df.speaker.isin(test_smpls)]
         self.df_dev = df[df.speaker.isin(dev_smpls)]
         self.df_train = df[~df.speaker.isin(testdev_smpls)]
-        msg = (
-            f"{self.name} (sample splits): "
-            f"[{self.df_train.shape[0]}/{self.df_dev.shape[0]}/{self.df_test.shape[0]}]"
-            " samples in train/dev/test"
-        )
-        self.util.debug(msg)
-        # because this generates new train/test sample quantaties,
-        # the feature extraction has to be done again
-        glob_conf.config["FEATS"]["needs_feature_extraction"] = "True"
 
     def _add_labels(self, df):
         df.is_labeled = self.is_labeled
@@ -843,7 +668,7 @@ class Dataset:
             if self.util.config_val_data(self.name, "value_counts", False):
                 if not self.got_gender or not self.got_speaker:
                     self.util.error(
-                        "can't plot value counts if no speaker or gender is" " given"
+                        "can't plot value counts if no speaker or gender is given"
                     )
                 else:
                     self.plot.describe_df(
@@ -860,7 +685,7 @@ class Dataset:
         if self.util.config_val_data(self.name, "value_counts", False):
             if not self.got_gender or not self.got_speaker:
                 self.util.error(
-                    "can't plot value counts if no speaker or gender is" " given"
+                    "can't plot value counts if no speaker or gender is given"
                 )
             else:
                 self.plot.describe_df(

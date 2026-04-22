@@ -12,14 +12,14 @@ from sklearn.manifold import TSNE
 import audeer
 from audmetric import concordance_cc as ccc
 
-# Maximum length for plot basename (excluding directory path) to avoid OSError [Errno 36]
-PLOT_BASENAME_MAX_LEN = 240
-
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.defines import Header
 from nkululeko.reporting.report_item import ReportItem
 import nkululeko.utils.stats as su
 from nkululeko.utils.util import Util
+
+# Maximum length for plot basename (excluding directory path) to avoid OSError [Errno 36]
+PLOT_BASENAME_MAX_LEN = 240
 
 
 class Plots:
@@ -341,7 +341,7 @@ class Plots:
         model_type = self.util.get_model_type()
         if dist_type == "hist" and model_type != "tree":
             ax = sns.histplot(plot_df, x=cont_col, hue=cat_col, kde=True)
-            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}):" f" {es}"
+            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}): {es}"
             ax.set_title(caption)
             ax.set_xlabel(f"{cont_col}")
             ax.set_ylabel(f"number of {ylab}")
@@ -355,7 +355,7 @@ class Plots:
                 warn_singular=False,
             )
             ax.set(xlabel=f"{cont_col}")
-            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}):" f" {es}"
+            caption = f"{ylab} {plot_df.shape[0]}. {cat_str} ({max_cat}): {es}"
             ax.figure.suptitle(caption)
         return ax, caption
 
@@ -493,7 +493,7 @@ class Plots:
         dim_num = int(self.util.config_val("EXPL", "scatter.dim", 2))
         # one up because of the runs (for explore module)
         fig_dir = os.path.join(self.util.get_path("fig_dir"), "..")
-        sample_selection = self.util.config_val("EXPL", "sample_selection", "all")
+        sample_selection = self.util.config_val("EXP", "sample_selection", "all")
         exp_name = self.util.get_name()
         filename = f"{label}_{exp_name}_{self.util.get_feattype_name()}_{sample_selection}_{dimred_type}_{str(dim_num)}d"
         filename = os.path.join(fig_dir, f"{filename}.{self.format}")
@@ -752,12 +752,13 @@ class Plots:
                     # Add bubble sizes to DataFrame for seaborn
                     plot_df["bubble_size"] = bubble_sizes
                     # Create scatter plot with seaborn
+                    plot_df[cat_var] = plot_df[cat_var].astype(float) 
                     ax = sns.scatterplot(
                         data=plot_df,
                         x=feat_x,
                         y=feat_y,
-                        size="bubble_size",
-                        sizes=(5, 50),  # min and max bubble sizes
+                       size="bubble_size",
+                       sizes=(5, 50),  # min and max bubble sizes
                         hue=cat_var,  # color by third variable
                         palette="viridis",
                         alpha=0.6,

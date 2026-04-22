@@ -121,7 +121,7 @@ def main():
             f"train shape : {expr.df_train.shape}, test shape:{expr.df_test.shape}"
         )
 
-        sample_selection = util.config_val("RESAMPLE", "sample_selection", "all")
+        sample_selection = util.config_val("EXP", "sample_selection", "all")
         if sample_selection == "all":
             df = pd.concat([expr.df_train, expr.df_test])
         elif sample_selection == "train":

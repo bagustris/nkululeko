@@ -15,7 +15,6 @@ from nkululeko.utils.dataframe import DataFrameMixin
 from nkululeko.utils.naming import NamingMixin
 from nkululeko.utils.storage import StorageMixin
 
-
 class Util(NamingMixin, StorageMixin, DataFrameMixin):
     # a list of words that need not to be warned upon if default values are
     # used
@@ -206,7 +205,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
                 except KeyError:
                     if default not in self.stopvals:
                         self.debug(
-                            f"value for {key} not found, using default:" f" {default}"
+                            f"value for {key} not found, using default: {default}"
                         )
                     return default
             if default not in self.stopvals:
