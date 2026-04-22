@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 1.5.0 (26-04-22)
+------------------------
+* Introduces Datasplitter to centralize split creation, label encoding, filtering, and feature extraction across datasets.
+* Updates Experiment to delegate split/feature extraction to Datasplitter, and adjusts the testing entrypoint accordingly.
+* Updates several example INI files (notably around EMODB) and performs small string/formatting cleanups.
+* Introduces EXP sample_selection as a single point to select processing of test/train/all splits
+* Added ONNX export for non-ANN models
+
 Version 1.4.1 (26-04-09)
 ------------------------
 * Added logfile storage

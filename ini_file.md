@@ -61,7 +61,10 @@
   * traindevtest = False
 * **sample_selection**: select the samples to process (e.g. for augmentation, re-sampling, etc.): either *train*, *test*, or *all*
   * sample_selection = all
-  
+* **export_onnx** = export the best trained model in [ONNX format](https://github.com/onnx/onnx).
+  * export_onnx = False
+
+
 ### DATA
 
 * **type**: just a flag now to mark continuous data, so it can be binned to categorical data (using *bins* and *labels*)
