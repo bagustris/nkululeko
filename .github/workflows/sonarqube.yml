@@ -35,6 +35,6 @@ jobs:
       - name: Run pytest with coverage
         run: |
           source .venv/bin/activate
-          pytest --cov=nkululeko --cov-report=xml --cov-branch tests/
+          pytest --cov=nkululeko --cov-branch tests/
         continue-on-error: false
 
