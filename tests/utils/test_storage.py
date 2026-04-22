@@ -158,6 +158,101 @@ class TestStorageMixin(unittest.TestCase):
             u.config["EXP"]["name"] = "pickletest"
             self.assertFalse(u.exist_pickle("nonexistent"))
 
+    # --- write_store / get_store with CSV format ---
+
+    def test_write_store_csv(self):
+        import pandas as pd
+
+        u = make_util()
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            path = f.name
+        try:
+            # Just test that write_store works with CSV format
+            u.write_store(df, path, "csv")
+            self.assertTrue(os.path.exists(path))
+        finally:
+            if os.path.exists(path):
+                os.unlink(path)
+
+    def test_write_store_unknown_format(self):
+        import pandas as pd
+
+        u = make_util()
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+            path = f.name
+        try:
+            with self.assertRaises(SystemExit):
+                u.write_store(df, path, "unknown")
+        finally:
+            if os.path.exists(path):
+                os.unlink(path)
+
+    def test_get_store_unknown_format(self):
+        u = make_util()
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+            path = f.name
+        try:
+            with self.assertRaises(SystemExit):
+                u.get_store(path, "unknown")
+        finally:
+            if os.path.exists(path):
+                os.unlink(path)
+
+    # --- save_to_store method ---
+
+    def test_save_to_store(self):
+        import pandas as pd
+
+        u = make_util()
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        with tempfile.TemporaryDirectory() as tmpdir:
+            u.config["EXP"]["root"] = tmpdir
+            u.config["EXP"]["name"] = "storetest"
+            name = "mydata"
+            u.save_to_store(df, name)
+            # Check that file was created
+            store_path = os.path.join(tmpdir, "storetest", "store")
+            expected_file = os.path.join(store_path, f"{name}.pkl")
+            self.assertTrue(os.path.exists(expected_file))
+
+    # --- read_first_line_floats edge cases ---
+
+    def test_read_first_line_floats_empty_after_strip(self):
+        u = make_util()
+        path = self._write_tmp("   \n")
+        try:
+            result = u.read_first_line_floats(path, strip_chars=" ")
+            self.assertEqual(result, [])
+        finally:
+            os.unlink(path)
+
+    def test_read_first_line_floats_invalid_conversion(self):
+        u = make_util()
+        path = self._write_tmp("1.0 invalid 3.0\n")
+        try:
+            # The function calls sys.exit() on error, so it raises SystemExit
+            with self.assertRaises(SystemExit):
+                result = u.read_first_line_floats(path)
+        finally:
+            os.unlink(path)
+
+    def test_read_first_line_floats_file_not_found(self):
+        u = make_util()
+        # Should handle FileNotFoundError by calling sys.exit()
+        with self.assertRaises(SystemExit):
+            result = u.read_first_line_floats("/nonexistent/file.txt")
+
+    def test_read_first_line_floats_io_error(self):
+        u = make_util()
+        # Create a directory instead of a file to trigger IOError
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "file.txt")
+            os.mkdir(path)  # Make it a directory
+            with self.assertRaises(SystemExit):
+                result = u.read_first_line_floats(path)
+
 
 if __name__ == "__main__":
     unittest.main()
