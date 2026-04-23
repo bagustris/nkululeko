@@ -75,13 +75,12 @@ class MLP_Reg_model(Model):
         # set up the data_loaders
         if feats_train.isna().to_numpy().any():
             self.util.debug(
-                f"Model, train: replacing {feats_train.isna().sum().sum()} NANs"
-                " with 0"
+                f"Model, train: replacing {feats_train.isna().sum().sum()} NANs with 0"
             )
             feats_train = feats_train.fillna(0)
         if feats_test.isna().to_numpy().any():
             self.util.debug(
-                f"Model, test: replacing {feats_test.isna().sum().sum()} NANs" " with 0"
+                f"Model, test: replacing {feats_test.isna().sum().sum()} NANs with 0"
             )
             feats_test = feats_test.fillna(0)
         self.trainloader = self.get_loader(feats_train, df_train, True)

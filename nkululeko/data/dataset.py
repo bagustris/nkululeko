@@ -550,6 +550,7 @@ class Dataset:
     def extract_features(self, feats_types):
         if self.feats is None:
             from nkululeko.feature_extractor import FeatureExtractor
+
             self.feature_extractor = FeatureExtractor(
                 self.df, feats_types, self.name, "all"
             )

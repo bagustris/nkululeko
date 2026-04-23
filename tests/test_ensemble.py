@@ -18,26 +18,32 @@ def binary_predictions():
     """Create sample binary prediction dataframes for ensemble testing."""
     labels = ["happy", "sad"]
 
-    df1 = pd.DataFrame({
-        "predicted": ["happy", "sad", "happy", "sad"],
-        "happy": [0.8, 0.3, 0.7, 0.4],
-        "sad": [0.2, 0.7, 0.3, 0.6],
-        "uncertainty": [0.2, 0.3, 0.3, 0.4],
-    })
+    df1 = pd.DataFrame(
+        {
+            "predicted": ["happy", "sad", "happy", "sad"],
+            "happy": [0.8, 0.3, 0.7, 0.4],
+            "sad": [0.2, 0.7, 0.3, 0.6],
+            "uncertainty": [0.2, 0.3, 0.3, 0.4],
+        }
+    )
 
-    df2 = pd.DataFrame({
-        "predicted": ["happy", "happy", "sad", "sad"],
-        "happy": [0.9, 0.6, 0.4, 0.3],
-        "sad": [0.1, 0.4, 0.6, 0.7],
-        "uncertainty": [0.1, 0.4, 0.4, 0.3],
-    })
+    df2 = pd.DataFrame(
+        {
+            "predicted": ["happy", "happy", "sad", "sad"],
+            "happy": [0.9, 0.6, 0.4, 0.3],
+            "sad": [0.1, 0.4, 0.6, 0.7],
+            "uncertainty": [0.1, 0.4, 0.4, 0.3],
+        }
+    )
 
-    df3 = pd.DataFrame({
-        "predicted": ["happy", "sad", "sad", "sad"],
-        "happy": [0.7, 0.4, 0.3, 0.2],
-        "sad": [0.3, 0.6, 0.7, 0.8],
-        "uncertainty": [0.3, 0.4, 0.3, 0.2],
-    })
+    df3 = pd.DataFrame(
+        {
+            "predicted": ["happy", "sad", "sad", "sad"],
+            "happy": [0.7, 0.4, 0.3, 0.2],
+            "sad": [0.3, 0.6, 0.7, 0.8],
+            "uncertainty": [0.3, 0.4, 0.3, 0.2],
+        }
+    )
 
     return [df1, df2, df3], labels
 
@@ -47,29 +53,35 @@ def multiclass_predictions():
     """Create sample multiclass prediction dataframes."""
     labels = ["happy", "sad", "angry"]
 
-    df1 = pd.DataFrame({
-        "predicted": ["happy", "sad", "angry"],
-        "happy": [0.7, 0.1, 0.2],
-        "sad": [0.2, 0.7, 0.1],
-        "angry": [0.1, 0.2, 0.7],
-        "uncertainty": [0.3, 0.3, 0.3],
-    })
+    df1 = pd.DataFrame(
+        {
+            "predicted": ["happy", "sad", "angry"],
+            "happy": [0.7, 0.1, 0.2],
+            "sad": [0.2, 0.7, 0.1],
+            "angry": [0.1, 0.2, 0.7],
+            "uncertainty": [0.3, 0.3, 0.3],
+        }
+    )
 
-    df2 = pd.DataFrame({
-        "predicted": ["happy", "angry", "angry"],
-        "happy": [0.6, 0.2, 0.1],
-        "sad": [0.3, 0.3, 0.2],
-        "angry": [0.1, 0.5, 0.7],
-        "uncertainty": [0.4, 0.5, 0.3],
-    })
+    df2 = pd.DataFrame(
+        {
+            "predicted": ["happy", "angry", "angry"],
+            "happy": [0.6, 0.2, 0.1],
+            "sad": [0.3, 0.3, 0.2],
+            "angry": [0.1, 0.5, 0.7],
+            "uncertainty": [0.4, 0.5, 0.3],
+        }
+    )
 
-    df3 = pd.DataFrame({
-        "predicted": ["sad", "sad", "angry"],
-        "happy": [0.3, 0.2, 0.15],
-        "sad": [0.4, 0.6, 0.15],
-        "angry": [0.3, 0.2, 0.7],
-        "uncertainty": [0.4, 0.4, 0.3],
-    })
+    df3 = pd.DataFrame(
+        {
+            "predicted": ["sad", "sad", "angry"],
+            "happy": [0.3, 0.2, 0.15],
+            "sad": [0.4, 0.6, 0.15],
+            "angry": [0.3, 0.2, 0.7],
+            "uncertainty": [0.4, 0.4, 0.3],
+        }
+    )
 
     return [df1, df2, df3], labels
 
@@ -207,7 +219,9 @@ class TestPerformanceWeightedEnsemble:
     def test_basic_performance_weighted(self, binary_predictions):
         preds_ls, labels = binary_predictions
         weights = [0.5, 0.3, 0.2]
-        predictions, confidences = performance_weighted_ensemble(preds_ls, labels, weights)
+        predictions, confidences = performance_weighted_ensemble(
+            preds_ls, labels, weights
+        )
         assert len(predictions) == 4
         assert len(confidences) == 4
 
@@ -237,5 +251,6 @@ class TestEnsemblePredictions:
     def test_unknown_method_raises_error(self):
         """Test that unknown method raises ValueError."""
         from nkululeko.ensemble import ensemble_predictions
+
         with pytest.raises(ValueError):
             ensemble_predictions([], "invalid_method", 1.0, None, True)

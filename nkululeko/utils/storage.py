@@ -105,7 +105,11 @@ class StorageMixin:
                     self.debug(f"File {file_path} is empty")
                     return []
 
-                first_line = first_line.strip(strip_chars) if strip_chars is not None else first_line.strip()
+                first_line = (
+                    first_line.strip(strip_chars)
+                    if strip_chars is not None
+                    else first_line.strip()
+                )
 
                 if not first_line:
                     self.debug(f"First line of {file_path} is empty after stripping")
@@ -118,7 +122,11 @@ class StorageMixin:
                             delimiter = test_delimiter
                             break
 
-                string_values = first_line.split(delimiter) if delimiter is not None else [first_line]
+                string_values = (
+                    first_line.split(delimiter)
+                    if delimiter is not None
+                    else [first_line]
+                )
 
                 float_values = []
                 for value in string_values:

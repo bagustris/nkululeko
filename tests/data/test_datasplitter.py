@@ -1,7 +1,6 @@
 """Tests for nkululeko/data/datasplitter.py — Datasplitter class."""
 
 import configparser
-import pickle
 from datetime import timedelta
 
 import pandas as pd

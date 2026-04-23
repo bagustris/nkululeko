@@ -1,4 +1,3 @@
-import pytest
 import configparser
 import tempfile
 import os

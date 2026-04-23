@@ -98,7 +98,7 @@ class Silero_segmenter:
                 min_length = float(self.util.config_val("SEGMENT", "min_length", 2))
             else:
                 min_length = 2
-            self.util.debug(f"segmenting with max length: {max_length+min_length}")
+            self.util.debug(f"segmenting with max length: {max_length + min_length}")
         for file, values in tqdm(df.iterrows(), total=len(df)):
             if max_length:
                 index = self.get_segmentation(file, min_length, max_length)

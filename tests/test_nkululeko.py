@@ -9,6 +9,7 @@ from pathlib import Path
 class DummyReport:
     class Result:
         test = 0.85
+
     result = Result()
 
 
@@ -88,6 +89,7 @@ class TestNkululekoDoit:
         try:
             with patch("nkululeko.nkululeko.exp.Experiment", DummyExperiment):
                 from nkululeko.nkululeko import doit
+
                 result, last_epoch = doit(config_file)
                 assert result == 0.85
                 assert isinstance(last_epoch, int)
@@ -98,6 +100,7 @@ class TestNkululekoDoit:
     def test_doit_missing_config_exits(self):
         with pytest.raises(SystemExit):
             from nkululeko.nkululeko import doit
+
             doit("nonexistent_config.ini")
 
     def test_doit_result_type(self):
@@ -105,6 +108,7 @@ class TestNkululekoDoit:
         try:
             with patch("nkululeko.nkululeko.exp.Experiment", DummyExperiment):
                 from nkululeko.nkululeko import doit
+
                 result, last_epoch = doit(config_file)
                 assert isinstance(result, float)
                 assert isinstance(last_epoch, int)
@@ -117,6 +121,7 @@ class TestNkululekMain:
 
     def test_version_string(self):
         from nkululeko.constants import VERSION
+
         assert isinstance(VERSION, str)
         assert len(VERSION) > 0
 

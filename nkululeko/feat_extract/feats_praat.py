@@ -19,7 +19,9 @@ class PraatSet(Featureset):
 
     def __init__(self, name, data_df, feats_type):
         super().__init__(name, data_df, feats_type)
-        self.print_feats = self.util.config_val("FEATS", "print_feats", "False").lower() == "true"
+        self.print_feats = (
+            self.util.config_val("FEATS", "print_feats", "False").lower() == "true"
+        )
 
     def extract(self):
         """Extract the features based on the initialized dataset or re-open them when found on disk."""

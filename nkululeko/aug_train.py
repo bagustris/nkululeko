@@ -30,8 +30,7 @@ def doit(config_file):
     expr.set_module(module)
     util = Util(module)
     util.debug(
-        f"running {expr.name} from config {config_file}, nkululeko version"
-        f" {VERSION}"
+        f"running {expr.name} from config {config_file}, nkululeko version {VERSION}"
     )
 
     if util.config_val("EXP", "no_warnings", False):

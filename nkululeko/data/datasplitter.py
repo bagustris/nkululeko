@@ -290,7 +290,6 @@ class Datasplitter:
         self.util.debug(f"All dataset features shape: {all_feats.shape}")
         return all_feats
 
-
     def extract_feats(self):
         """Extract the features for train and dev sets.
 

@@ -29,8 +29,7 @@ def doit(config_file):
     expr.set_module(module)
     util = Util(module)
     util.debug(
-        f"running {expr.name} from config {config_file}, nkululeko version"
-        f" {VERSION}"
+        f"running {expr.name} from config {config_file}, nkululeko version {VERSION}"
     )
 
     if util.config_val("EXP", "no_warnings", False):
@@ -63,9 +62,8 @@ def doit(config_file):
     o_path = util.config_val("EXP", "export_onnx", "False")
     if o_path.lower() in ["true", "1", "yes"]:
         util.info(f"Exporting ONNX model to {o_path}")
-        o_path = o_path.replace('"', '')
+        o_path = o_path.replace('"', "")
         expr.runmgr.get_best_model().export_onnx(str(o_path))
-
 
     print("DONE")
     return result, int(np.asarray(last_epochs).min())

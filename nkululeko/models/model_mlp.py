@@ -92,13 +92,12 @@ class MLPModel(Model):
         self.num_workers = self.n_jobs
         if feats_train.isna().to_numpy().any():
             self.util.debug(
-                f"Model, train: replacing {feats_train.isna().sum().sum()} NANs"
-                " with 0"
+                f"Model, train: replacing {feats_train.isna().sum().sum()} NANs with 0"
             )
             feats_train = feats_train.fillna(0)
         if feats_test.isna().to_numpy().any():
             self.util.debug(
-                f"Model, test: replacing {feats_test.isna().sum().sum()} NANs" " with 0"
+                f"Model, test: replacing {feats_test.isna().sum().sum()} NANs with 0"
             )
             feats_test = feats_test.fillna(0)
         # set up the data_loaders

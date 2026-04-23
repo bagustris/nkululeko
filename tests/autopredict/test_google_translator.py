@@ -105,7 +105,9 @@ class TestGoogleTranslator:
         mock_isfile.return_value = False
 
         # Mock the batch translation
-        mock_asyncio.run.side_effect = lambda coro: (coro.close(), ["hello", "world"])[1]
+        mock_asyncio.run.side_effect = lambda coro: (coro.close(), ["hello", "world"])[
+            1
+        ]
 
         translator = GoogleTranslator(language="en", util=mock_util)
 

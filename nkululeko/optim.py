@@ -35,7 +35,7 @@ def doit(config_file):
     optimization_time = time.time() - start_time
 
     optimizer.util.debug(
-        f"Optimization time: {optimization_time:.2f} seconds ({optimization_time/60:.2f} minutes)"
+        f"Optimization time: {optimization_time:.2f} seconds ({optimization_time / 60:.2f} minutes)"
     )
     print("DONE")
     return best_params, best_result

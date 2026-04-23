@@ -28,7 +28,7 @@ class MLD_set(Featureset):
             os.remove(storage)
         if not os.path.isfile(storage):
             self.util.debug(
-                "extracting midleveldescriptor features, this might take a" " while..."
+                "extracting midleveldescriptor features, this might take a while..."
             )
         else:
             self.util.debug("reusing previously extracted midleveldescriptor features")

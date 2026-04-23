@@ -78,7 +78,7 @@ class Openxbow(Featureset):
             if with_os:
                 # extract smile functionals
                 self.util.debug(
-                    "extracting openSmile functionals, this might take a" " while..."
+                    "extracting openSmile functionals, this might take a while..."
                 )
                 smile = opensmile.Smile(
                     feature_set=opensmile.FeatureSet.eGeMAPSv02,  # always use eGemaps for this

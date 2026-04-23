@@ -74,7 +74,11 @@ class NamingMixin:
     def _get_feat_type_string(self):
         """Return feature type as a dash-joined string with trailing underscore."""
         ft_value = self.config["FEATS"]["type"]
-        if isinstance(ft_value, str) and ft_value.startswith("[") and ft_value.endswith("]"):
+        if (
+            isinstance(ft_value, str)
+            and ft_value.startswith("[")
+            and ft_value.endswith("]")
+        ):
             return "-".join(ast.literal_eval(ft_value)) + "_"
         return ft_value + "_"
 
@@ -132,7 +136,9 @@ class NamingMixin:
             ["FEATS", "wav2vec2.layer"],
         ]
         for option in options:
-            return_string += self._get_value_descript(option[0], option[1]).replace(".", "-")
+            return_string += self._get_value_descript(option[0], option[1]).replace(
+                ".", "-"
+            )
             return_string = return_string.replace("__", "_").strip("_")
 
         return_string += self._get_adm_branch_suffix()

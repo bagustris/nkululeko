@@ -148,7 +148,7 @@ def run_flags_experiments(config_file):
     end_time = time.time()
     total_time = end_time - start_time
     print(
-        f"\nFlags experiments time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)"
+        f"\nFlags experiments time: {total_time:.2f} seconds ({total_time / 60:.2f} minutes)"
     )
     print("DONE")
 
@@ -177,9 +177,9 @@ def _run_single_flags_experiment(base_experiment, combo, config):
         if param == "models":
             experiment_config["MODEL"]["type"] = value  # Set model type directly
         elif param == "features":
-            experiment_config["FEATS"][
-                "type"
-            ] = f"['{value}']"  # Set feature type correctly
+            experiment_config["FEATS"]["type"] = (
+                f"['{value}']"  # Set feature type correctly
+            )
         elif param == "balancing":
             # Only set balancing if not "none"
             if value.lower() != "none":

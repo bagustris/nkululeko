@@ -1,8 +1,6 @@
 # test_storage.py - unit tests for nkululeko/utils/storage.py
 import configparser
-import json
 import os
-import pickle
 import tempfile
 import unittest
 
@@ -29,7 +27,6 @@ type = os
 
 
 class TestStorageMixin(unittest.TestCase):
-
     # --- save_json / read_json round-trip ---
 
     def test_save_and_read_json(self):

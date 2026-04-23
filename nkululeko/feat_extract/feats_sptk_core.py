@@ -279,7 +279,9 @@ def _read_audio(file, offset=None, duration=None):
             raise RuntimeError(
                 f"ffmpeg failed to decode {file}: {result.stderr.decode()}"
             )
-        audio = np.frombuffer(result.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+        audio = (
+            np.frombuffer(result.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+        )
         return audio[np.newaxis, :], SR  # Return shape (1, n_samples)
 
 

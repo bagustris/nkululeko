@@ -7,7 +7,6 @@ from nkululeko.reporting.report_item import ReportItem
 
 
 class TestReportItem(unittest.TestCase):
-
     def test_init_without_image(self):
         """Test ReportItem initialization without image."""
         item = ReportItem("topic", "caption", "contents")

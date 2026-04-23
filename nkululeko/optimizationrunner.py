@@ -217,7 +217,9 @@ class OptimizationRunner:
         best_score = -float("inf") if self.util.high_is_good() else float("inf")
 
         for i, params in enumerate(combinations):
-            self.util.debug(f"Testing combination {i+1}/{len(combinations)}: {params}")
+            self.util.debug(
+                f"Testing combination {i + 1}/{len(combinations)}: {params}"
+            )
 
             self._update_config_with_params(params)
 
@@ -304,7 +306,9 @@ class OptimizationRunner:
         best_score = -float("inf") if self.util.high_is_good() else float("inf")
 
         for i, params in enumerate(combinations):
-            self.util.debug(f"Testing combination {i+1}/{len(combinations)}: {params}")
+            self.util.debug(
+                f"Testing combination {i + 1}/{len(combinations)}: {params}"
+            )
 
             # Run cross-validation for this parameter combination
             cv_scores = []
@@ -315,7 +319,7 @@ class OptimizationRunner:
                         expr.feats_train, expr.df_train[self.config["DATA"]["target"]]
                     )
                 ):
-                    self.util.debug(f"  Fold {fold+1}/{self.cv_folds}")
+                    self.util.debug(f"  Fold {fold + 1}/{self.cv_folds}")
 
                     # Create fold-specific data
                     fold_train_feats = expr.feats_train.iloc[train_idx]
@@ -763,7 +767,7 @@ class OptimizationRunner:
         if "nlayers" in params and "nnodes" in params:
             nlayers = params["nlayers"]
             nnodes = params["nnodes"]
-            layers = {f"l{i+1}": nnodes for i in range(nlayers)}
+            layers = {f"l{i + 1}": nnodes for i in range(nlayers)}
             self.config["MODEL"]["layers"] = str(layers)
 
         if "lr" in params:

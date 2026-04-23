@@ -311,9 +311,11 @@ class ADMModel(Model):
                 )
 
                 # Clean non-finite logits before storing; move to CPU to match preallocated tensors
-                batch_logits = torch.nan_to_num(
-                    batch_logits, nan=0.0, posinf=10.0, neginf=-10.0
-                ).detach().cpu()
+                batch_logits = (
+                    torch.nan_to_num(batch_logits, nan=0.0, posinf=10.0, neginf=-10.0)
+                    .detach()
+                    .cpu()
+                )
 
                 logits[start_index:end_index] = batch_logits
                 targets[start_index:end_index] = labels.detach().cpu()
@@ -401,7 +403,7 @@ class ADMModel(Model):
         self.run = run
         self.epoch = epoch
         dir = self.util.get_path("model_dir")
-        
+
         # Include branch configuration in model filename
         # e.g., "tsp" for time+spectral+phase, "ts" for time+spectral
         branch_suffix = "".join([b[0] for b in self.branches])

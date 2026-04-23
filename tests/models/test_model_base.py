@@ -1,7 +1,6 @@
 """Unit tests for Model base class (nkululeko/models/model.py)."""
 
 import configparser
-from unittest.mock import patch
 
 import numpy as np
 import pandas as pd

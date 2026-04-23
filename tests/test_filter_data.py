@@ -1,7 +1,6 @@
 """Tests for nkululeko/filter_data.py — DataFilter class."""
 
 import configparser
-import tempfile
 from datetime import timedelta
 
 import pandas as pd
@@ -62,9 +61,9 @@ def speaker_df():
 def segmented_df():
     """DataFrame with audformat segmented MultiIndex for duration tests."""
     entries = [
-        ("a.wav", 0.0, 0.5),   # 0.5 s — short
-        ("b.wav", 0.0, 2.0),   # 2.0 s — medium
-        ("c.wav", 0.0, 5.0),   # 5.0 s — long
+        ("a.wav", 0.0, 0.5),  # 0.5 s — short
+        ("b.wav", 0.0, 2.0),  # 2.0 s — medium
+        ("c.wav", 0.0, 5.0),  # 5.0 s — long
         ("d.wav", 0.0, 10.0),  # 10.0 s — very long
     ]
     idx = _make_segmented_index(entries)

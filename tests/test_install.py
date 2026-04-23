@@ -54,9 +54,9 @@ def main(python_version=None):
         return 1
 
     # Use uv pip for faster installation
-    pip_cmd = f"uv pip"
+    pip_cmd = "uv pip"
     venv_python = f"./{python_ver}/bin/python"
-    
+
     # Set the virtual environment for uv
     os.environ["VIRTUAL_ENV"] = str(Path(test_dir) / python_ver)
 
@@ -64,11 +64,13 @@ def main(python_version=None):
     # because torchaudio doesn't have compatible wheels yet
     if python_ver >= "3.14":
         print("Installing nkululeko (without deps for Python 3.14+)...")
-        stdout, stderr, returncode = run_command(f"{pip_cmd} install --no-deps -e {repo_root}")
+        stdout, stderr, returncode = run_command(
+            f"{pip_cmd} install --no-deps -e {repo_root}"
+        )
         if returncode != 0:
             print(f"Failed to install nkululeko: {stderr}")
             return 1
-        
+
         # Install dependencies manually, excluding torchaudio
         print("Installing nkululeko dependencies (excluding torchaudio)...")
         stdout, stderr, returncode = run_command(

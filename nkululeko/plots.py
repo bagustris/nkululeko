@@ -752,13 +752,13 @@ class Plots:
                     # Add bubble sizes to DataFrame for seaborn
                     plot_df["bubble_size"] = bubble_sizes
                     # Create scatter plot with seaborn
-                    plot_df[cat_var] = plot_df[cat_var].astype(float) 
+                    plot_df[cat_var] = plot_df[cat_var].astype(float)
                     ax = sns.scatterplot(
                         data=plot_df,
                         x=feat_x,
                         y=feat_y,
-                       size="bubble_size",
-                       sizes=(5, 50),  # min and max bubble sizes
+                        size="bubble_size",
+                        sizes=(5, 50),  # min and max bubble sizes
                         hue=cat_var,  # color by third variable
                         palette="viridis",
                         alpha=0.6,

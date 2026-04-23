@@ -39,11 +39,13 @@ def mock_model():
 @pytest.fixture
 def sample_dataframe():
     """Create a sample dataframe for testing."""
-    df = pd.DataFrame({
-        "emotion": [0, 1, 0, 1],
-        "speaker": ["s1", "s2", "s3", "s4"],
-        "class_label": ["happy", "sad", "happy", "sad"],
-    })
+    df = pd.DataFrame(
+        {
+            "emotion": [0, 1, 0, 1],
+            "speaker": ["s1", "s2", "s3", "s4"],
+            "class_label": ["happy", "sad", "happy", "sad"],
+        }
+    )
     df.is_labeled = True
     return df
 
@@ -59,9 +61,14 @@ def label_encoder():
 class TestTestPredictorInit:
     """Test TestPredictor initialization."""
 
-    def test_initialization(self, mock_model, sample_dataframe, label_encoder, setup_glob_conf):
+    def test_initialization(
+        self, mock_model, sample_dataframe, label_encoder, setup_glob_conf
+    ):
         from nkululeko.testing_predictor import TestPredictor
-        predictor = TestPredictor(mock_model, sample_dataframe, label_encoder, "test_results.csv")
+
+        predictor = TestPredictor(
+            mock_model, sample_dataframe, label_encoder, "test_results.csv"
+        )
         assert predictor.model is mock_model
         assert predictor.orig_df is sample_dataframe
         assert predictor.label_encoder is label_encoder
@@ -72,7 +79,9 @@ class TestTestPredictorInit:
 class TestTestPredictorPredict:
     """Test predict_and_store method."""
 
-    def test_predict_basic_path(self, mock_model, sample_dataframe, label_encoder, setup_glob_conf):
+    def test_predict_basic_path(
+        self, mock_model, sample_dataframe, label_encoder, setup_glob_conf
+    ):
         """Test the basic prediction path (no label_data, no tests)."""
         from nkululeko.testing_predictor import TestPredictor
 
@@ -91,11 +100,13 @@ class TestTestPredictorPredict:
 
     def test_predict_with_class_label_rename(self, label_encoder, setup_glob_conf):
         """Test that class_label column is properly renamed."""
-        df = pd.DataFrame({
-            "emotion": [0, 1],
-            "class_label": ["happy", "sad"],
-            "speaker": ["s1", "s2"],
-        })
+        df = pd.DataFrame(
+            {
+                "emotion": [0, 1],
+                "class_label": ["happy", "sad"],
+                "speaker": ["s1", "s2"],
+            }
+        )
         df.is_labeled = True
 
         model = MagicMock()
@@ -103,6 +114,7 @@ class TestTestPredictorPredict:
 
         tmpfile = tempfile.NamedTemporaryFile(suffix=".csv", delete=False).name
         from nkululeko.testing_predictor import TestPredictor
+
         predictor = TestPredictor(model, df, label_encoder, tmpfile)
 
         predictor.predict_and_store()

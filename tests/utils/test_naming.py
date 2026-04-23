@@ -1,6 +1,5 @@
 # test_naming.py - unit tests for nkululeko/utils/naming.py
 import configparser
-import sys
 import unittest
 
 import nkululeko.glob_conf as glob_conf
@@ -31,7 +30,6 @@ type = os
 
 
 class TestNamingMixin(unittest.TestCase):
-
     def test_get_model_description_basic(self):
         u = make_util()
         desc = u.get_model_description()

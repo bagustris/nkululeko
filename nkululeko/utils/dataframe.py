@@ -20,15 +20,15 @@ class DataFrameMixin:
             or isinstance(pd_series.dtype, pd.BooleanDtype)
             or isinstance(pd_series.dtype, pd.StringDtype)
         )
-    
+
     def is_numeric(self, pd_series):
         """Check if a dataframe column is numeric.
-        
+
         Uses pandas.api.types.is_numeric_dtype to properly handle all numeric dtypes
         including int32, float32, int64, float64, and nullable integer/float types.
         """
         return is_numeric_dtype(pd_series)
-     
+
     def make_segmented_index(self, df):
         if len(df) == 0:
             return df
@@ -38,7 +38,15 @@ class DataFrameMixin:
         return df
 
     def copy_flags(self, df_source, df_target):
-        for flag in ("is_labeled", "is_test", "is_train", "is_val", "got_gender", "got_age", "got_speaker"):
+        for flag in (
+            "is_labeled",
+            "is_test",
+            "is_train",
+            "is_val",
+            "got_gender",
+            "got_age",
+            "got_speaker",
+        ):
             if hasattr(df_source, flag):
                 setattr(df_target, flag, getattr(df_source, flag))
 

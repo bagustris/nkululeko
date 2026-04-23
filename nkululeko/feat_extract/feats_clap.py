@@ -4,7 +4,6 @@ import os
 
 import audiofile
 import laion_clap
-import pandas as pd
 
 import nkululeko.glob_conf as glob_conf
 from nkululeko.feat_extract.featureset import Featureset

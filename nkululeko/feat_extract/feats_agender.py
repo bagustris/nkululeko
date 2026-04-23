@@ -52,7 +52,7 @@ class AgenderSet(Featureset):
         no_reuse = eval(self.util.config_val("FEATS", "no_reuse", "False"))
         if no_reuse or extract or not os.path.isfile(storage):
             self.util.debug(
-                "extracting agender model embeddings, this might take a" " while..."
+                "extracting agender model embeddings, this might take a while..."
             )
             if not self.model_loaded:
                 self._load_model()

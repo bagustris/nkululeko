@@ -86,8 +86,7 @@ class Model:
             predict_y = self.clf.predict(truth_x)
             report = Reporter(truth_y.astype(float), predict_y, self.run, self.epoch)
             self.util.debug(
-                f"result for fold {g_index}:"
-                f" {report.get_result().get_test_result()} "
+                f"result for fold {g_index}: {report.get_result().get_test_result()} "
             )
             results.append(float(report.get_result().test))
             truths.append(truth_y)

@@ -175,7 +175,6 @@ class TestNumericHelpers:
         assert u.to_4_digits_str(0.12345) == "0.1234"
 
     def test_to_4_digits_str_nan(self):
-        import math
 
         u = Util("test")
         assert u.to_4_digits_str(float("nan")) == "nan"
@@ -209,7 +208,9 @@ class TestSetupLogging:
         glob_conf.config["EXP"]["name"] = "logtest"
         Util("test")
         logger = logging.getLogger(util_mod.__name__)
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
         assert len(file_handlers) == 1
         assert file_handlers[0].baseFilename.endswith(".log")
 
@@ -221,7 +222,9 @@ class TestSetupLogging:
         Util("test")
         Util("test2")
         logger = logging.getLogger(util_mod.__name__)
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
         assert len(file_handlers) == 1
 
     def test_file_handler_replaced_when_experiment_changes(self, tmp_path):
@@ -232,14 +235,18 @@ class TestSetupLogging:
         glob_conf.config["EXP"]["name"] = "exp_one"
         Util("test")
         logger = logging.getLogger(util_mod.__name__)
-        first_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        first_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
         assert len(first_handlers) == 1
         first_path = first_handlers[0].baseFilename
 
         # Second experiment with different name
         glob_conf.config["EXP"]["name"] = "exp_two"
         Util("test")
-        second_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        second_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
         assert len(second_handlers) == 1
         assert second_handlers[0].baseFilename != first_path
         assert "exp_two" in second_handlers[0].baseFilename
@@ -250,7 +257,9 @@ class TestSetupLogging:
         glob_conf.config = None
         Util("test", has_config=False)
         logger = logging.getLogger(util_mod.__name__)
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
         assert len(file_handlers) == 0
 
     def test_oserror_falls_back_to_console_only(self, tmp_path, monkeypatch):
@@ -259,11 +268,14 @@ class TestSetupLogging:
 
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "logtest"
+
         def raise_oserror(*a, **kw):
             raise OSError("disk full")
 
         monkeypatch.setattr(audeer, "mkdir", raise_oserror)
         Util("test")  # Should not raise
         logger = logging.getLogger(util_mod.__name__)
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
         assert len(file_handlers) == 0

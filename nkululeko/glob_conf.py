@@ -11,6 +11,7 @@ target = None
 split3 = False
 got_speaker = False
 
+
 def init_config(config_obj):
     global config
     config = config_obj

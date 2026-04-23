@@ -14,10 +14,11 @@ sys.path.insert(0, str(nkululeko_root))
 
 from nkululeko.reporting.reporter import equal_error_rate
 
+
 def test_eer():
     """Test EER calculation with known data."""
     print("Testing Equal Error Rate implementation...")
-    
+
     # Test case 1: Perfect classification
     print("\nTest 1: Perfect classification (EER should be ~0)")
     y_true = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
@@ -25,7 +26,7 @@ def test_eer():
     eer = equal_error_rate(y_true, y_score)
     print(f"  EER = {eer:.4f}")
     assert eer < 0.1, "EER should be very low for perfect classification"
-    
+
     # Test case 2: Random classification
     print("\nTest 2: Random-like classification (EER should be ~0.5)")
     rng = np.random.default_rng(42)
@@ -34,7 +35,7 @@ def test_eer():
     eer = equal_error_rate(y_true, y_score)
     print(f"  EER = {eer:.4f}")
     assert 0.3 < eer < 0.7, "EER should be around 0.5 for random classification"
-    
+
     # Test case 3: Moderate classification
     print("\nTest 3: Moderate classification")
     y_true = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1] * 5)
@@ -42,8 +43,9 @@ def test_eer():
     eer = equal_error_rate(y_true, y_score)
     print(f"  EER = {eer:.4f}")
     assert 0 <= eer <= 1, "EER should be between 0 and 1 (inclusive)"
-    
+
     print("\n✅ All EER tests passed!")
+
 
 if __name__ == "__main__":
     try:
@@ -51,5 +53,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

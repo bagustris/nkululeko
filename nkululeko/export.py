@@ -30,8 +30,7 @@ def main():
     expr = Experiment(config)
     util = Util("export")
     util.debug(
-        f"running {expr.name} from config {config_file}, nkululeko version"
-        f" {VERSION}"
+        f"running {expr.name} from config {config_file}, nkululeko version {VERSION}"
     )
 
     if util.config_val("EXP", "no_warnings", False):

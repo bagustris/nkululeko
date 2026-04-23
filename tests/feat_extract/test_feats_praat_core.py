@@ -1,12 +1,9 @@
 import os
-import tempfile
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
-import parselmouth
 import pytest
-from scipy.stats import lognorm
 
 from nkululeko.feat_extract.feats_praat_core import (
     AudioFeatureExtractor,
@@ -19,7 +16,6 @@ from nkululeko.feat_extract.feats_praat_core import (
 
 
 class TestAudioFeatureExtractor:
-
     @pytest.fixture
     def extractor(self):
         return AudioFeatureExtractor(f0min=75, f0max=300)
@@ -160,7 +156,6 @@ class TestAudioFeatureExtractor:
 
 
 class TestRunPCA:
-
     def test_run_pca_valid_data(self):
         # Create test dataframe with jitter and shimmer measures
         data = {
@@ -233,7 +228,6 @@ class TestRunPCA:
 
 
 class TestAddDerivedFeatures:
-
     def test_add_derived_features(self):
         # Create test dataframe with required columns
         data = {
@@ -300,21 +294,18 @@ class TestAddDerivedFeatures:
 
 
 class TestComputeFeatures:
-
     def test_compute_features_function_exists(self):
         # Simple test to verify the function exists and is importable
         assert callable(compute_features)
 
 
 class TestSpeechRate:
-
     def test_speech_rate_function_exists(self):
         # Simple test to verify the function exists and is importable
         assert callable(speech_rate)
 
 
 class TestGetSpeechRate:
-
     def test_get_speech_rate_function_exists(self):
         # Simple test to verify the function exists and is importable
         assert callable(get_speech_rate)
@@ -326,7 +317,6 @@ class TestPraatIntegration:
     def test_compute_features_with_real_audio_file(self):
         """Test that all 45 features can be extracted from a real audio file."""
         import datetime
-        import os
 
         # Use a real audio file from the test data
         audio_file = "./data/test/audio/debate_sample.wav"
@@ -354,9 +344,9 @@ class TestPraatIntegration:
         features_df = compute_features(file_index)
 
         # Verify the result is a DataFrame
-        assert isinstance(
-            features_df, pd.DataFrame
-        ), "compute_features should return a DataFrame"
+        assert isinstance(features_df, pd.DataFrame), (
+            "compute_features should return a DataFrame"
+        )
 
         # Verify we have exactly one row (one audio file)
         assert len(features_df) == 1, f"Expected 1 row, got {len(features_df)}"
@@ -416,9 +406,9 @@ class TestPraatIntegration:
         missing_features = [
             feat for feat in expected_core_features if feat not in features_df.columns
         ]
-        assert (
-            len(missing_features) == 0
-        ), f"Missing expected features: {missing_features}"
+        assert len(missing_features) == 0, (
+            f"Missing expected features: {missing_features}"
+        )
 
         # Verify that most features are not NaN (allowing some tolerance for edge cases)
         non_nan_features = features_df.notna().sum(axis=1).iloc[0]
@@ -435,23 +425,23 @@ class TestPraatIntegration:
         row = features_df.iloc[0]
 
         # Duration should be positive and approximately 5 seconds (with some tolerance)
-        assert (
-            3.0 <= row["duration"] <= 7.0
-        ), f"Duration seems unreasonable: {row['duration']}"
+        assert 3.0 <= row["duration"] <= 7.0, (
+            f"Duration seems unreasonable: {row['duration']}"
+        )
 
         # F0 values should be in human speech range if detected
         if not pd.isna(row["meanF0Hz"]):
-            assert (
-                50 <= row["meanF0Hz"] <= 500
-            ), f"Mean F0 seems unreasonable: {row['meanF0Hz']}"
+            assert 50 <= row["meanF0Hz"] <= 500, (
+                f"Mean F0 seems unreasonable: {row['meanF0Hz']}"
+            )
 
         # Formant values should be in typical ranges if detected
         for i in range(1, 5):
             formant_mean = row[f"f{i}_mean"]
             if not pd.isna(formant_mean):
-                assert (
-                    200 <= formant_mean <= 4000
-                ), f"Formant F{i} mean seems unreasonable: {formant_mean}"
+                assert 200 <= formant_mean <= 4000, (
+                    f"Formant F{i} mean seems unreasonable: {formant_mean}"
+                )
 
         print(f"SUCCESS: Extracted {actual_features} features from real audio file")
         print(f"Feature names: {list(features_df.columns)}")
@@ -460,7 +450,6 @@ class TestPraatIntegration:
     def test_feature_extraction_robustness_multiple_files(self):
         """Test feature extraction with multiple real audio files."""
         import datetime
-        import os
 
         # Test with multiple audio files
         audio_dir = "./data/test/audio"
@@ -493,9 +482,9 @@ class TestPraatIntegration:
         features_df = compute_features(file_index)
 
         # Verify we have the correct number of rows
-        assert len(features_df) == len(
-            test_files
-        ), f"Expected {len(test_files)} rows, got {len(features_df)}"
+        assert len(features_df) == len(test_files), (
+            f"Expected {len(test_files)} rows, got {len(features_df)}"
+        )
 
         # Verify all files produced some valid features
         for i, test_file in enumerate(test_files):
@@ -505,9 +494,9 @@ class TestPraatIntegration:
 
             # Each file should have at least some valid features
             min_valid = int(0.5 * total_features)  # More lenient for multiple files
-            assert (
-                non_nan_count >= min_valid
-            ), f"File {test_file} has too few valid features: {non_nan_count}/{total_features}"
+            assert non_nan_count >= min_valid, (
+                f"File {test_file} has too few valid features: {non_nan_count}/{total_features}"
+            )
 
         print(f"SUCCESS: Extracted features from {len(test_files)} files")
         print(f"Total features per file: {len(features_df.columns)}")
@@ -515,7 +504,6 @@ class TestPraatIntegration:
     def test_expected_feature_count_matches_documentation(self):
         """Test that the actual feature count matches the documented count in the code."""
         import datetime
-        import os
 
         audio_file = "./data/test/audio/debate_sample.wav"
         assert os.path.exists(audio_file), f"Test audio file not found: {audio_file}"
@@ -605,6 +593,6 @@ class TestPraatIntegration:
         # Verify we have features in all major categories
         required_categories = ["basic", "formants", "jitter", "shimmer"]
         for category in required_categories:
-            assert (
-                len(feature_categories[category]) > 0
-            ), f"No features found in {category} category"
+            assert len(feature_categories[category]) > 0, (
+                f"No features found in {category} category"
+            )

@@ -41,8 +41,11 @@ def _resample_if_needed(signal, sampling_rate, target_sr, resamplers):
     """Resample signal to target_sr. Updates resamplers cache in-place."""
     import torch
     import torchaudio
+
     if sampling_rate not in resamplers:
-        resamplers[sampling_rate] = torchaudio.transforms.Resample(sampling_rate, target_sr)
+        resamplers[sampling_rate] = torchaudio.transforms.Resample(
+            sampling_rate, target_sr
+        )
     return resamplers[sampling_rate](torch.from_numpy(signal)).numpy(), target_sr
 
 
@@ -63,9 +66,7 @@ def extract_audio_segments(df_seg, data_dir, util):
     if not os.path.isabs(audio_dir):
         audio_dir = os.path.join(data_dir, audio_dir)
     audeer.mkdir(audio_dir)
-    util.debug(
-        f"extracting audio segments to {audio_dir} in format {audio_format}"
-    )
+    util.debug(f"extracting audio segments to {audio_dir} in format {audio_format}")
     _resamplers = {}  # cache Resample transforms keyed by source SR
     for idx, (file, start, end) in enumerate(df_seg.index):
         start_s = start.total_seconds()
@@ -88,7 +89,9 @@ def extract_audio_segments(df_seg, data_dir, util):
             util.debug(f"could not read segment {file} [{start_s}-{end_s}]: {e}")
             continue
         if target_sr is not None and target_sr != sampling_rate:
-            signal, sampling_rate = _resample_if_needed(signal, sampling_rate, target_sr, _resamplers)
+            signal, sampling_rate = _resample_if_needed(
+                signal, sampling_rate, target_sr, _resamplers
+            )
         stem = os.path.splitext(os.path.basename(file))[0]
         out_name = f"{stem}_segment_{idx:03d}_{start_s:.1f}-{end_s:.1f}.{audio_format}"
         out_path = os.path.join(audio_dir, out_name)
@@ -268,7 +271,11 @@ def main():
         df_seg["duration"] = df_seg.index.to_series().map(lambda x: calc_dur(x))
         df_seg.to_csv(f"{expr.data_dir}/{segmented_file}")
 
-    if util.config_val("SEGMENT", "output_audio", "False").lower() in ("true", "1", "yes"):
+    if util.config_val("SEGMENT", "output_audio", "False").lower() in (
+        "true",
+        "1",
+        "yes",
+    ):
         extract_audio_segments(df_seg, expr.data_dir, util)
 
     if "duration" not in df.columns:

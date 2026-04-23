@@ -3,7 +3,6 @@ import os
 import tempfile
 
 
-
 class TestPredictArgParser:
     """Test predict module argument parsing."""
 
@@ -51,12 +50,15 @@ class TestPredictOutputLogic:
     def test_class_label_rename_logic(self):
         """Test the class_label column rename logic."""
         import pandas as pd
+
         target = "emotion"
-        df = pd.DataFrame({
-            "emotion": [0, 1, 2],
-            "class_label": ["happy", "sad", "angry"],
-            "speaker": ["s1", "s2", "s3"],
-        })
+        df = pd.DataFrame(
+            {
+                "emotion": [0, 1, 2],
+                "class_label": ["happy", "sad", "angry"],
+                "speaker": ["s1", "s2", "s3"],
+            }
+        )
         if "class_label" in df.columns:
             df = df.drop(columns=[target])
             df = df.rename(columns={"class_label": target})
@@ -67,10 +69,13 @@ class TestPredictOutputLogic:
     def test_output_csv_saving(self):
         """Test CSV output saving."""
         import pandas as pd
-        df = pd.DataFrame({
-            "emotion": ["happy", "sad"],
-            "speaker": ["s1", "s2"],
-        })
+
+        df = pd.DataFrame(
+            {
+                "emotion": ["happy", "sad"],
+                "speaker": ["s1", "s2"],
+            }
+        )
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             tmpfile = f.name
         df.to_csv(tmpfile)

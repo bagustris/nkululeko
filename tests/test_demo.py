@@ -10,9 +10,13 @@ class TestDemoArgParser:
     def test_parser_defaults(self):
         """Test default argument values."""
         from unittest.mock import patch
-        with patch('sys.argv', ['demo.py']):
+
+        with patch("sys.argv", ["demo.py"]):
             import argparse
-            parser = argparse.ArgumentParser(description="Call the nkululeko DEMO framework.")
+
+            parser = argparse.ArgumentParser(
+                description="Call the nkululeko DEMO framework."
+            )
             parser.add_argument("--config", default="exp.ini")
             parser.add_argument("--file", default=None)
             parser.add_argument("--list", nargs="?", default=None)
@@ -28,13 +32,16 @@ class TestDemoArgParser:
     def test_parser_with_args(self):
         """Test parser with provided arguments."""
         import argparse
+
         parser = argparse.ArgumentParser()
         parser.add_argument("--config", default="exp.ini")
         parser.add_argument("--file", default=None)
         parser.add_argument("--list", nargs="?", default=None)
         parser.add_argument("--folder", nargs="?", default="./")
         parser.add_argument("--outfile", nargs="?", default=None)
-        args = parser.parse_args(["--config", "test.ini", "--file", "audio.wav", "--folder", "/data/"])
+        args = parser.parse_args(
+            ["--config", "test.ini", "--file", "audio.wav", "--folder", "/data/"]
+        )
         assert args.config == "test.ini"
         assert args.file == "audio.wav"
         assert args.folder == "/data/"
@@ -45,7 +52,7 @@ class TestPrintPipe:
 
     def test_nan_detection(self):
         """Test NaN score detection in pipeline results."""
-        score = float('nan')
+        score = float("nan")
         assert math.isnan(score)
 
     def test_valid_score(self):
