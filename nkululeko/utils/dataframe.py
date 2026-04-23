@@ -194,6 +194,7 @@ class DataFrameMixin:
             return np.full_like(values, (new_min + new_max) / 2)
         return (values - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
 
+
 def segment_silence(df: pd.DataFrame, with_borders: bool) -> pd.DataFrame:
     """Take an already segmented (based on VAD) DataFrame and return the silence segments.
 
@@ -234,5 +235,7 @@ def segment_silence(df: pd.DataFrame, with_borders: bool) -> pd.DataFrame:
     if not silence_entries:
         return df.iloc[0:0]
 
-    new_index = pd.MultiIndex.from_tuples(silence_entries, names=["file", "start", "end"])
+    new_index = pd.MultiIndex.from_tuples(
+        silence_entries, names=["file", "start", "end"]
+    )
     return pd.DataFrame(silence_data, index=new_index)

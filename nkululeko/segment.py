@@ -282,10 +282,16 @@ def main():
             df, "original_durations", sample_selection, caption="Original durations"
         )
         plots.plot_durations(
-            df_seg, "segmented_durations", sample_selection, caption="Segmented durations"
+            df_seg,
+            "segmented_durations",
+            sample_selection,
+            caption="Segmented durations",
         )
         plots.plot_durations(
-            df_silence, "silence_durations", sample_selection, caption="Silence durations"
+            df_silence,
+            "silence_durations",
+            sample_selection,
+            caption="Silence durations",
         )
         if method == "pyannote":
             util.debug(df_seg[["speaker", "duration"]].groupby(["speaker"]).sum())
