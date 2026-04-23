@@ -196,8 +196,8 @@
 
 ### SEGMENT
 
-* **segment_result**: name of the segmented data table as a result. Additinally, a segment file with the gaps will be generated: *segmented_silence.csv*. 
-  * segment_target = segmented.csv
+* **result**: name of the segmented data table as a result. Additinally, a segment file with the gaps will be generated: *segmented_silence.csv*. 
+  * result = segmented.csv
 * **method**: select the model
   * method = [silero](https://github.com/snakers4/silero-vad)
 * **min_length**: the minimum length of rest samples (in seconds)
