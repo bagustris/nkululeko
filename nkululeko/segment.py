@@ -249,9 +249,10 @@ def main():
         )
     result_file = f"{expr.data_dir}/{segmented_file}"
     seg_file_name = f"{result_file}.csv"
-    if os.path.exists(f"{expr.data_dir}/{seg_file_name}"):
-        util.debug(f"reusing existing result file: {expr.data_dir}/{seg_file_name}")
-        df_seg = audformat.utils.read_csv(f"{expr.data_dir}/{seg_file_name}")
+    segment_silence_file_name = f"{result_file}_silence.csv"
+    if os.path.exists(f"{seg_file_name}") and os.path.exists(f"{segment_silence_file_name}"):
+        util.debug(f"reusing existing result file: {seg_file_name}")
+        df_seg = audformat.utils.read_csv(f"{seg_file_name}")
     else:
         util.debug(
             f"segmenting {sample_selection}: {df.shape[0]} samples with {method}"
@@ -302,7 +303,6 @@ def main():
         # remove encoded labels
         df_seg = util.check_class_label(df_seg)
         df_silence = util.check_class_label(df_silence)
-        segment_silence_file_name = f"{result_file}_silence.csv"
         df_seg["duration"] = df_seg.index.to_series().map(lambda x: calc_dur(x))
         df_seg.to_csv(f"{seg_file_name}")
         df_silence["duration"] = df_silence.index.to_series().map(lambda x: calc_dur(x))
