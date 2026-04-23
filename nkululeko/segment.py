@@ -248,6 +248,8 @@ def main():
             " should be [all | train | test]"
         )
     result_file = f"{expr.data_dir}/{segmented_file}"
+    if result_file.endswith(".csv"):
+        result_file = result_file[:-4]
     seg_file_name = f"{result_file}.csv"
     segment_silence_file_name = f"{result_file}_silence.csv"
     if os.path.exists(f"{seg_file_name}") and os.path.exists(f"{segment_silence_file_name}"):
