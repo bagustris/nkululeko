@@ -1,10 +1,10 @@
-EmoDB can be downloaded from [Zenodo](https://zenodo.org/records/16273947).
+EmoDB can be downloaded from [Zenodo](https://zenodo.org/records/17651657).
 
 Simply download and unzip, it is already in audformat.
 
 ```bash
 # Download using wget
-wget https://zenodo.org/record/16273947/files/emodb_2.0.zip
+wget https://zenodo.org/record/17651657/files/emodb_2.0.zip
 # Unzip
 unzip emodb_2.0.zip
 # rename to simply emodb
