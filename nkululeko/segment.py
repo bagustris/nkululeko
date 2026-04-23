@@ -269,7 +269,8 @@ def main():
         else:
             util.error(f"unknown segmenter: {method}")
         # segment also the gaps between segments to get a full coverage of the original audio
-        with_borders = util.config_val("SEGMENT", "include_silence_borders", False)
+        with_borders = util.config_val("SEGMENT", "include_silence_borders", "False")
+        with_borders = str(with_borders).lower() in ("true","1","yes")
         df_silence = segment_silence(df_seg, with_borders)
 
         # plot results
