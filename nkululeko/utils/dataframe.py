@@ -193,3 +193,46 @@ class DataFrameMixin:
         if old_min == old_max:
             return np.full_like(values, (new_min + new_max) / 2)
         return (values - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
+
+def segment_silence(df: pd.DataFrame, with_borders: bool) -> pd.DataFrame:
+    """Take an already segmented (based on VAD) DataFrame and return the silence segments.
+
+    Finds the gaps between speech segments within each file. Optionally includes
+    the initial silence before the first speech segment (from t=0).
+
+    Args:
+        df: A DataFrame with a segmented audformat index (file, start, end).
+        with_borders: If True, include the region from t=0 to the first speech
+            segment start as an additional silence segment per file.
+
+    Returns:
+        A new DataFrame with one row per silence gap, All data columns are copied from the first segment entry per file.
+    """
+    if len(df) == 0:
+        return df.iloc[0:0]
+
+    silence_entries = []
+    silence_data = []
+
+    for file, file_df in df.groupby(level="file"):
+        file_df = file_df.sort_index(level="start")
+        starts = file_df.index.get_level_values("start")
+        ends = file_df.index.get_level_values("end")
+        first_row = file_df.iloc[0].to_dict()
+
+        if with_borders and starts[0] > pd.Timedelta(0):
+            silence_entries.append((file, pd.Timedelta(0), starts[0]))
+            silence_data.append(first_row)
+
+        for i in range(len(starts) - 1):
+            gap_start = ends[i]
+            gap_end = starts[i + 1]
+            if gap_end > gap_start:
+                silence_entries.append((file, gap_start, gap_end))
+                silence_data.append(first_row)
+
+    if not silence_entries:
+        return df.iloc[0:0]
+
+    new_index = pd.MultiIndex.from_tuples(silence_entries, names=["file", "start", "end"])
+    return pd.DataFrame(silence_data, index=new_index)

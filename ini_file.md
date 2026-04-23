@@ -212,6 +212,8 @@
   * audio_dir = segments
 * **sampling_rate**: resample exported audio segments to this rate in Hz; omit to preserve the original sample rate
   * sampling_rate = 16000
+* **include_silence_borders**: for the result file that represent the gaps between speech: include the borders?
+  * include_silence_borders = False
 
 ### FEATS
 

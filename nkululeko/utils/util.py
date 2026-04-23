@@ -323,6 +323,13 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             text_file.write(output)
         self.debug(output)
 
+    def check_class_label(self, df):
+        target = self.config_val("DATA", "target", None)
+        if "class_label" in df.columns:
+            df = df.drop(columns=[target])
+            df = df.rename(columns={"class_label": target})
+        return df
+
     def high_is_good(self):
         """check how to interpret results (higher is better)"""
         if self.exp_is_classification():
