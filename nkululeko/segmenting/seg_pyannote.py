@@ -32,7 +32,7 @@ class Pyannote_segmenter:
             )
         self.pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
-            use_auth_token=hf_token,
+            token=hf_token,
         )
         device = self.util.config_val("MODEL", "device", "cpu")
         if device == "cpu":
@@ -57,9 +57,9 @@ class Pyannote_segmenter:
         return seg_index, speakers
 
     def get_segmentation(self, file, min_length, max_length):
-        annotation = self.pipeline(file)
+        annotation = self.pipeline(file[0])
         files, starts, ends, speakers = [], [], [], []
-        for turn, _, speaker in annotation.itertracks(yield_label=True):
+        for turn, speaker in annotation.speaker_diarization:
             start = turn.start
             end = turn.end
             new_end = end

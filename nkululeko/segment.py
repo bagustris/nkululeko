@@ -255,6 +255,7 @@ def main():
     if os.path.exists(f"{seg_file_name}") and os.path.exists(f"{segment_silence_file_name}"):
         util.debug(f"reusing existing result file: {seg_file_name}")
         df_seg = audformat.utils.read_csv(f"{seg_file_name}")
+        df_silence = audformat.utils.read_csv(f"{segment_silence_file_name}")
     else:
         util.debug(
             f"segmenting {sample_selection}: {df.shape[0]} samples with {method}"

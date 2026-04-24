@@ -195,7 +195,7 @@ class DataFrameMixin:
         return (values - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
 
 
-def segment_silence(df: pd.DataFrame, with_borders: bool) -> pd.DataFrame:
+def segment_silence(df: pd.DataFrame, with_borders: bool, remove_speaker_id: bool) -> pd.DataFrame:
     """Take an already segmented (based on VAD) DataFrame and return the silence segments.
 
     Finds the gaps between speech segments within each file. Optionally includes
@@ -205,6 +205,7 @@ def segment_silence(df: pd.DataFrame, with_borders: bool) -> pd.DataFrame:
         df: A DataFrame with a segmented audformat index (file, start, end).
         with_borders: If True, include the region from t=0 to the first speech
             segment start as an additional silence segment per file.
+        remove_speaker_id: If True, set the speaker column to "silence" for all silence segments.
 
     Returns:
         A new DataFrame with one row per silence gap, All data columns are copied from the first segment entry per file.
@@ -238,4 +239,7 @@ def segment_silence(df: pd.DataFrame, with_borders: bool) -> pd.DataFrame:
     new_index = pd.MultiIndex.from_tuples(
         silence_entries, names=["file", "start", "end"]
     )
-    return pd.DataFrame(silence_data, index=new_index)
+    res_df = pd.DataFrame(silence_data, index=new_index)
+    if remove_speaker_id and "speaker" in df.columns:
+        res_df["speaker"] = "silence"
+    return res_df
