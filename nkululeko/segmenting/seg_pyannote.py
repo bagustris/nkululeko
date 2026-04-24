@@ -4,12 +4,12 @@ Segment a dataset with the Pyannote segmenter.
 Also adds speaker ids to the segments.
 
 """
-
+import os
 import pandas as pd
 from pyannote.audio import Pipeline
 import torch
 from tqdm import tqdm
-
+import audeer
 import audformat
 from audformat import segmented_index
 
@@ -83,6 +83,10 @@ class Pyannote_segmenter:
         return seg_index, speakers
 
     def segment_dataframe(self, df):
+        segment_cache = audeer.mkdir(
+            audeer.path(self.util.get_path("cache"), "segments_paynnote")
+        )
+
         dfs = []
         max_length = eval(self.util.config_val("SEGMENT", "max_length", "False"))
         if max_length:
@@ -92,15 +96,21 @@ class Pyannote_segmenter:
                 min_length = 2
             self.util.debug(f"segmenting with max length: {max_length + min_length}")
         for file, values in tqdm(df.iterrows()):
-            if max_length:
-                index, speakers = self.get_segmentation(file, min_length, max_length)
+            cache_name = audeer.basename_wo_ext(file[0]) 
+            cache_path = audeer.path(segment_cache, cache_name + ".csv")
+            if os.path.isfile(cache_path):
+                df = audformat.utils.read_csv(cache_path)
             else:
-                index, speakers = self.get_segmentation_simple(file)
-            df = pd.DataFrame(
-                values.to_dict(),
-                index,
-            )
-            df["speaker"] = speakers
+                if max_length:
+                    index, speakers = self.get_segmentation(file, min_length, max_length)
+                else:
+                    index, speakers = self.get_segmentation_simple(file)
+                df = pd.DataFrame(
+                    values.to_dict(),
+                    index,
+                )
+                df["speaker"] = speakers
+                df.to_csv(cache_path)
             dfs.append(df)
         return audformat.utils.concat(dfs)
 
