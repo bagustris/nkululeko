@@ -111,6 +111,9 @@ class Pyannote_segmenter:
                 )
                 df["speaker"] = speakers
                 df.to_csv(cache_path)
+            # necessary to avoid type issues when concatenating dataframes at the end
+            for column in df.columns:
+                df[column] = df[column].astype("object")
             dfs.append(df)
         return audformat.utils.concat(dfs)
 

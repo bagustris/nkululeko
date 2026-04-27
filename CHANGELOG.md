@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.6.0 (26-04-30)
+------------------------
+* added silent segments for segmentation
+* added caching for pyannote segmentation
+
 Version 1.5.0 (26-04-22)
 ------------------------
 * Introduces Datasplitter to centralize split creation, label encoding, filtering, and feature extraction across datasets.
