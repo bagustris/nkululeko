@@ -5,6 +5,7 @@ Version 1.6.0 (26-04-30)
 ------------------------
 * added silent segments for segmentation
 * added caching for pyannote segmentation
+* save logs and ini files to log directory
 
 Version 1.5.0 (26-04-22)
 ------------------------

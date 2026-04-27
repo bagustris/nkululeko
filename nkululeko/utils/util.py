@@ -94,7 +94,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             try:
                 root = self.config["EXP"]["root"]
                 name = self.config["EXP"]["name"]
-                log_dir = os.path.abspath(os.path.join(root, name))
+                log_dir = os.path.abspath(os.path.join(root, name, "log"))
                 audeer.mkdir(log_dir)
                 # Include seconds to avoid filename collisions between close-together runs
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
