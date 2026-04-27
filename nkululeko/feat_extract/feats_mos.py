@@ -18,7 +18,7 @@ import pandas as pd
 import torch
 import torchaudio
 from torchaudio.pipelines import SQUIM_SUBJECTIVE
-from torchaudio.utils import download_asset
+from torchaudio.utils import _download_asset
 from tqdm import tqdm
 
 import nkululeko.glob_conf as glob_conf
@@ -38,7 +38,7 @@ class MosSet(Featureset):
         # load model
         self.util.debug("loading MOS model...")
         self.subjective_model = SQUIM_SUBJECTIVE.get_model()
-        NMR_SPEECH = download_asset("tutorial-assets/ctc-decoding/1688-142285-0007.wav")
+        NMR_SPEECH = _download_asset("tutorial-assets/ctc-decoding/1688-142285-0007.wav")
         self.WAVEFORM_NMR, SAMPLE_RATE_NMR = torchaudio.load(NMR_SPEECH)
         self.model_initialized = True
 
