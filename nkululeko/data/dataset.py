@@ -172,6 +172,8 @@ class Dataset:
                 df = self.db.get(self.col_label, columns)
             else:
                 df = self.db.get(self.col_label)
+        # remove NAs
+        df = df.dropna()
         # check if columns should be renamed
         df = self._check_cols(df)
         self.is_labeled = self.target in df
@@ -287,23 +289,25 @@ class Dataset:
             if entry_test_tables:
                 test_tables = ast.literal_eval(entry_test_tables)
                 for test_table in test_tables:
-                    testdf = pd.concat([testdf, self.db.tables[test_table].df])
+                    testdf = pd.concat([testdf, self.db.tables[test_table].df]).dropna()
             entry_train_tables = self.util.config_val_data(
                 self.name, "train_tables", False
             )
             if entry_train_tables:
                 train_tables = ast.literal_eval(entry_train_tables)
                 for train_table in train_tables:
-                    traindf = pd.concat([traindf, self.db.tables[train_table].df])
+                    traindf = pd.concat([traindf, self.db.tables[train_table].df]).dropna()
             # use only the train and test samples that were not perhaps filtered out by an earlier processing step
             # testdf.index.map(lambda x: os.path.join(self.root, x))
             #            testdf.index = testdf.index.to_series().apply(lambda x: self.root+x)
             testdf = testdf.set_index(
                 audformat.utils.to_segmented_index(testdf.index, allow_nat=False)
             )
+            self.map_continuous_classification(testdf)
             traindf = traindf.set_index(
                 audformat.utils.to_segmented_index(traindf.index, allow_nat=False)
             )
+            self.map_continuous_classification(traindf)
             self.df_test = self.df.loc[self.df.index.intersection(testdf.index)]
             self.df_train = self.df.loc[self.df.index.intersection(traindf.index)]
             # it might be necessary to copy the target values
