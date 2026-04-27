@@ -52,9 +52,7 @@ class Scaler:
         elif scaler_type == "powertransformer":
             self.scaler = PowerTransformer()
         elif scaler_type == "quantiletransformer":
-            self.scaler = QuantileTransformer(
-                n_quantiles=min(1000, len(train_feats))
-            )
+            self.scaler = QuantileTransformer(n_quantiles=min(1000, len(train_feats)))
         elif scaler_type == "speaker":
             self.scaler = StandardScaler()
         elif scaler_type == "bins":

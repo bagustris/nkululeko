@@ -62,7 +62,7 @@ class Run_plotter:
         data = dict(zip(compares, run_results))
         df_plot = pd.DataFrame(
             data=data,
-            index=[f"run {i+1}" for i in range(len(run_results[0]))],
+            index=[f"run {i + 1}" for i in range(len(run_results[0]))],
         )
         pairwise_results, overall_results = find_most_significant_difference(
             data, run_num

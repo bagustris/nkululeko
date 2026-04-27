@@ -3,6 +3,7 @@ import pytest
 
 from nkululeko.models.model_xgb import XGB_model
 
+
 class DummyUtil:
     def config_val(self, section, key, default):
         return default

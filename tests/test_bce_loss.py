@@ -1,5 +1,4 @@
 import torch
-import sys
 
 print("Testing loss functions...")
 

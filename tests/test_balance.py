@@ -118,15 +118,15 @@ class TestDataBalancer:
             )
 
             # Basic checks
-            assert len(balanced_df) >= len(
-                df_train
-            ), f"{method} should increase/maintain size"
-            assert len(balanced_df) == len(
-                balanced_features
-            ), f"{method} length mismatch"
-            assert (
-                balanced_features.shape[1] == feats_train.shape[1]
-            ), f"{method} feature dim changed"
+            assert len(balanced_df) >= len(df_train), (
+                f"{method} should increase/maintain size"
+            )
+            assert len(balanced_df) == len(balanced_features), (
+                f"{method} length mismatch"
+            )
+            assert balanced_features.shape[1] == feats_train.shape[1], (
+                f"{method} feature dim changed"
+            )
 
             print(f"✓ {method} passed")
 
@@ -153,15 +153,15 @@ class TestDataBalancer:
             )
 
             # Basic checks
-            assert len(balanced_df) <= len(
-                df_train
-            ), f"{method} should decrease/maintain size"
-            assert len(balanced_df) == len(
-                balanced_features
-            ), f"{method} length mismatch"
-            assert (
-                balanced_features.shape[1] == feats_train.shape[1]
-            ), f"{method} feature dim changed"
+            assert len(balanced_df) <= len(df_train), (
+                f"{method} should decrease/maintain size"
+            )
+            assert len(balanced_df) == len(balanced_features), (
+                f"{method} length mismatch"
+            )
+            assert balanced_features.shape[1] == feats_train.shape[1], (
+                f"{method} feature dim changed"
+            )
 
             print(f"✓ {method} passed")
 
@@ -183,12 +183,12 @@ class TestDataBalancer:
             )
 
             # Basic checks
-            assert len(balanced_df) == len(
-                balanced_features
-            ), f"{method} length mismatch"
-            assert (
-                balanced_features.shape[1] == feats_train.shape[1]
-            ), f"{method} feature dim changed"
+            assert len(balanced_df) == len(balanced_features), (
+                f"{method} length mismatch"
+            )
+            assert balanced_features.shape[1] == feats_train.shape[1], (
+                f"{method} feature dim changed"
+            )
             assert len(balanced_df) > 0, f"{method} resulted in empty dataset"
 
             print(f"✓ {method} passed")
@@ -234,9 +234,9 @@ class TestDataBalancer:
             print(f"Failed: {[m[0] for m in failed_methods]}")
 
         # All 11 methods should work
-        assert (
-            len(successful_methods) == 11
-        ), f"Expected 11 successful methods, got {len(successful_methods)}"
+        assert len(successful_methods) == 11, (
+            f"Expected 11 successful methods, got {len(successful_methods)}"
+        )
         assert len(failed_methods) == 0, f"Some methods failed: {failed_methods}"
 
     def test_invalid_method_handling(self, sample_data, mock_config):

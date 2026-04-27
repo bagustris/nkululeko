@@ -1,11 +1,10 @@
 # test_defines.py - unit tests for nkululeko/reporting/defines.py
 import unittest
 
-from nkululeko.reporting.defines import DefineBase, Header
+from nkululeko.reporting.defines import Header
 
 
 class TestDefineBase(unittest.TestCase):
-
     def test_attribute_values(self):
         """Test that _attribute_values returns class attributes."""
         values = Header._attribute_values()

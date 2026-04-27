@@ -52,9 +52,9 @@ class Ast(Featureset):
                 # make mono if stereo
                 if signal.shape[0] == 2:
                     signal = torch.mean(signal, dim=0, keepdim=True)
-                assert (
-                    sampling_rate == 16000
-                ), f"sampling rate should be 16000 but is {sampling_rate}"
+                assert sampling_rate == 16000, (
+                    f"sampling rate should be 16000 but is {sampling_rate}"
+                )
                 return self.get_embeddings(signal, sampling_rate, file)
 
             self.df = self._extract_embeddings_with_error_handling(_load_file)

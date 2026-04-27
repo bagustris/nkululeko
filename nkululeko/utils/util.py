@@ -15,6 +15,7 @@ from nkululeko.utils.dataframe import DataFrameMixin
 from nkululeko.utils.naming import NamingMixin
 from nkululeko.utils.storage import StorageMixin
 
+
 class Util(NamingMixin, StorageMixin, DataFrameMixin):
     # a list of words that need not to be warned upon if default values are
     # used
@@ -93,7 +94,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             try:
                 root = self.config["EXP"]["root"]
                 name = self.config["EXP"]["name"]
-                log_dir = os.path.abspath(os.path.join(root, name))
+                log_dir = os.path.abspath(os.path.join(root, name, "log"))
                 audeer.mkdir(log_dir)
                 # Include seconds to avoid filename collisions between close-together runs
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -321,6 +322,13 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         with open(file_name, "w") as text_file:
             text_file.write(output)
         self.debug(output)
+
+    def check_class_label(self, df):
+        target = self.config_val("DATA", "target", None)
+        if "class_label" in df.columns and target is not None:
+            df = df.drop(columns=[target])
+            df = df.rename(columns={"class_label": target})
+        return df
 
     def high_is_good(self):
         """check how to interpret results (higher is better)"""

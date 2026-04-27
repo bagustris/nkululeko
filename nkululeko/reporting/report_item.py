@@ -17,6 +17,5 @@ class ReportItem:
 
     def to_string(self):
         return (
-            f"topic: {self.topic}, caption: {self.caption}, contents:"
-            f" {self.contents}"
+            f"topic: {self.topic}, caption: {self.caption}, contents: {self.contents}"
         )

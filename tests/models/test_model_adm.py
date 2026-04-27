@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from nkululeko.models.model_adm import ADMModel
 from nkululeko.models.model_adm_core import (

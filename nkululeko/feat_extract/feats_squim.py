@@ -15,7 +15,6 @@ pip install --pre torch torchvision torchaudio --extra-index-url https://downloa
 import os
 
 import audiofile
-import pandas as pd
 import torch
 import torchaudio
 from torchaudio.pipelines import SQUIM_OBJECTIVE

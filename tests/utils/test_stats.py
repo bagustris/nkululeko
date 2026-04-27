@@ -1,7 +1,5 @@
 """Unit tests for stats utilities (nkululeko/utils/stats.py)."""
 
-import math
-
 import numpy as np
 import pandas as pd
 import pytest

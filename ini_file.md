@@ -196,8 +196,8 @@
 
 ### SEGMENT
 
-* **segment_result**: name of the segmented data table as a result
-  * segment_target = segmented.csv
+* **result**: name of the segmented data table as a result. Additionally, a segment file with the gaps will be generated: *segmented_silence.csv*. 
+  * result = segmented.csv
 * **method**: select the model
   * method = [silero](https://github.com/snakers4/silero-vad)
 * **min_length**: the minimum length of rest samples (in seconds)
@@ -212,6 +212,8 @@
   * audio_dir = segments
 * **sampling_rate**: resample exported audio segments to this rate in Hz; omit to preserve the original sample rate
   * sampling_rate = 16000
+* **include_silence_borders**: for the result file that represent the gaps between speech: include the borders?
+  * include_silence_borders = False
 
 ### FEATS
 

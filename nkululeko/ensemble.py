@@ -159,9 +159,9 @@ def performance_weighted_ensemble(ensemble_preds_ls, labels, weights):
     assert all(0 <= w <= 1 for w in weights), "Weights must be between 0 and 1"
 
     # assert lenght of weights matches number of models
-    assert len(weights) == len(
-        ensemble_preds_ls
-    ), "Number of weights must match number of models"
+    assert len(weights) == len(ensemble_preds_ls), (
+        "Number of weights must match number of models"
+    )
 
     # Normalize weights
     total_weight = sum(weights)
@@ -240,9 +240,9 @@ def ensemble_predictions(
     ensemble_preds = pd.concat(ensemble_preds_ls, axis=1)
 
     if method == "majority_voting":
-        assert (
-            len(ensemble_preds_ls) > 2
-        ), "Majority voting only works for more than two models"
+        assert len(ensemble_preds_ls) > 2, (
+            "Majority voting only works for more than two models"
+        )
         ensemble_preds["predicted"] = majority_voting(ensemble_preds_ls)
     elif method == "mean":
         ensemble_preds["predicted"] = mean_ensemble(ensemble_preds, labels)
@@ -360,7 +360,7 @@ def main():
     # save to csv
     ensemble_preds.to_csv(args.outfile, index=False)
     Util("ensemble").debug(f"Ensemble predictions saved to: {args.outfile}")
-    Util("ensemble").debug(f"Ensemble done, used {time.time()-start:.2f} seconds")
+    Util("ensemble").debug(f"Ensemble done, used {time.time() - start:.2f} seconds")
 
     Util("ensemble").debug("DONE")
 

@@ -80,8 +80,7 @@ class Resampler:
                 # save file
                 self.df.to_csv(target_file)
                 self.util.debug(
-                    "saved resampled list of files to"
-                    f" {os.path.abspath(target_file)}"
+                    f"saved resampled list of files to {os.path.abspath(target_file)}"
                 )
             else:
                 # When running from command line, save to simple resampled.csv

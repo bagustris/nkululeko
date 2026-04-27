@@ -31,7 +31,6 @@ type = os
 
 
 class TestDataFrameMixin(unittest.TestCase):
-
     # --- is_categorical ---
 
     def test_is_categorical_object(self):
@@ -91,7 +90,7 @@ class TestDataFrameMixin(unittest.TestCase):
 
     def test_continuous_to_categorical_custom_bins(self):
         u = make_util(
-            bins_labels="bins = [-1000000, 0.5, 1000000]\nlabels = [\"low\", \"high\"]"
+            bins_labels='bins = [-1000000, 0.5, 1000000]\nlabels = ["low", "high"]'
         )
         series = pd.Series([0.0, 0.3, 0.7, 1.0])
         result = u.continuous_to_categorical(series)
@@ -148,10 +147,12 @@ class TestDataFrameMixin(unittest.TestCase):
 
     def test_df_to_categorical_dict(self):
         u = make_util()
-        df = pd.DataFrame({
-            "emotion": ["happy", "sad", "happy"],
-            "score": [0.8, 0.6, 0.9],
-        })
+        df = pd.DataFrame(
+            {
+                "emotion": ["happy", "sad", "happy"],
+                "score": [0.8, 0.6, 0.9],
+            }
+        )
         result, mean_count = u.df_to_categorical_dict(df, "emotion", "score")
         self.assertIn("happy", result)
         self.assertEqual(len(result["happy"]), 2)
@@ -193,7 +194,7 @@ class TestDataFrameMixin(unittest.TestCase):
         u = make_util()
         s = pd.Series([1.0, 2.0, 3.0])
         self.assertTrue(u.is_numeric(s))
-        
+
         s_str = pd.Series(["a", "b", "c"])
         self.assertFalse(u.is_numeric(s_str))
 

@@ -35,26 +35,34 @@ from nkululeko.experiment import Experiment
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.report_item import ReportItem
 from nkululeko.utils.util import Util
+from nkululeko.utils.dataframe import segment_silence
+from nkululeko.plots import Plots
 
 
 def _resample_if_needed(signal, sampling_rate, target_sr, resamplers):
     """Resample signal to target_sr. Updates resamplers cache in-place."""
     import torch
     import torchaudio
+
     if sampling_rate not in resamplers:
-        resamplers[sampling_rate] = torchaudio.transforms.Resample(sampling_rate, target_sr)
+        resamplers[sampling_rate] = torchaudio.transforms.Resample(
+            sampling_rate, target_sr
+        )
     return resamplers[sampling_rate](torch.from_numpy(signal)).numpy(), target_sr
 
 
-def extract_audio_segments(df_seg, data_dir, util):
+def extract_audio_segments(df_seg, data_dir, util, is_silence=False):
     """Extract audio files for each segment in df_seg.
 
     Args:
         df_seg: DataFrame with audformat multi-index (file, start, end).
         data_dir: Experiment data directory used to resolve the audio output path.
         util: Util instance for configuration access and logging.
+        is_silence: If True, indicates that the segments are silence segments.
     """
     audio_dir = util.config_val("SEGMENT", "audio_dir", "segments")
+    if is_silence:
+        audio_dir = f"{audio_dir}_silence"
     audio_format = util.config_val("SEGMENT", "audio_format", "wav")
     target_sr = util.config_val("SEGMENT", "sampling_rate", None)
     if target_sr is not None:
@@ -63,9 +71,7 @@ def extract_audio_segments(df_seg, data_dir, util):
     if not os.path.isabs(audio_dir):
         audio_dir = os.path.join(data_dir, audio_dir)
     audeer.mkdir(audio_dir)
-    util.debug(
-        f"extracting audio segments to {audio_dir} in format {audio_format}"
-    )
+    util.debug(f"extracting audio segments to {audio_dir} in format {audio_format}")
     _resamplers = {}  # cache Resample transforms keyed by source SR
     for idx, (file, start, end) in enumerate(df_seg.index):
         start_s = start.total_seconds()
@@ -88,7 +94,9 @@ def extract_audio_segments(df_seg, data_dir, util):
             util.debug(f"could not read segment {file} [{start_s}-{end_s}]: {e}")
             continue
         if target_sr is not None and target_sr != sampling_rate:
-            signal, sampling_rate = _resample_if_needed(signal, sampling_rate, target_sr, _resamplers)
+            signal, sampling_rate = _resample_if_needed(
+                signal, sampling_rate, target_sr, _resamplers
+            )
         stem = os.path.splitext(os.path.basename(file))[0]
         out_name = f"{stem}_segment_{idx:03d}_{start_s:.1f}-{end_s:.1f}.{audio_format}"
         out_path = os.path.join(audio_dir, out_name)
@@ -224,7 +232,7 @@ def main():
         return (ends - starts).total_seconds()
 
     # segment
-    segmented_file = util.config_val("SEGMENT", "result", "segmented.csv")
+    segmented_file = util.config_val("SEGMENT", "result", "segmented")
 
     method = util.config_val("SEGMENT", "method", "silero")
     sample_selection = util.config_val("EXP", "sample_selection", "all")
@@ -240,9 +248,14 @@ def main():
             " should be [all | train | test]"
         )
     result_file = f"{expr.data_dir}/{segmented_file}"
-    if os.path.exists(result_file):
-        util.debug(f"reusing existing result file: {result_file}")
-        df_seg = audformat.utils.read_csv(result_file)
+    if result_file.endswith(".csv"):
+        result_file = result_file[:-4]
+    seg_file_name = f"{result_file}.csv"
+    segment_silence_file_name = f"{result_file}_silence.csv"
+    if os.path.exists(f"{seg_file_name}") and os.path.exists(f"{segment_silence_file_name}"):
+        util.debug(f"reusing existing result file: {seg_file_name} and {segment_silence_file_name}")
+        df_seg = audformat.utils.read_csv(f"{seg_file_name}")
+        df_silence = audformat.utils.read_csv(f"{segment_silence_file_name}")
     else:
         util.debug(
             f"segmenting {sample_selection}: {df.shape[0]} samples with {method}"
@@ -259,40 +272,60 @@ def main():
             df_seg = segmenter.segment_dataframe(df)
         else:
             util.error(f"unknown segmenter: {method}")
-        # remove encoded labels
-        target = util.config_val("DATA", "target", None)
-        if "class_label" in df_seg.columns:
-            df_seg = df_seg.drop(columns=[target])
-            df_seg = df_seg.rename(columns={"class_label": target})
-        # save file
+        # segment also the gaps between segments to get a full coverage of the original audio
+        with_borders = util.config_val("SEGMENT", "include_silence_borders", "False")
+        with_borders = str(with_borders).lower() in ("true","1","yes")
+        df_silence = segment_silence(df_seg, with_borders=with_borders)
+
+        # plot results
+        if "duration" not in df.columns:
+            df["duration"] = df.index.to_series().map(lambda x: calc_dur(x))
         df_seg["duration"] = df_seg.index.to_series().map(lambda x: calc_dur(x))
-        df_seg.to_csv(f"{expr.data_dir}/{segmented_file}")
+        df_silence["duration"] = df_silence.index.to_series().map(lambda x: calc_dur(x))
+        plots = Plots()
+        plots.plot_durations(
+            df, "original_durations", sample_selection, caption="Original durations"
+        )
+        plots.plot_durations(
+            df_seg,
+            "segmented_durations",
+            sample_selection,
+            caption="Segmented durations",
+        )
+        plots.plot_durations(
+            df_silence,
+            "silence_durations",
+            sample_selection,
+            caption="Silence durations",
+        )
+        if method == "pyannote":
+            util.debug(df_seg[["speaker", "duration"]].groupby(["speaker"]).sum())
+            plots.plot_speakers(df_seg, sample_selection)
 
-    if util.config_val("SEGMENT", "output_audio", "False").lower() in ("true", "1", "yes"):
+        # save files
+        # remove encoded labels
+        df_seg = util.check_class_label(df_seg)
+        df_silence = util.check_class_label(df_silence)
+        df_seg["duration"] = df_seg.index.to_series().map(lambda x: calc_dur(x))
+        df_seg.to_csv(f"{seg_file_name}")
+        df_silence["duration"] = df_silence.index.to_series().map(lambda x: calc_dur(x))
+        df_silence.to_csv(f"{segment_silence_file_name}")
+
+    if util.config_val("SEGMENT", "output_audio", "False").lower() in (
+        "true",
+        "1",
+        "yes",
+    ):
         extract_audio_segments(df_seg, expr.data_dir, util)
+        extract_audio_segments(df_silence, expr.data_dir, util, is_silence=True)
 
-    if "duration" not in df.columns:
-        df["duration"] = df.index.to_series().map(lambda x: calc_dur(x))
     num_before = df.shape[0]
     num_after = df_seg.shape[0]
     util.debug(
-        f"saved {segmented_file} to {expr.data_dir}, {num_after} samples (was"
+        f"saved {seg_file_name} and {segment_silence_file_name} "
+        f" to {expr.data_dir}, {num_after} samples (was"
         f" {num_before})"
     )
-
-    # plot distributions
-    from nkululeko.plots import Plots
-
-    plots = Plots()
-    plots.plot_durations(
-        df, "original_durations", sample_selection, caption="Original durations"
-    )
-    plots.plot_durations(
-        df_seg, "segmented_durations", sample_selection, caption="Segmented durations"
-    )
-    if method == "pyannote":
-        util.debug(df_seg[["speaker", "duration"]].groupby(["speaker"]).sum())
-        plots.plot_speakers(df_seg, sample_selection)
 
     glob_conf.report.add_item(
         ReportItem(

@@ -37,6 +37,7 @@ from nkululeko.constants import VERSION
 from nkululeko.utils.util import Util
 from nkululeko.experiment import Experiment
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract features from audio files using nkululeko feature extraction models."
@@ -127,9 +128,7 @@ def main():
                     # Fallback: handle comma-separated or single string.
                     if "," in conf_str:
                         extractors = [
-                            part.strip()
-                            for part in conf_str.split(",")
-                            if part.strip()
+                            part.strip() for part in conf_str.split(",") if part.strip()
                         ]
                     else:
                         extractors = [conf_str]
@@ -229,7 +228,9 @@ def main():
             df = expr.get_sample_selection()
 
             # Extract features from the df with audformat segmented index
-            print(f"\nExtracting features for {len(df)} samples from config-specified data...")
+            print(
+                f"\nExtracting features for {len(df)} samples from config-specified data..."
+            )
             print(f"\nInitializing {args.model} model...")
             print("(This may take a while on first run - downloading models...)")
             feature_extractor = get_feature_extractor(args.model, config)
@@ -241,8 +242,16 @@ def main():
                 # Support both segmented (file, start, end) and file-level index
                 if isinstance(idx, tuple):
                     file, start, end = idx
-                    offset = start.total_seconds() if hasattr(start, "total_seconds") else float(start)
-                    duration = (end - start).total_seconds() if hasattr(end, "total_seconds") else None
+                    offset = (
+                        start.total_seconds()
+                        if hasattr(start, "total_seconds")
+                        else float(start)
+                    )
+                    duration = (
+                        (end - start).total_seconds()
+                        if hasattr(end, "total_seconds")
+                        else None
+                    )
                     if duration is not None and duration <= 0:
                         duration = None
                 else:
@@ -254,7 +263,7 @@ def main():
                     print(f"WARNING: File not found: {file}, skipping...")
                     continue
 
-                print(f"[{i+1}/{len(df)}] Extracting features from: {file}")
+                print(f"[{i + 1}/{len(df)}] Extracting features from: {file}")
 
                 try:
                     signal, sampling_rate = audiofile.read(
@@ -290,17 +299,23 @@ def main():
                 features_array = np.array(features_list)
                 feature_names = [f"feat_{j}" for j in range(features_array.shape[1])]
                 if isinstance(index_list[0], tuple):
-                    feats_index = pd.MultiIndex.from_tuples(index_list, names=df.index.names)
+                    feats_index = pd.MultiIndex.from_tuples(
+                        index_list, names=df.index.names
+                    )
                 else:
                     feats_index = pd.Index(index_list, name=df.index.name)
-                feats_df = pd.DataFrame(features_array, index=feats_index, columns=feature_names)
+                feats_df = pd.DataFrame(
+                    features_array, index=feats_index, columns=feature_names
+                )
 
                 # Combine extracted features with existing columns from df
                 result_df = pd.concat([df.loc[feats_df.index], feats_df], axis=1)
 
                 if args.outfile:
                     outfile = (
-                        args.outfile if args.outfile.endswith(".csv") else args.outfile + ".csv"
+                        args.outfile
+                        if args.outfile.endswith(".csv")
+                        else args.outfile + ".csv"
                     )
                     result_df.to_csv(outfile)
                     print(f"\nFeatures saved to {outfile}")
@@ -325,7 +340,6 @@ def main():
 
     print(f"\nProcessing {len(files)} file(s)...")
 
-
     # Initialize feature extractor based on model type
     print(f"\nInitializing {args.model} model...")
     print("(This may take a while on first run - downloading models...)")
@@ -340,7 +354,7 @@ def main():
             print(f"WARNING: File not found: {file}, skipping...")
             continue
 
-        print(f"[{i+1}/{len(files)}] Extracting features from: {file}")
+        print(f"[{i + 1}/{len(files)}] Extracting features from: {file}")
 
         try:
             # Load audio file using audiofile

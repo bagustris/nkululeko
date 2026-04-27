@@ -165,6 +165,7 @@ class TestEvalSpecificModel:
 
             def predict(self):
                 import types
+
                 result = types.SimpleNamespace(test=0.5)
                 r = types.SimpleNamespace(result=result)
                 r.set_id = lambda run, epoch: None

@@ -1,10 +1,8 @@
 import pytest
 import configparser
-import os
 import random
 import tempfile
 import pandas as pd
-import numpy as np
 import nkululeko.glob_conf as glob_conf
 
 
@@ -52,36 +50,36 @@ class TestExperimentImportCsv:
 
     def test_import_csv_with_valid_file(self, mock_config, tmp_path):
         """Test importing a valid CSV file.
-        
+
         Note: This is a minimal test that verifies _import_csv can read
         a valid audformat CSV file. Full integration testing with dataset
         loading is covered by the end-to-end tests.
         """
         from nkululeko.experiment import Experiment
         from nkululeko import glob_conf
-        
+
         # Create a CSV file in audformat-compatible format
         csv_file = tmp_path / "test.csv"
         df = pd.DataFrame({"file": ["a.wav", "b.wav"], "emotion": ["happy", "sad"]})
-        df.index.name = 'file'
+        df.index.name = "file"
         df.to_csv(csv_file)
         assert csv_file.exists()
-        
-        # Initialize glob_conf 
+
+        # Initialize glob_conf
         glob_conf.init_config(mock_config)
-        
+
         # Create a minimal Experiment and manually set target to test _import_csv
         exp = Experiment.__new__(Experiment)
         exp.target = "emotion"  # Set target manually to avoid full initialization
-        
+
         result_df = exp._import_csv(str(csv_file))
-        
+
         # Verify the DataFrame was imported correctly
         assert result_df is not None
         assert isinstance(result_df, pd.DataFrame)
         assert "emotion" in result_df.columns
         assert len(result_df) == 2
-        assert hasattr(result_df, 'is_labeled')
+        assert hasattr(result_df, "is_labeled")
         assert result_df.is_labeled is True
 
 
@@ -118,6 +116,7 @@ class TestExperimentHelpers:
     def test_decode_labels_with_encoder(self):
         """Test _decode_labels concept with a label encoder."""
         from sklearn.preprocessing import LabelEncoder
+
         le = LabelEncoder()
         le.fit(["happy", "sad", "angry"])
         df = pd.DataFrame({"emotion": [0, 1, 2]})
@@ -131,6 +130,7 @@ class TestBuildTestDsDf:
     def _make_segmented_index(self, files):
         """Create a minimal segmented MultiIndex mimicking audformat."""
         import pandas as pd
+
         arrays = [
             files,
             pd.to_timedelta([0] * len(files), unit="s"),
@@ -144,9 +144,13 @@ class TestBuildTestDsDf:
 
         glob_conf.init_config(mock_config)
         ds = Datasplitter.__new__(Datasplitter)
-        ds.util = type("U", (), {
-            "get_path": lambda self, k: str(tmp_path) + "/",
-        })()
+        ds.util = type(
+            "U",
+            (),
+            {
+                "get_path": lambda self, k: str(tmp_path) + "/",
+            },
+        )()
         ds.df_test = pd.DataFrame()
         ds.datasets = {"ds_a": None, "ds_b": None}
         ds._build_test_ds_df()
@@ -176,9 +180,13 @@ class TestBuildTestDsDf:
         df_b.to_pickle(f"{store}ds_b_testdf.pkl")
 
         ds = Datasplitter.__new__(Datasplitter)
-        ds.util = type("U", (), {
-            "get_path": lambda self, k: store,
-        })()
+        ds.util = type(
+            "U",
+            (),
+            {
+                "get_path": lambda self, k: store,
+            },
+        )()
         ds.datasets = {"ds_a": None, "ds_b": None}
         ds.df_test = df_test
 

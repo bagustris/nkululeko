@@ -28,9 +28,12 @@ def dummy_data_df():
 @pytest.fixture
 def bert_instance(dummy_data_df, dummy_util):
     # Patch Featureset to inject util and patch the problematic lines in Bert.__init__
-    with patch(
-        "nkululeko.feat_extract.feats_bert.Featureset.__init__", return_value=None
-    ), patch("torch.cuda.is_available", return_value=False):
+    with (
+        patch(
+            "nkululeko.feat_extract.feats_bert.Featureset.__init__", return_value=None
+        ),
+        patch("torch.cuda.is_available", return_value=False),
+    ):
         bert = Bert.__new__(Bert)  # Create instance without calling __init__
         # Manually set required attributes
         bert.util = dummy_util
@@ -60,9 +63,11 @@ def test_init_sets_device_and_feat_type(dummy_data_df, dummy_util):
 
 
 def test_init_model_calls_transformers(bert_instance):
-    with patch("transformers.AutoConfig.from_pretrained") as mock_config, patch(
-        "transformers.AutoTokenizer.from_pretrained"
-    ) as mock_tokenizer, patch("transformers.AutoModel.from_pretrained") as mock_model:
+    with (
+        patch("transformers.AutoConfig.from_pretrained") as mock_config,
+        patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer,
+        patch("transformers.AutoModel.from_pretrained") as mock_model,
+    ):
         mock_cfg = MagicMock()
         mock_cfg.num_hidden_layers = 12
         mock_cfg.tokenizer_class = "BertTokenizer"
@@ -76,8 +81,8 @@ def test_init_model_calls_transformers(bert_instance):
         # Mock tokenizer
         mock_tokenizer.return_value = MagicMock()
 
-        bert_instance.util.config_val.side_effect = (
-            lambda section, key, default=None: default
+        bert_instance.util.config_val.side_effect = lambda section, key, default=None: (
+            default
         )
         bert_instance.init_model()
         assert bert_instance.model_initialized is True

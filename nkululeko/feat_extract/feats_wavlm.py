@@ -79,9 +79,9 @@ class Wavlm(Featureset):
                     frame_offset=int(start.total_seconds() * 16000),
                     num_frames=int((end - start).total_seconds() * 16000),
                 )
-                assert (
-                    sampling_rate == 16000
-                ), f"sampling rate should be 16000 but is {sampling_rate}"
+                assert sampling_rate == 16000, (
+                    f"sampling rate should be 16000 but is {sampling_rate}"
+                )
                 return self.get_embeddings(signal, sampling_rate, file)
 
             self.df = self._extract_embeddings_with_error_handling(_load_file)

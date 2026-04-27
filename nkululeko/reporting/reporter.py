@@ -252,8 +252,12 @@ class Reporter:
                 # Ensure the file_name goes to the results directory
                 if not os.path.isabs(file_name):
                     res_dir = self.util.get_res_dir()
-                    basename = file_name if file_name.endswith(".csv") else file_name + ".csv"
-                    file_name = _safe_path(res_dir, os.path.splitext(basename)[0], "csv")
+                    basename = (
+                        file_name if file_name.endswith(".csv") else file_name + ".csv"
+                    )
+                    file_name = _safe_path(
+                        res_dir, os.path.splitext(basename)[0], "csv"
+                    )
                 else:
                     if not file_name.endswith(".csv"):
                         file_name = file_name + ".csv"

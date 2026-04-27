@@ -20,15 +20,15 @@ class DataFrameMixin:
             or isinstance(pd_series.dtype, pd.BooleanDtype)
             or isinstance(pd_series.dtype, pd.StringDtype)
         )
-    
+
     def is_numeric(self, pd_series):
         """Check if a dataframe column is numeric.
-        
+
         Uses pandas.api.types.is_numeric_dtype to properly handle all numeric dtypes
         including int32, float32, int64, float64, and nullable integer/float types.
         """
         return is_numeric_dtype(pd_series)
-     
+
     def make_segmented_index(self, df):
         if len(df) == 0:
             return df
@@ -38,7 +38,15 @@ class DataFrameMixin:
         return df
 
     def copy_flags(self, df_source, df_target):
-        for flag in ("is_labeled", "is_test", "is_train", "is_val", "got_gender", "got_age", "got_speaker"):
+        for flag in (
+            "is_labeled",
+            "is_test",
+            "is_train",
+            "is_val",
+            "got_gender",
+            "got_age",
+            "got_speaker",
+        ):
             if hasattr(df_source, flag):
                 setattr(df_target, flag, getattr(df_source, flag))
 
@@ -185,3 +193,58 @@ class DataFrameMixin:
         if old_min == old_max:
             return np.full_like(values, (new_min + new_max) / 2)
         return (values - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
+
+
+def segment_silence(df: pd.DataFrame, with_borders: bool=True, remove_speaker_id: bool=False) -> pd.DataFrame:
+    """Take an already segmented (based on VAD) DataFrame and return the silence segments.
+
+    Finds the gaps between speech segments within each file. Optionally includes
+    the initial silence before the first speech segment (from t=0).
+
+    Args:
+        df: A DataFrame with a segmented audformat index (file, start, end).
+        with_borders: If True, include the region from t=0 to the first speech
+            segment start as an additional silence segment per file.
+        remove_speaker_id: If True, set the speaker column to "silence" for all silence segments.
+
+    Returns:
+        A new DataFrame with one row per silence gap, All data columns are copied from the first segment entry per file.
+    """
+    if len(df) == 0:
+        return df.iloc[0:0]
+
+    silence_entries = []
+    silence_data = []
+
+    for file, file_df in df.groupby(level="file"):
+        file_df = file_df.sort_index(level="start")
+        starts = file_df.index.get_level_values("start")
+        ends = file_df.index.get_level_values("end")
+        first_row = file_df.iloc[0].to_dict()
+        last_row = file_df.iloc[-1].to_dict()
+
+        if with_borders and starts[0] > pd.Timedelta(0):
+            silence_entries.append((file, pd.Timedelta(0), starts[0]))
+            silence_data.append(first_row)
+
+        for i in range(len(starts) - 1):
+            gap_start = ends[i]
+            gap_end = starts[i + 1]
+            if gap_end > gap_start:
+                silence_entries.append((file, gap_start, gap_end))
+                silence_data.append(first_row)
+
+        if with_borders and ends[-1] < file_df.index.get_level_values("end").max():
+            silence_entries.append((file, ends[-1], file_df.index.get_level_values("end").max()))
+            silence_data.append(last_row)
+
+    if not silence_entries:
+        return df.iloc[0:0]
+
+    new_index = pd.MultiIndex.from_tuples(
+        silence_entries, names=["file", "start", "end"]
+    )
+    res_df = pd.DataFrame(silence_data, index=new_index)
+    if remove_speaker_id and "speaker" in df.columns:
+        res_df["speaker"] = "silence"
+    return res_df

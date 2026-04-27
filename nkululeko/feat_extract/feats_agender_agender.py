@@ -55,7 +55,7 @@ class Agender_agenderSet(Featureset):
         sampling_rate = 16000
         if no_reuse or extract or not os.path.isfile(storage):
             self.util.debug(
-                "extracting agender model age and gender, this might take a" " while..."
+                "extracting agender model age and gender, this might take a while..."
             )
             if not self.model_loaded:
                 self._load_model()

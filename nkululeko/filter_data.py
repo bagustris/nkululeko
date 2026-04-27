@@ -85,8 +85,7 @@ class DataFilter:
         if min_dur or max_dur:
             if not isinstance(self.df.index, pd.MultiIndex):
                 self.util.debug(
-                    "converting file index to multi index, this might take a"
-                    " while..."
+                    "converting file index to multi index, this might take a while..."
                 )
                 self.df.index = audformat.utils.to_segmented_index(
                     self.df.index, allow_nat=False
