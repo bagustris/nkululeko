@@ -221,6 +221,7 @@ def segment_silence(df: pd.DataFrame, with_borders: bool=True, remove_speaker_id
         starts = file_df.index.get_level_values("start")
         ends = file_df.index.get_level_values("end")
         first_row = file_df.iloc[0].to_dict()
+        last_row = file_df.iloc[-1].to_dict()
 
         if with_borders and starts[0] > pd.Timedelta(0):
             silence_entries.append((file, pd.Timedelta(0), starts[0]))
@@ -232,6 +233,10 @@ def segment_silence(df: pd.DataFrame, with_borders: bool=True, remove_speaker_id
             if gap_end > gap_start:
                 silence_entries.append((file, gap_start, gap_end))
                 silence_data.append(first_row)
+
+        if with_borders and ends[-1] < file_df.index.get_level_values("end").max():
+            silence_entries.append((file, ends[-1], file_df.index.get_level_values("end").max()))
+            silence_data.append(last_row)
 
     if not silence_entries:
         return df.iloc[0:0]

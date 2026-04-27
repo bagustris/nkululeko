@@ -253,7 +253,7 @@ def main():
     seg_file_name = f"{result_file}.csv"
     segment_silence_file_name = f"{result_file}_silence.csv"
     if os.path.exists(f"{seg_file_name}") and os.path.exists(f"{segment_silence_file_name}"):
-        util.debug(f"reusing existing result file: {seg_file_name}")
+        util.debug(f"reusing existing result file: {seg_file_name} and {segment_silence_file_name}")
         df_seg = audformat.utils.read_csv(f"{seg_file_name}")
         df_silence = audformat.utils.read_csv(f"{segment_silence_file_name}")
     else:
@@ -275,7 +275,7 @@ def main():
         # segment also the gaps between segments to get a full coverage of the original audio
         with_borders = util.config_val("SEGMENT", "include_silence_borders", "False")
         with_borders = str(with_borders).lower() in ("true","1","yes")
-        df_silence = segment_silence(df_seg, with_borders)
+        df_silence = segment_silence(df_seg, with_borders=with_borders)
 
         # plot results
         if "duration" not in df.columns:

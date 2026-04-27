@@ -325,7 +325,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
 
     def check_class_label(self, df):
         target = self.config_val("DATA", "target", None)
-        if "class_label" in df.columns:
+        if "class_label" in df.columns and target is not None:
             df = df.drop(columns=[target])
             df = df.rename(columns={"class_label": target})
         return df
