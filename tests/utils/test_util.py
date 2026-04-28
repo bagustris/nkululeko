@@ -279,3 +279,129 @@ class TestSetupLogging:
             h for h in logger.handlers if isinstance(h, logging.FileHandler)
         ]
         assert len(file_handlers) == 0
+
+
+# ---------------------------------------------------------------------------
+# get_path()
+# ---------------------------------------------------------------------------
+
+
+class TestGetPath:
+    def test_no_config_fig_dir_default(self, tmp_path):
+        glob_conf.config = None
+        u = Util("test", has_config=False)
+        path = u.get_path("fig_dir")
+        assert path.endswith("images/") or "images" in path
+
+    def test_no_config_res_dir_default(self, tmp_path):
+        glob_conf.config = None
+        u = Util("test", has_config=False)
+        path = u.get_path("res_dir")
+        assert "results" in path
+
+    def test_no_config_model_dir_default(self, tmp_path):
+        glob_conf.config = None
+        u = Util("test", has_config=False)
+        path = u.get_path("model_dir")
+        assert "models" in path
+
+    def test_no_config_cache_default(self, tmp_path):
+        glob_conf.config = None
+        u = Util("test", has_config=False)
+        path = u.get_path("cache")
+        assert "cache" in path
+
+    def test_no_config_unknown_entry_returns_store(self, tmp_path):
+        glob_conf.config = None
+        u = Util("test", has_config=False)
+        path = u.get_path("anything_else")
+        assert "store" in path
+
+    def test_with_config_fig_dir_uses_root_and_name(self):
+        u = Util("test")
+        path = u.get_path("fig_dir")
+        assert "testexp" in path
+        assert "images" in path
+
+    def test_with_config_res_dir_uses_root_and_name(self):
+        u = Util("test")
+        path = u.get_path("res_dir")
+        assert "testexp" in path
+        assert "results" in path
+
+    def test_with_config_unknown_key_defaults_to_store(self):
+        u = Util("test")
+        path = u.get_path("unknown_key")
+        assert "store" in path
+
+    def test_get_path_creates_directory(self, tmp_path):
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "newexp"
+        u = Util("test")
+        import os
+        path = u.get_path("res_dir")
+        assert os.path.isdir(path)
+
+
+# ---------------------------------------------------------------------------
+# check_class_label()
+# ---------------------------------------------------------------------------
+
+
+class TestCheckClassLabel:
+    def test_renames_class_label_to_target(self):
+        u = Util("test")
+        import pandas as pd
+        df = pd.DataFrame({"emotion": [1, 2], "class_label": ["A", "B"]})
+        result = u.check_class_label(df)
+        assert "class_label" not in result.columns
+        assert "emotion" in result.columns
+        # class_label becomes emotion (old emotion column dropped)
+        assert list(result["emotion"]) == ["A", "B"]
+
+    def test_no_class_label_column_unchanged(self):
+        u = Util("test")
+        import pandas as pd
+        df = pd.DataFrame({"emotion": [1, 2, 3], "other": [4, 5, 6]})
+        result = u.check_class_label(df)
+        assert list(result.columns) == ["emotion", "other"]
+
+    def test_no_target_key_in_config_unchanged(self):
+        # Remove the target key so config_val returns None (the default)
+        del glob_conf.config["DATA"]["target"]
+        u = Util("test")
+        import pandas as pd
+        df = pd.DataFrame({"emotion": [1], "class_label": ["A"]})
+        result = u.check_class_label(df)
+        # target is None → condition is False, no rename
+        assert "class_label" in result.columns
+
+
+# ---------------------------------------------------------------------------
+# config_val_data()
+# ---------------------------------------------------------------------------
+
+
+class TestConfigValData:
+    def test_returns_value_from_main_config(self):
+        glob_conf.config["DATA"]["emodb.db_path"] = "/some/path"
+        u = Util("test")
+        result = u.config_val_data("emodb", "db_path", "default")
+        assert result == "/some/path"
+
+    def test_returns_default_when_key_missing(self):
+        u = Util("test")
+        result = u.config_val_data("emodb", "nonexistent", "fallback")
+        assert result == "fallback"
+
+    def test_strips_quotes_from_value(self):
+        glob_conf.config["DATA"]["emodb.db_path"] = "'quoted/path'"
+        u = Util("test")
+        result = u.config_val_data("emodb", "db_path", "default")
+        assert result == "quoted/path"
+
+    def test_empty_key_looks_up_dataset_directly(self):
+        glob_conf.config["DATA"]["emodb"] = "/direct/path"
+        u = Util("test")
+        result = u.config_val_data("emodb", "", "fallback")
+        assert result == "/direct/path"
