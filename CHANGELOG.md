@@ -14,7 +14,7 @@ Version 1.6.1 (26-04-27)
 * fixed bug in classification experiments with continuous data
 * add dropna() to data import
 
-Version 1.6.0 (26-04-30)
+Version 1.6.0 (26-04-27)
 ------------------------
 * added silent segments for segmentation
 * added caching for pyannote segmentation
