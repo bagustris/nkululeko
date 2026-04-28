@@ -1,7 +1,15 @@
 Changelog
 =========
 
-Version 1.6.1 (26-04-30)
+Version 1.6.2 (26-04-28)
+------------------------
+* minor bug fixes: 
+* mlp_reg model save, 
+* plot title newlines
+* regression test result metric
+* ax titles for binned conf matrices
+
+Version 1.6.1 (26-04-27)
 ------------------------
 * fixed bug in classification experiments with continuous data
 * add dropna() to data import
