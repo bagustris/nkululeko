@@ -1,6 +1,7 @@
 # test_dataframe.py - unit tests for nkululeko/utils/dataframe.py
 import configparser
 import unittest
+from datetime import timedelta
 
 import numpy as np
 import pandas as pd
@@ -259,10 +260,13 @@ type = os
 class TestSegmentSilence(unittest.TestCase):
     """Unit tests for segment_silence() in nkululeko/utils/dataframe.py."""
 
+    @classmethod
+    def setUpClass(cls):
+        from nkululeko.utils.dataframe import segment_silence
+        cls.segment_silence = staticmethod(segment_silence)
+
     def _make_seg_df(self, entries, columns=None):
         """Build a segmented-index DataFrame from (file, start_sec, end_sec) tuples."""
-        from datetime import timedelta
-
         idx = pd.MultiIndex.from_tuples(
             [(f, timedelta(seconds=s), timedelta(seconds=e)) for f, s, e in entries],
             names=["file", "start", "end"],
@@ -272,26 +276,20 @@ class TestSegmentSilence(unittest.TestCase):
 
     def test_segment_silence_basic_gap(self):
         """Two speech segments separated by a gap yield exactly one silence row."""
-        from nkululeko.utils.dataframe import segment_silence
-        from datetime import timedelta
-
         df = self._make_seg_df([("f.wav", 1.0, 3.0), ("f.wav", 5.0, 7.0)])
-        result = segment_silence(df, with_borders=False)
+        result = self.segment_silence(df, with_borders=False)
         self.assertEqual(len(result), 1)
         self.assertEqual(result.index[0], ("f.wav", timedelta(seconds=3), timedelta(seconds=5)))
 
     def test_segment_silence_multiple_files(self):
         """Each file's gaps are computed independently."""
-        from nkululeko.utils.dataframe import segment_silence
-        from datetime import timedelta
-
         df = self._make_seg_df([
             ("a.wav", 0.0, 2.0),
             ("a.wav", 4.0, 6.0),
             ("b.wav", 1.0, 3.0),
             ("b.wav", 7.0, 9.0),
         ])
-        result = segment_silence(df, with_borders=False)
+        result = self.segment_silence(df, with_borders=False)
         self.assertEqual(len(result), 2)
         files = result.index.get_level_values("file").tolist()
         self.assertIn("a.wav", files)
@@ -306,11 +304,8 @@ class TestSegmentSilence(unittest.TestCase):
 
     def test_segment_silence_with_borders_leading(self):
         """with_borders=True adds a leading silence when first segment starts after t=0."""
-        from nkululeko.utils.dataframe import segment_silence
-        from datetime import timedelta
-
         df = self._make_seg_df([("f.wav", 2.0, 4.0), ("f.wav", 6.0, 8.0)])
-        result = segment_silence(df, with_borders=True)
+        result = self.segment_silence(df, with_borders=True)
         # Should have: leading silence (0→2) + gap (4→6)
         self.assertEqual(len(result), 2)
         starts = result.index.get_level_values("start").tolist()
@@ -318,49 +313,51 @@ class TestSegmentSilence(unittest.TestCase):
 
     def test_segment_silence_with_borders_no_leading(self):
         """with_borders=True does NOT add a leading silence when first segment starts at t=0."""
-        from nkululeko.utils.dataframe import segment_silence
-        from datetime import timedelta
-
         df = self._make_seg_df([("f.wav", 0.0, 2.0), ("f.wav", 4.0, 6.0)])
-        result = segment_silence(df, with_borders=True)
+        result = self.segment_silence(df, with_borders=True)
         # Only the gap (2→4), no leading silence
         self.assertEqual(len(result), 1)
         self.assertNotIn(timedelta(0), result.index.get_level_values("start").tolist())
 
     def test_segment_silence_adjacent_segments(self):
-        """Adjacent (or overlapping) segments produce no silence row."""
-        from nkululeko.utils.dataframe import segment_silence
-
+        """Adjacent segments (end == next start) produce no silence row."""
         df = self._make_seg_df([("f.wav", 0.0, 3.0), ("f.wav", 3.0, 6.0)])
-        result = segment_silence(df, with_borders=False)
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_overlapping_segments(self):
+        """Overlapping segments produce no silence row."""
+        # Second interval starts before the first one ends (true overlap).
+        df = self._make_seg_df([("f.wav", 0.0, 5.0), ("f.wav", 3.0, 7.0)])
+        result = self.segment_silence(df, with_borders=False)
         self.assertEqual(len(result), 0)
 
     def test_segment_silence_empty(self):
         """An empty input DataFrame returns an empty DataFrame."""
-        from nkululeko.utils.dataframe import segment_silence
-
         df = self._make_seg_df([])
-        result = segment_silence(df, with_borders=False)
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_empty_with_borders(self):
+        """Empty input with borders enabled still returns an empty DataFrame."""
+        df = self._make_seg_df([])
+        result = self.segment_silence(df, with_borders=True)
         self.assertEqual(len(result), 0)
 
     def test_segment_silence_single_segment(self):
         """A single segment per file with no gaps yields no silence rows."""
-        from nkululeko.utils.dataframe import segment_silence
-
         df = self._make_seg_df([("f.wav", 1.0, 3.0)])
-        result = segment_silence(df, with_borders=False)
+        result = self.segment_silence(df, with_borders=False)
         self.assertEqual(len(result), 0)
 
     def test_segment_silence_remove_speaker_id(self):
         """remove_speaker_id=True sets the speaker column to 'silence'."""
-        from nkululeko.utils.dataframe import segment_silence
-
         df = self._make_seg_df(
             [("f.wav", 0.0, 2.0), ("f.wav", 4.0, 6.0)],
             columns=["speaker"],
         )
         df["speaker"] = "spk1"
-        result = segment_silence(df, with_borders=False, remove_speaker_id=True)
+        result = self.segment_silence(df, with_borders=False, remove_speaker_id=True)
         self.assertEqual(len(result), 1)
         self.assertEqual(result["speaker"].iloc[0], "silence")
 
