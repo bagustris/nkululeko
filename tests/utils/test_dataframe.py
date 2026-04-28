@@ -1,6 +1,7 @@
 # test_dataframe.py - unit tests for nkululeko/utils/dataframe.py
 import configparser
 import unittest
+from datetime import timedelta
 
 import numpy as np
 import pandas as pd
@@ -254,6 +255,111 @@ type = os
         # This tests the exception handling
         result = u.is_dict_with_string_values({"a": object()})
         self.assertFalse(result)
+
+
+class TestSegmentSilence(unittest.TestCase):
+    """Unit tests for segment_silence() in nkululeko/utils/dataframe.py."""
+
+    @classmethod
+    def setUpClass(cls):
+        from nkululeko.utils.dataframe import segment_silence
+        cls.segment_silence = staticmethod(segment_silence)
+
+    def _make_seg_df(self, entries, columns=None):
+        """Build a segmented-index DataFrame from (file, start_sec, end_sec) tuples."""
+        idx = pd.MultiIndex.from_tuples(
+            [(f, timedelta(seconds=s), timedelta(seconds=e)) for f, s, e in entries],
+            names=["file", "start", "end"],
+        )
+        data = {col: [None] * len(entries) for col in (columns or [])}
+        return pd.DataFrame(data, index=idx)
+
+    def test_segment_silence_basic_gap(self):
+        """Two speech segments separated by a gap yield exactly one silence row."""
+        df = self._make_seg_df([("f.wav", 1.0, 3.0), ("f.wav", 5.0, 7.0)])
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.index[0], ("f.wav", timedelta(seconds=3), timedelta(seconds=5)))
+
+    def test_segment_silence_multiple_files(self):
+        """Each file's gaps are computed independently."""
+        df = self._make_seg_df([
+            ("a.wav", 0.0, 2.0),
+            ("a.wav", 4.0, 6.0),
+            ("b.wav", 1.0, 3.0),
+            ("b.wav", 7.0, 9.0),
+        ])
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 2)
+        files = result.index.get_level_values("file").tolist()
+        self.assertIn("a.wav", files)
+        self.assertIn("b.wav", files)
+        # a.wav gap: 2→4, b.wav gap: 3→7
+        a_row = result[result.index.get_level_values("file") == "a.wav"]
+        self.assertEqual(a_row.index[0][1], timedelta(seconds=2))
+        self.assertEqual(a_row.index[0][2], timedelta(seconds=4))
+        b_row = result[result.index.get_level_values("file") == "b.wav"]
+        self.assertEqual(b_row.index[0][1], timedelta(seconds=3))
+        self.assertEqual(b_row.index[0][2], timedelta(seconds=7))
+
+    def test_segment_silence_with_borders_leading(self):
+        """with_borders=True adds a leading silence when first segment starts after t=0."""
+        df = self._make_seg_df([("f.wav", 2.0, 4.0), ("f.wav", 6.0, 8.0)])
+        result = self.segment_silence(df, with_borders=True)
+        # Should have: leading silence (0→2) + gap (4→6)
+        self.assertEqual(len(result), 2)
+        starts = result.index.get_level_values("start").tolist()
+        self.assertIn(timedelta(0), starts)
+
+    def test_segment_silence_with_borders_no_leading(self):
+        """with_borders=True does NOT add a leading silence when first segment starts at t=0."""
+        df = self._make_seg_df([("f.wav", 0.0, 2.0), ("f.wav", 4.0, 6.0)])
+        result = self.segment_silence(df, with_borders=True)
+        # Only the gap (2→4), no leading silence
+        self.assertEqual(len(result), 1)
+        self.assertNotIn(timedelta(0), result.index.get_level_values("start").tolist())
+
+    def test_segment_silence_adjacent_segments(self):
+        """Adjacent segments (end == next start) produce no silence row."""
+        df = self._make_seg_df([("f.wav", 0.0, 3.0), ("f.wav", 3.0, 6.0)])
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_overlapping_segments(self):
+        """Overlapping segments produce no silence row."""
+        # Second interval starts before the first one ends (true overlap).
+        df = self._make_seg_df([("f.wav", 0.0, 5.0), ("f.wav", 3.0, 7.0)])
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_empty(self):
+        """An empty input DataFrame returns an empty DataFrame."""
+        df = self._make_seg_df([])
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_empty_with_borders(self):
+        """Empty input with borders enabled still returns an empty DataFrame."""
+        df = self._make_seg_df([])
+        result = self.segment_silence(df, with_borders=True)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_single_segment(self):
+        """A single segment per file with no gaps yields no silence rows."""
+        df = self._make_seg_df([("f.wav", 1.0, 3.0)])
+        result = self.segment_silence(df, with_borders=False)
+        self.assertEqual(len(result), 0)
+
+    def test_segment_silence_remove_speaker_id(self):
+        """remove_speaker_id=True sets the speaker column to 'silence'."""
+        df = self._make_seg_df(
+            [("f.wav", 0.0, 2.0), ("f.wav", 4.0, 6.0)],
+            columns=["speaker"],
+        )
+        df["speaker"] = "spk1"
+        result = self.segment_silence(df, with_borders=False, remove_speaker_id=True)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result["speaker"].iloc[0], "silence")
 
 
 if __name__ == "__main__":
