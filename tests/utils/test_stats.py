@@ -124,7 +124,7 @@ class TestGetEffectSize:
         assert combo_str == "A"
 
 
-class TestCohensD_to_string:
+class TestCohensDToString:
     # NOTE: cohens_D_to_string has a dead-code bug — the second elif
     # condition duplicates the first (both check val < 0.2), so "small effect"
     # is never returned. Tests document the actual runtime behaviour.
@@ -162,7 +162,7 @@ class TestCohensD_to_string:
         assert isinstance(cohens_D_to_string(0.0), str)
 
 
-class TestP_value_to_string:
+class TestPValueToString:
     def test_highly_significant(self):
         result = p_value_to_string(0.0005)
         assert "highly significant" in result
@@ -193,7 +193,7 @@ class TestP_value_to_string:
         assert "0.042" in result
 
 
-class TestGetT_test_effect:
+class TestGetTTestEffect:
     def test_returns_three_values(self):
         rng = np.random.default_rng(0)
         v1 = rng.normal(0, 1, 50)
@@ -233,11 +233,11 @@ class TestGetT_test_effect:
     def test_nan_values_handled(self):
         v1 = np.array([float("nan"), 1.0, 2.0, 3.0, 4.0])
         v2 = np.array([5.0, 6.0, 7.0, 8.0, 9.0])
-        t, p, _ = get_t_test_effect(v1, v2)
+        t, _, _ = get_t_test_effect(v1, v2)
         assert not np.isnan(t)
 
 
-class TestGetMannwhitney_effect:
+class TestGetMannWhitneyEffect:
     def test_returns_three_values(self):
         rng = np.random.default_rng(0)
         v1 = rng.normal(0, 1, 30)
@@ -286,7 +286,7 @@ class TestNormaltest:
         assert isinstance(result, bool)
 
 
-class TestGet2Cont_effect:
+class TestGet2ContEffect:
     def test_large_normal_sample_uses_t_test(self):
         rng = np.random.default_rng(42)
         v1 = rng.normal(0, 1, 200)
@@ -319,7 +319,7 @@ class TestGet2Cont_effect:
         assert len(result["significance"]) > 0
 
 
-class TestFindMostSignificantDifference_ttests:
+class TestFindMostSignificantDifferenceTtests:
     def test_two_distributions_returns_result(self):
         rng = np.random.default_rng(42)
         dists = {
@@ -357,7 +357,7 @@ class TestFindMostSignificantDifference_ttests:
         assert len(result["all_results"]) == 3
 
 
-class TestFindMostSignificantDifference_mannwhitney:
+class TestFindMostSignificantDifferenceMannWhitney:
     def test_two_distributions_returns_result(self):
         rng = np.random.default_rng(7)
         dists = {
@@ -385,14 +385,14 @@ class TestFindMostSignificantDifference_mannwhitney:
         }
 
 
-class TestGetKruskal_wallis_effect:
+class TestGetKruskalWallisEffect:
     def test_three_distinct_groups_returns_low_p(self):
         dists = {
             "A": np.arange(1, 21, dtype=float),
             "B": np.arange(50, 70, dtype=float),
             "C": np.arange(100, 120, dtype=float),
         }
-        h, p, sig = get_kruskal_wallis_effect(dists)
+        h, p, _ = get_kruskal_wallis_effect(dists)
         assert h > 0
         assert p < 0.001
 
@@ -451,7 +451,7 @@ class TestFindMostSignificantDifference:
             "B": rng.normal(3, 1, 30),
             "C": rng.normal(6, 1, 30),
         }
-        pairwise, overall = find_most_significant_difference(dists, mean_featnum=0)
+        _, overall = find_most_significant_difference(dists, mean_featnum=0)
         assert overall is not None
         assert overall["approach"] == "Kruskal-Wallis"
         assert "h_stat" in overall
