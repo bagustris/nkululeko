@@ -70,6 +70,40 @@ For GPU support (cuda 12.6):
 pip install torch torchvision torchaudio
 ```
 
+#### CPU-only Installation with uv
+
+If you encounter issues with CUDA dependencies being installed even with the `torch-cpu` extra (this can happen with some package managers), you can use this manual installation approach with uv:
+
+```bash
+# Create virtual environment
+uv venv --python 3.12
+source .venv/bin/activate
+
+# Install CPU-only PyTorch
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --python .venv/bin/python
+
+# Install nkululeko without dependencies
+uv pip install -e . --no-deps --python .venv/bin/python
+
+# Install core dependencies
+uv pip install pandas numpy scipy matplotlib seaborn scikit-learn --python .venv/bin/python
+
+# Install audio-related dependencies
+uv pip install audb audeer audformat audplot audmodel auglib audinterface audiofile audmetric audonnx confidence-intervals --python .venv/bin/python
+
+# Install remaining packages (excluding xgboost temporarily)
+uv pip install opensmile praat-parselmouth sounddevice imageio datasets transformers umap-learn pylatex audiomentations googletrans sentencepiece shap numpy_audio_limiter splitutils --python .venv/bin/python
+
+# Install xgboost (choose one option):
+# Option 1: Use older version without CUDA dependencies
+uv pip install "xgboost<2.0.0" --python .venv/bin/python
+
+# Option 2: Use the CPU-only xgboost package (recommended for newer versions)
+uv pip install xgboost-cpu --python .venv/bin/python
+```
+
+This approach ensures that only CPU-only versions of packages are installed, avoiding CUDA dependencies on systems without GPU support.
+
 Some functionalities require extra packages to be installed, which we didn't include automatically:
 
 * For spotlight adapter:
