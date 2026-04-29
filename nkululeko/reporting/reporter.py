@@ -315,7 +315,6 @@ class Reporter:
         bins = ast.literal_eval(glob_conf.config["DATA"]["bins"])
         self.truths = np.digitize(self.truths, bins) - 1
         self.preds = np.digitize(self.preds, bins) - 1
-
     def plot_confmatrix(self, plot_name, epoch=None):
         """Plot a confusionmatrix to the store.
 
@@ -425,6 +424,14 @@ class Reporter:
         )
         acc = accuracy(truths, preds)
         le = glob_conf.label_encoder
+
+        # if labels come from binning, try to get the original labels for the confusion matrix
+        if not self.util.exp_is_classification():
+            labels = ast.literal_eval(glob_conf.config["DATA"]["labels"])
+            map = dict(zip(range(len(labels)), labels))
+            truths = [map[t] for t in list(truths)]
+            preds = [map[p] for p in list(preds)]
+
         if le is not None:
             label_dict = dict(zip(range(len(le.classes_)), le.classes_))
             audplot.confusion_matrix(
@@ -457,7 +464,7 @@ class Reporter:
             title_parts.append(reg_res)
         if epoch:
             title_parts.append(f"Epoch: {epoch}")
-        plt.title(", ".join(title_parts))
+        plt.title("\n".join(title_parts))
         img_path = _safe_path(fig_dir, f"{plot_name}{self.filenameadd}", self.format)
         plt.tight_layout()
         plt.savefig(img_path)

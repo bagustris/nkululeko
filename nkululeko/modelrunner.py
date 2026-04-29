@@ -68,7 +68,7 @@ class Modelrunner:
             plot_name = self.util.get_plot_name() + f"_{self.run}_{epoch:03d}_cnf"
             reports.append(report)
             test_score_metric = reports[-1].get_result().get_test_result()
-            metric_label = self.util.config_val("MODEL", "measure", "uar").upper()
+            metric_label = reports[-1].get_result().metric.upper()
             performance = float(test_score_metric.split(" ")[1])
             formatted_performance = f"{performance:.4f}"
             self.util.debug(
@@ -96,7 +96,7 @@ class Modelrunner:
                 # Extract performance value and format to 4 digits with leading zeros
                 performance = float(test_score_metric.split(" ")[1])
                 formatted_performance = f"{performance:.4f}"
-                metric_label = self.util.config_val("MODEL", "measure", "uar").upper()
+                metric_label = report.get_result().metric.upper()
                 self.util.debug(
                     f"run: {self.run} epoch: {epoch}: result ({self.split_name}): {test_score_metric.split(' ')[0]} {formatted_performance} {metric_label}"
                 )
