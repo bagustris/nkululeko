@@ -87,9 +87,9 @@ def get_effect_size(
 def cohens_D_to_string(val: float) -> str:
     if val < 0.2:
         rval = "no effect"
-    elif val < 0.2:
-        rval = "small effect"
     elif val < 0.5:
+        rval = "small effect"
+    elif val < 0.8:
         rval = "middle effect"
     else:
         rval = "large effect"
