@@ -62,10 +62,10 @@ You can also install dependencies manually:
 
 For CPU-only installation (recommended for most users):
 ```bash
-pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 --index-url https://download.pytorch.org/whl/cpu
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
-For GPU support (cuda 12.6):
+For GPU support (latest CUDA):
 ```bash
 pip install torch torchvision torchaudio
 ```
@@ -76,7 +76,7 @@ If you encounter issues with CUDA dependencies being installed even with the `to
 
 ```bash
 # Create virtual environment
-uv venv --python 3.12
+uv venv
 source .venv/bin/activate
 
 # Install CPU-only PyTorch
