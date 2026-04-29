@@ -125,10 +125,6 @@ class TestGetEffectSize:
 
 
 class TestCohensDToString:
-    # NOTE: cohens_D_to_string has a dead-code bug — the second elif
-    # condition duplicates the first (both check val < 0.2), so "small effect"
-    # is never returned. Tests document the actual runtime behaviour.
-
     def test_negative_one_is_no_effect(self):
         result = cohens_D_to_string(-1.0)
         assert result == "Cohen's d: no effect"
@@ -141,17 +137,20 @@ class TestCohensDToString:
         result = cohens_D_to_string(0.19)
         assert result == "Cohen's d: no effect"
 
-    def test_between_0_2_and_0_5_is_middle_effect(self):
-        # Due to dead "small effect" branch, values [0.2, 0.5) fall to middle
+    def test_between_0_2_and_0_5_is_small_effect(self):
         result = cohens_D_to_string(0.35)
-        assert result == "Cohen's d: middle effect"
+        assert result == "Cohen's d: small effect"
 
-    def test_just_at_0_2_is_middle_effect(self):
+    def test_at_0_2_is_small_effect(self):
         result = cohens_D_to_string(0.2)
+        assert result == "Cohen's d: small effect"
+
+    def test_at_0_5_is_middle_effect(self):
+        result = cohens_D_to_string(0.5)
         assert result == "Cohen's d: middle effect"
 
-    def test_at_0_5_is_large_effect(self):
-        result = cohens_D_to_string(0.5)
+    def test_at_0_8_is_large_effect(self):
+        result = cohens_D_to_string(0.8)
         assert result == "Cohen's d: large effect"
 
     def test_large_value_is_large_effect(self):

@@ -287,35 +287,45 @@ class TestSetupLogging:
 
 
 class TestGetPath:
-    def test_no_config_fig_dir_default(self, tmp_path):
+    def test_no_config_fig_dir_default(self, tmp_path, monkeypatch):
         glob_conf.config = None
+        monkeypatch.chdir(tmp_path)
         u = Util("test", has_config=False)
         path = u.get_path("fig_dir")
-        assert path.endswith("images/") or "images" in path
+        assert path == "./images/"
+        assert (tmp_path / "images").is_dir()
 
-    def test_no_config_res_dir_default(self, tmp_path):
+    def test_no_config_res_dir_default(self, tmp_path, monkeypatch):
         glob_conf.config = None
+        monkeypatch.chdir(tmp_path)
         u = Util("test", has_config=False)
         path = u.get_path("res_dir")
-        assert "results" in path
+        assert path == "./results/"
+        assert (tmp_path / "results").is_dir()
 
-    def test_no_config_model_dir_default(self, tmp_path):
+    def test_no_config_model_dir_default(self, tmp_path, monkeypatch):
         glob_conf.config = None
+        monkeypatch.chdir(tmp_path)
         u = Util("test", has_config=False)
         path = u.get_path("model_dir")
-        assert "models" in path
+        assert path == "./models/"
+        assert (tmp_path / "models").is_dir()
 
-    def test_no_config_cache_default(self, tmp_path):
+    def test_no_config_cache_default(self, tmp_path, monkeypatch):
         glob_conf.config = None
+        monkeypatch.chdir(tmp_path)
         u = Util("test", has_config=False)
         path = u.get_path("cache")
-        assert "cache" in path
+        assert path == "./cache/"
+        assert (tmp_path / "cache").is_dir()
 
-    def test_no_config_unknown_entry_returns_store(self, tmp_path):
+    def test_no_config_unknown_entry_returns_store(self, tmp_path, monkeypatch):
         glob_conf.config = None
+        monkeypatch.chdir(tmp_path)
         u = Util("test", has_config=False)
         path = u.get_path("anything_else")
-        assert "store" in path
+        assert path == "./store/"
+        assert (tmp_path / "store").is_dir()
 
     def test_with_config_fig_dir_uses_root_and_name(self):
         u = Util("test")

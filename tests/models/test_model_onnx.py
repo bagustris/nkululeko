@@ -5,23 +5,15 @@ level so this file can run in environments where they are not installed.
 """
 
 import configparser
+import importlib
 import sys
-from types import ModuleType
 from unittest.mock import MagicMock, mock_open, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-# ---------------------------------------------------------------------------
-# Stub out optional heavy imports so the file can be collected without them.
-# ---------------------------------------------------------------------------
-for _mod in ("audplot", "audmetric", "seaborn", "confidence_intervals"):
-    if _mod not in sys.modules:
-        sys.modules[_mod] = MagicMock()
-
 import nkululeko.glob_conf as glob_conf
-from nkululeko.models.model import Model
 
 
 @pytest.fixture(autouse=True)
@@ -37,14 +29,26 @@ def setup_glob_conf(tmp_path):
 
 
 @pytest.fixture
-def trained_model():
+def model_class(monkeypatch):
+    for module_name in ("audplot", "audmetric", "seaborn", "confidence_intervals"):
+        monkeypatch.setitem(sys.modules, module_name, MagicMock())
+
+    reporter_module = importlib.import_module("nkululeko.reporting.reporter")
+    importlib.reload(reporter_module)
+    model_module = importlib.import_module("nkululeko.models.model")
+    model_module = importlib.reload(model_module)
+    return model_module.Model
+
+
+@pytest.fixture
+def trained_model(model_class):
     """Model fixture with a mock sklearn classifier attached."""
     rng = np.random.default_rng(42)
     df_train = pd.DataFrame({"emotion": ["happy", "sad", "angry", "happy"]})
     df_test = pd.DataFrame({"emotion": ["sad", "angry"]})
     feats_train = pd.DataFrame(rng.random((4, 5)))
     feats_test = pd.DataFrame(rng.random((2, 5)))
-    model = Model(df_train, df_test, feats_train, feats_test)
+    model = model_class(df_train, df_test, feats_train, feats_test)
     model.clf = MagicMock()
     return model
 
