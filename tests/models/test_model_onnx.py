@@ -30,14 +30,25 @@ def setup_glob_conf(tmp_path):
 
 @pytest.fixture
 def model_class(monkeypatch):
+    original_modules = {
+        "nkululeko.reporting.reporter": sys.modules.get("nkululeko.reporting.reporter"),
+        "nkululeko.models.model": sys.modules.get("nkululeko.models.model"),
+    }
+
     for module_name in ("audplot", "audmetric", "seaborn", "confidence_intervals"):
         monkeypatch.setitem(sys.modules, module_name, MagicMock())
 
-    reporter_module = importlib.import_module("nkululeko.reporting.reporter")
-    importlib.reload(reporter_module)
+    for module_name in original_modules:
+        sys.modules.pop(module_name, None)
+
     model_module = importlib.import_module("nkululeko.models.model")
-    model_module = importlib.reload(model_module)
-    return model_module.Model
+    yield model_module.Model
+
+    for module_name, original_module in original_modules.items():
+        if original_module is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = original_module
 
 
 @pytest.fixture
