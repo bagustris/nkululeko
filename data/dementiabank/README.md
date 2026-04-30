@@ -33,4 +33,17 @@ python3 -m nkululeko.nkululeko --config data/dementiabank/exp.ini
 > Use of the Pitt corpus requires acknowledgment of this grant support: NIA AG03705 and AG05133. (Pitt corpus was supported by the National Institutes of Health grants NIA AG03705 and AG05133.)
 
 Reference:  
-[1] Becker, J. T., Boller, F., Lopez, O. L., Saxton, J., & McGonigle, K. L. (1994). The natural history of Alzheimer's disease: description of study cohort and accuracy of diagnosis. Archives of Neurology, 51(6), 585-594.
+[1] Becker, J. T., Boller, F., Lopez, O. L., Saxton, J., & McGonigle, K. L. (1994). The natural history of Alzheimer's disease: description of study cohort and accuracy of diagnosis. Archives of Neurology, 51(6), 585-594.  
+
+## Citation:  
+Please cite the following paper if you use this data processing script for your research:
+Atmaja, B. T., & Sakti, S. (2025). Dementia Prediction From Speech Signal Using Optimized Prosodic Features. APSIPA Annual Summit and Conference.
+```bibtex
+@inproceedings{AtmajaDementia2025,
+address = {Singapore},
+author = {Atmaja, Bagus Tris and Sakti, Sakriani},
+booktitle = {APSIPA Annu. Summit Conf.},
+title = {{Dementia Prediction From Speech Signal Using Optimized Prosodic Features}},
+year = {2025}
+}
+```

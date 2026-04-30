@@ -1,0 +1,5 @@
+name: timit
+target: phoneme, dialect  
+description: TIMIT Acoustic-Phonetic Continuous Speech Corpus - 39-class phoneme recognition
+access: restricted
+license: LDC User Agreement
