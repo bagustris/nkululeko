@@ -10,7 +10,7 @@ The sample dataset contains a hundred individuals with a confirmed dementia diag
 ```bash
 $ mkdir DEMENTIANET
 $ unzip dementia-20250604T010747Z-1-001.zip -d DEMENTIANET
-$ unzip unzip nodementia-20250604T010819Z-1-002.zip -d DEMENTIANET
+$ unzip nodementia-20250604T010819Z-1-002.zip -d DEMENTIANET
 $ python3 process_database.py
 $ cd ..
 $ python3 -m nkululeko.nkululeko --config data/dementianet/exp.ini
@@ -18,3 +18,16 @@ $ python3 -m nkululeko.nkululeko --config data/dementianet/exp.ini
 
 Reference:  
 [1] https://github.com/shreyasgite/dementianet  
+
+## Citation:  
+Please cite the following paper if you use this data processing script for your research: 
+Atmaja, B. T., & Sakti, S. (2025). Dementia Prediction From Speech Signal Using Optimized Prosodic Features. APSIPA Annual Summit and Conference.  
+```bibtex
+@inproceedings{AtmajaDementia2025,
+address = {Singapore},
+author = {Atmaja, Bagus Tris and Sakti, Sakriani},
+booktitle = {APSIPA Annu. Summit Conf.},
+title = {{Dementia Prediction From Speech Signal Using Optimized Prosodic Features}},
+year = {2025}
+}
+```

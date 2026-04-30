@@ -89,13 +89,14 @@ To support open science and reproducible research, we encourage you to submit PR
 |[tess](tess/)|emotion|British English (Toronto)|public|Custom academic/research use|
 |[test](test/)|none|Test data for nkululeko|public|unknown|
 |[thorsten-emotional](thorsten-emotional/)|emotion|German|public|CC BY 4.0|
+|[timit](timit/)|phoneme, dialect|TIMIT Acoustic-Phonetic Continuous Speech Corpus - 39-class phoneme recognition|restricted|LDC User Agreement|
 |[turev](turev/)|emotion|Turkish|public|unknown|
 |[urdu](urdu/)|emotion|Urdu|public|unknown|
 |[uudb](uudb/)|emotion|Urdu speech emotion dataset|public|unknown|
 |[vivae](vivae/)|emotion|Variably Intense Vocalizations of Affect and Emotion Corpus (VIVAE). English vocal bursts|public|unknown|
 
 
-This recipe contains information about 75 datasets.
+This recipe contains information about 76 datasets.
 ## Performance
 
 ![Nkululeko performance](../meta/images/nkululeko_ser_20240719.png)
