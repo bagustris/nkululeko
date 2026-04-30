@@ -76,7 +76,7 @@ Full dataset output (all regions):
 ```bash
 python3 -m nkululeko.nkululeko --config data/timit/exp.ini
 ```
-Uses openSMILE eGeMAPSv02 + XGBoost on ~30K phoneme segments (DR1+DR2 default).
+Uses openSMILE eGeMAPSv02 + XGBoost on ~124K phoneme segments by default (all 8 dialect regions).
 Features are cached after the first run — subsequent runs are much faster.
 
 ### Dialect recognition (8 classes, utterance-level)

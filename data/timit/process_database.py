@@ -60,18 +60,8 @@ PHONEME_MAP = {
 
 SR = 16000  # TIMIT sample rate
 
-# All 8 TIMIT dialect regions with descriptions
+# All 8 TIMIT dialect regions
 DIALECT_LABELS = ["DR1", "DR2", "DR3", "DR4", "DR5", "DR6", "DR7", "DR8"]
-DIALECT_NAMES = {
-    "DR1": "New England",
-    "DR2": "Northern",
-    "DR3": "North Midland",
-    "DR4": "South Midland",
-    "DR5": "Southern",
-    "DR6": "New York City",
-    "DR7": "Western",
-    "DR8": "Army Brat (mobile)",
-}
 
 
 def parse_phn(phn_path: pathlib.Path):
@@ -152,7 +142,7 @@ def main():
             except StopIteration:
                 return str(wav_file)
 
-    # ── Compute speaker-based train / val split (shared across tasks) ──────────
+    # ── Compute speaker-based train / val split ─────────────────────────────────
     do_phoneme = args.task in ("phoneme", "both")
     do_dialect = args.task in ("dialect", "both")
 
@@ -163,19 +153,35 @@ def main():
     if do_phoneme and phoneme_allowed_drs:
         print(f"Phoneme task: limiting to dialect region(s): {sorted(phoneme_allowed_drs)}")
 
-    # Collect all TRAIN speakers (from all DRs — shared split for both tasks)
-    all_speakers = []
+    # Collect TRAIN speakers — all DRs for dialect, restricted DRs for phoneme.
+    all_train_speakers = []
+    phoneme_train_speakers = []
     for dr_dir in sorted(train_dir.iterdir()):
-        if dr_dir.is_dir():
-            for spk_dir in sorted(dr_dir.iterdir()):
-                if spk_dir.is_dir():
-                    all_speakers.append(spk_dir)
+        if not dr_dir.is_dir():
+            continue
+        for spk_dir in sorted(dr_dir.iterdir()):
+            if spk_dir.is_dir():
+                all_train_speakers.append(spk_dir)
+                if not phoneme_allowed_drs or dr_dir.name.upper() in phoneme_allowed_drs:
+                    phoneme_train_speakers.append(spk_dir)
 
-    rng = random.Random(args.seed)
-    rng.shuffle(all_speakers)
-    n_val = max(1, int(len(all_speakers) * args.val_fraction))
-    val_speakers = set(spk.name for spk in all_speakers[:n_val])
-    print(f"Total TRAIN speakers: {len(all_speakers)}, val: {n_val}, train: {len(all_speakers)-n_val}")
+    # Dialect split: always from all speakers.
+    all_speakers_shuffled = list(all_train_speakers)
+    random.Random(args.seed).shuffle(all_speakers_shuffled)
+    n_val = max(1, int(len(all_speakers_shuffled) * args.val_fraction))
+    val_speakers = set(spk.name for spk in all_speakers_shuffled[:n_val])
+    print(f"Total TRAIN speakers: {len(all_train_speakers)}, val: {n_val}, train: {len(all_train_speakers)-n_val}")
+
+    # Phoneme split: from restricted DR speakers so val fraction is respected.
+    if do_phoneme and phoneme_allowed_drs:
+        phoneme_speakers_shuffled = list(phoneme_train_speakers)
+        random.Random(args.seed).shuffle(phoneme_speakers_shuffled)
+        n_val_phoneme = max(1, int(len(phoneme_speakers_shuffled) * args.val_fraction))
+        phoneme_val_speakers = set(spk.name for spk in phoneme_speakers_shuffled[:n_val_phoneme])
+        print(f"Phoneme TRAIN speakers (restricted): {len(phoneme_train_speakers)}, "
+              f"val: {n_val_phoneme}, train: {len(phoneme_train_speakers)-n_val_phoneme}")
+    else:
+        phoneme_val_speakers = val_speakers
 
     # ── PHONEME TASK ────────────────────────────────────────────────────────────
     if do_phoneme:
@@ -195,7 +201,7 @@ def main():
                     rel_path = make_rel(wav_file)
                     for start, end, phoneme in parse_phn(phn_file):
                         row = {"file": rel_path, "start": start, "end": end, "phoneme": phoneme}
-                        if spk_dir.name in val_speakers:
+                        if spk_dir.name in phoneme_val_speakers:
                             val_rows.append(row)
                         else:
                             train_rows.append(row)
