@@ -43,7 +43,7 @@ class Model:
         """Parse label_smoothing config value for cross-entropy loss.
 
         Returns 0.0 (no smoothing) by default.
-        Accepts a float in [0.0, 1.0) or the string "true" (shorthand for 0.1).
+        Accepts a float in [0.0, 1.0] or the string "true" (shorthand for 0.1).
         Invalid or out-of-range values fall back to 0.0 with a warning.
         """
         ls = self.util.config_val("MODEL", "label_smoothing", "False")
