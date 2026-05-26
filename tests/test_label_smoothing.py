@@ -53,24 +53,24 @@ class TestLabelSmoothingParsing:
 
     def test_default_no_smoothing(self, tmp_path):
         model = _make_model_stub(tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.0
+        assert model._get_label_smoothing() == pytest.approx(0.0)
 
     def test_true_returns_01(self, tmp_path):
         model = _make_model_stub(label_smoothing="True", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.1
+        assert model._get_label_smoothing() == pytest.approx(0.1)
 
     def test_lowercase_true_returns_01(self, tmp_path):
         model = _make_model_stub(label_smoothing="true", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.1
+        assert model._get_label_smoothing() == pytest.approx(0.1)
 
     def test_string_one_returns_numeric(self, tmp_path):
         """String '1' is parsed as numeric 1.0, which is valid smoothing."""
         model = _make_model_stub(label_smoothing="1", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 1.0
+        assert model._get_label_smoothing() == pytest.approx(1.0)
 
     def test_boolean_true_returns_01(self, tmp_path):
         model = _make_model_stub(label_smoothing=True, tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.1
+        assert model._get_label_smoothing() == pytest.approx(0.1)
 
     def test_float_value_passed_through(self, tmp_path):
         model = _make_model_stub(label_smoothing="0.2", tmp_dir=str(tmp_path))
@@ -78,26 +78,26 @@ class TestLabelSmoothingParsing:
 
     def test_zero_returns_zero(self, tmp_path):
         model = _make_model_stub(label_smoothing="0.0", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.0
+        assert model._get_label_smoothing() == pytest.approx(0.0)
 
     def test_false_returns_zero(self, tmp_path):
         model = _make_model_stub(label_smoothing="False", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.0
+        assert model._get_label_smoothing() == pytest.approx(0.0)
 
     def test_invalid_string_returns_zero(self, tmp_path):
         """Non-parsable values should fall back to 0.0 with a warning."""
         model = _make_model_stub(label_smoothing="foo", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.0
+        assert model._get_label_smoothing() == pytest.approx(0.0)
 
     def test_negative_value_returns_zero(self, tmp_path):
         """Negative values are out of range and should fall back to 0.0."""
         model = _make_model_stub(label_smoothing="-0.1", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.0
+        assert model._get_label_smoothing() == pytest.approx(0.0)
 
     def test_value_above_one_returns_zero(self, tmp_path):
         """Values > 1.0 are out of range and should fall back to 0.0."""
         model = _make_model_stub(label_smoothing="2.0", tmp_dir=str(tmp_path))
-        assert model._get_label_smoothing() == 0.0
+        assert model._get_label_smoothing() == pytest.approx(0.0)
 
 
 class TestCrossEntropyWithLabelSmoothing:
@@ -143,4 +143,4 @@ class TestSetupCriterionIntegration:
         model = _make_model_stub(tmp_dir=str(tmp_path))
         model.class_num = 3
         model._setup_criterion()
-        assert model.criterion.label_smoothing == 0.0
+        assert model.criterion.label_smoothing == pytest.approx(0.0)
