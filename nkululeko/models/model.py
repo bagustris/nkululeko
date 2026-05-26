@@ -39,6 +39,25 @@ class Model:
         self.xfoldx = self.util.config_val("MODEL", "k_fold_cross", False)
         self.n_jobs = int(self.util.config_val("MODEL", "n_jobs", "8"))
 
+    def _get_label_smoothing(self):
+        """Parse label_smoothing config value for cross-entropy loss.
+
+        Returns 0.0 (no smoothing) by default.
+        If set to True, returns 0.1. If set to a float, returns that value.
+        """
+        ls = self.util.config_val("MODEL", "label_smoothing", "False")
+        if str(ls).lower() in ("true", "1"):
+            smoothing = 0.1
+            self.util.debug(f"using label smoothing: {smoothing} (default)")
+        else:
+            try:
+                smoothing = float(ls)
+            except (ValueError, TypeError):
+                smoothing = 0.0
+            if smoothing > 0.0:
+                self.util.debug(f"using label smoothing: {smoothing}")
+        return smoothing
+
     def set_model_type(self, type):
         self.model_type = type
 

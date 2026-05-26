@@ -47,14 +47,17 @@ class CNNModel(Model):
         # set up loss criterion
         criterion = self.util.config_val("MODEL", "loss", "cross")
         if criterion == "cross":
-            self.criterion = torch.nn.CrossEntropyLoss()
+            label_smoothing = self._get_label_smoothing()
+            self.criterion = torch.nn.CrossEntropyLoss(
+                label_smoothing=label_smoothing,
+            )
         elif criterion == "f1":
             self.criterion = SoftF1Loss(
                 num_classes=self.class_num, weight=None, epsilon=1e-7
             )
         else:
             self.util.error(f"unknown loss function: {criterion}")
-        self.util.debug("using model with cross entropy loss function")
+        self.util.debug(f"using model with {criterion} loss function")
         # set up the model
         # cuda = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = self.util.config_val("MODEL", "device", "cpu")
