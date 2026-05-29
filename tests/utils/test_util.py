@@ -2,6 +2,7 @@
 
 import configparser
 import logging
+import threading
 
 import pytest
 
@@ -279,6 +280,40 @@ class TestSetupLogging:
             h for h in logger.handlers if isinstance(h, logging.FileHandler)
         ]
         assert len(file_handlers) == 0
+
+    def test_no_duplicate_handlers_under_concurrent_access(self, tmp_path):
+        """Multiple threads creating Util should not produce duplicate handlers."""
+        import nkululeko.utils.util as util_mod
+
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "concurrent_test"
+
+        barrier = threading.Barrier(10)
+        errors = []
+
+        def create_util():
+            try:
+                barrier.wait(timeout=5)
+                Util("thread_test")
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=create_util) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
+
+        assert not errors
+        logger = logging.getLogger(util_mod.__name__)
+        console_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.FileHandler)
+        ]
+        # Only one console handler should exist despite concurrent creation
+        assert len(console_handlers) == 1
 
 
 # ---------------------------------------------------------------------------
