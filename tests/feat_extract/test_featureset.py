@@ -194,14 +194,68 @@ class TestExtractEmbeddingsWithErrorHandling:
         ]
         assert len(skipped_calls) == 0
 
-    def test_all_fail_returns_empty_dataframe(self, multiindex_featureset):
-        """When every file fails, an empty DataFrame is returned."""
+    def test_all_fail_aborts_when_exceeding_threshold(self, multiindex_featureset):
+        """When all files fail and rate exceeds threshold, util.error() is called."""
         extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={0, 1, 2, 3, 4})
-        result = multiindex_featureset._extract_embeddings_with_error_handling(
-            extract_fn
-        )
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            # Prevent sys.exit by mocking error
+            mock_error.side_effect = SystemExit(1)
+            with pytest.raises(SystemExit):
+                multiindex_featureset._extract_embeddings_with_error_handling(
+                    extract_fn
+                )
+        assert mock_error.called
+        assert "exceeds" in str(mock_error.call_args).lower()
+
+    def test_below_threshold_no_abort(self, multiindex_featureset):
+        """When failure rate is below threshold, no abort occurs."""
+        # 1 out of 5 fails = 20%, default threshold is 50%
+        extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={2})
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            result = multiindex_featureset._extract_embeddings_with_error_handling(
+                extract_fn
+            )
+        mock_error.assert_not_called()
+        assert len(result) == 4
+
+    def test_custom_threshold_from_config(self, multiindex_featureset):
+        """A custom fail_threshold from config is respected."""
+        # Set threshold to 10%, then 2/5 = 40% should exceed it
+        glob_conf.config["FEATS"]["fail_threshold"] = "0.1"
+        extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={1, 3})
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            mock_error.side_effect = SystemExit(1)
+            with pytest.raises(SystemExit):
+                multiindex_featureset._extract_embeddings_with_error_handling(
+                    extract_fn
+                )
+        assert mock_error.called
+
+    def test_keyboard_interrupt_not_caught(self, multiindex_featureset):
+        """KeyboardInterrupt must propagate and not be swallowed."""
+        call_count = {"n": 0}
+
+        def extract_fn(file, start, end):
+            idx = call_count["n"]
+            call_count["n"] += 1
+            if idx == 2:
+                raise KeyboardInterrupt()
+            return np.ones(4)
+
+        with pytest.raises(KeyboardInterrupt):
+            multiindex_featureset._extract_embeddings_with_error_handling(extract_fn)
+
+    def test_failure_summary_contains_count(self, multiindex_featureset):
+        """Summary warning should contain failure count and percentage."""
+        extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={0, 4})
+        with patch.object(multiindex_featureset.util, "warn") as mock_warn:
+            multiindex_featureset._extract_embeddings_with_error_handling(extract_fn)
+        summary_calls = [
+            str(call)
+            for call in mock_warn.call_args_list
+            if "2/5" in str(call) and "40.0%" in str(call)
+        ]
+        assert len(summary_calls) == 1
 
     def test_embedding_values_correct(self, multiindex_featureset, multiindex_data_df):
         """Embeddings returned by extract_fn appear as rows in the result DataFrame."""

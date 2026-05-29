@@ -41,6 +41,11 @@ class Featureset:
         """
         emb_series = pd.Series(index=self.data_df.index, dtype=object)
         iterable = self.data_df.index.to_list()
+        total = len(iterable)
+        failed = 0
+        fail_threshold = float(
+            self.util.config_val("FEATS", "fail_threshold", "0.5")
+        )
         try:
             # Use tqdm for a progress bar if available, but don't require it.
             from tqdm import tqdm  # type: ignore[import-not-found]
@@ -54,13 +59,23 @@ class Featureset:
             try:
                 emb = extract_fn(file, start, end)
                 emb_series.iloc[idx] = emb
-            except Exception as e:
+            except (IOError, RuntimeError, ValueError, OSError) as e:
                 self.util.warn(f"skipping {file}: {e}")
+                failed += 1
+
+        if failed > 0:
+            self.util.warn(
+                f"Feature extraction: {failed}/{total} files failed"
+                f" ({100 * failed / total:.1f}%)"
+            )
+            if total > 0 and failed / total > fail_threshold:
+                self.util.error(
+                    f"Extraction failure rate {failed / total:.0%} exceeds"
+                    f" threshold {fail_threshold:.0%}"
+                )
+
         valid = emb_series.notna()
         if not valid.all():
-            self.util.warn(
-                f"skipped {(~valid).sum()} files that failed to load or extract embeddings"
-            )
             emb_series = emb_series[valid]
         return pd.DataFrame(emb_series.values.tolist(), index=emb_series.index)
 
