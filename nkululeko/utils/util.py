@@ -7,9 +7,8 @@ import os.path
 import shutil
 import sys
 
-import numpy as np
-
 import audeer
+import numpy as np
 
 from nkululeko.utils.dataframe import DataFrameMixin
 from nkululeko.utils.naming import NamingMixin

@@ -14,9 +14,9 @@ import numpy as np
 import pandas as pd
 import parselmouth
 from parselmouth.praat import call
-from scipy.stats.mstats import zscore
-from scipy.stats import lognorm
 from scipy import stats
+from scipy.stats import lognorm
+from scipy.stats.mstats import zscore
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 
