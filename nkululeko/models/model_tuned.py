@@ -10,6 +10,8 @@ import typing
 import audeer
 import audiofile
 import audmetric
+
+from nkululeko.utils.pickle_integrity import verify_checksum
 import datasets
 import numpy as np
 import pandas as pd
@@ -660,6 +662,7 @@ class TunedModel(BaseModel):
 
     def load_path(self, path, run, epoch):
         self.set_id(run, epoch)
+        verify_checksum(path)
         with open(path, "rb") as handle:
             self.clf = pickle.load(handle)
 
