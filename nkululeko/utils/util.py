@@ -283,9 +283,9 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         )
 
         if strategy == "mean":
-            return df.fillna(df.mean())
+            return df.fillna(df.mean()).fillna(0)
         elif strategy == "median":
-            return df.fillna(df.median())
+            return df.fillna(df.median()).fillna(0)
         elif strategy == "drop":
             return df.dropna()
         else:

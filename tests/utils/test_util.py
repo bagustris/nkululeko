@@ -491,3 +491,15 @@ class TestHandleNan:
         assert "2 NaN values" in caplog.text
         assert "50.0%" in caplog.text
         assert "Model, train" in caplog.text
+
+    def test_mean_strategy_all_nan_column_falls_back_to_zero(self):
+        import pandas as pd
+        import numpy as np
+
+        glob_conf.config["FEATS"]["nan_strategy"] = "mean"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, 3.0], "b": [np.nan, np.nan]})
+        result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[0, 1] == 0.0
+        assert result.iloc[1, 1] == 0.0
