@@ -164,15 +164,37 @@ class Datasplitter:
                 if self.df_test.is_labeled:
                     self.util.debug(f"Categories test: {test_cats}")
                 if not self.df_train.empty:
-                    self.df_test[self.target] = self.label_encoder.transform(
-                        self.df_test[self.target]
-                    )
+                    try:
+                        self.df_test[self.target] = self.label_encoder.transform(
+                            self.df_test[self.target]
+                        )
+                    except ValueError:
+                        test_labels = set(self.df_test[self.target].unique())
+                        train_labels = set(self.label_encoder.classes_)
+                        unseen = test_labels - train_labels
+                        self.util.error(
+                            f"Test set contains labels not seen in training: "
+                            f"{unseen}. Training labels are: {train_labels}. "
+                            f"Consider using a combined split strategy or "
+                            f"filtering unseen labels."
+                        )
             if self.split3 and not self.df_dev.empty:
                 self.util.debug(f"Categories dev: {dev_cats}")
                 if not self.df_train.empty:
-                    self.df_dev[self.target] = self.label_encoder.transform(
-                        self.df_dev[self.target]
-                    )
+                    try:
+                        self.df_dev[self.target] = self.label_encoder.transform(
+                            self.df_dev[self.target]
+                        )
+                    except ValueError:
+                        dev_labels = set(self.df_dev[self.target].unique())
+                        train_labels = set(self.label_encoder.classes_)
+                        unseen = dev_labels - train_labels
+                        self.util.error(
+                            f"Dev set contains labels not seen in training: "
+                            f"{unseen}. Training labels are: {train_labels}. "
+                            f"Consider using a combined split strategy or "
+                            f"filtering unseen labels."
+                        )
         if self.got_speaker:
             speakers_train = (
                 0
