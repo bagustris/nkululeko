@@ -282,8 +282,10 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         )
 
         if strategy == "mean":
+            # Second fillna(0) handles columns where all values are NaN (mean is NaN)
             return df.fillna(df.mean()).fillna(0)
         elif strategy == "median":
+            # Second fillna(0) handles columns where all values are NaN (median is NaN)
             return df.fillna(df.median()).fillna(0)
         elif strategy == "drop":
             return df.dropna()

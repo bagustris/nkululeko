@@ -427,6 +427,12 @@ class TestConfigValData:
 
 
 class TestHandleNan:
+    @pytest.fixture(autouse=True)
+    def reset_nan_strategy(self):
+        """Remove any nan_strategy override after each test."""
+        yield
+        glob_conf.config.remove_option("FEATS", "nan_strategy")
+
     def test_no_nan_returns_unchanged(self):
         import pandas as pd
 
