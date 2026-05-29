@@ -238,71 +238,81 @@ class TestFillTrainAndTestsEarlyReturn:
 class TestUnseenLabelsError:
     """Test that unseen labels in test/dev sets produce helpful error messages."""
 
+    _FLAGS = (
+        "is_labeled",
+        "is_test",
+        "is_train",
+        "is_val",
+        "got_gender",
+        "got_age",
+        "got_speaker",
+    )
+
+    def _make_util(self, tmp_path, errors):
+        """Return a mock Util with working copy_flags and error capturing."""
+        flags = self._FLAGS
+
+        class MockUtil:
+            def get_path(self, k):
+                return str(tmp_path) + "/"
+
+            def config_val(self, sec, key, default):
+                return default
+
+            def debug(self, m):
+                pass
+
+            def warn(self, m):
+                pass
+
+            def error(self, m):
+                errors.append(m)
+
+            def copy_flags(self, src, tgt):
+                for flag in flags:
+                    if hasattr(src, flag):
+                        setattr(tgt, flag, getattr(src, flag))
+
+            def exp_is_classification(self):
+                return True
+
+        return MockUtil()
+
     def test_unseen_label_in_test_set(self, tmp_path):
-        """Transform with unseen labels calls util.error with descriptive message."""
-        from unittest.mock import patch
-
-        from sklearn.preprocessing import LabelEncoder
-
+        """fill_train_and_tests emits a descriptive error when test labels are unseen."""
         errors = []
 
+        class FakeDataset:
+            name = "fake_db"
+            is_labeled = True
+            got_gender = False
+            got_speaker = False
+
+            def split(self):
+                self.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
+                self.df_train.is_labeled = True
+                self.df_train.got_gender = False
+                self.df_train.got_speaker = False
+
+                self.df_test = pd.DataFrame({"emotion": ["happy", "unknown"]})
+                self.df_test.is_labeled = True
+                self.df_test.got_gender = False
+                self.df_test.got_speaker = False
+
+            def prepare_labels(self):
+                pass
+
+            df_train = pd.DataFrame()
+            df_test = pd.DataFrame()
+
         ds = Datasplitter.__new__(Datasplitter)
-        ds.util = type(
-            "U",
-            (),
-            {
-                "get_path": lambda self, k: str(tmp_path) + "/",
-                "config_val": lambda self, sec, key, default: default,
-                "debug": lambda self, m: None,
-                "warn": lambda self, m: None,
-                "error": lambda self, m: errors.append(m),
-                "copy_flags": lambda self, src, tgt: None,
-                "exp_is_classification": lambda self: True,
-            },
-        )()
+        ds.util = self._make_util(tmp_path, errors)
         ds.target = "emotion"
         ds.split3 = False
         ds.got_speaker = False
-        ds.datasets = {}
+        ds.datasets = {"fake_db": FakeDataset()}
 
-        # Set up train and test DataFrames as they would appear after splitting
-        ds.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
-        ds.df_train.is_labeled = True
-        ds.df_train.got_gender = False
-        ds.df_train.got_speaker = False
-
-        ds.df_test = pd.DataFrame({"emotion": ["happy", "unknown"]})
-        ds.df_test.is_labeled = True
-        ds.df_test.got_gender = False
-        ds.df_test.got_speaker = False
-
-        # Patch the splitting/filtering phases to be no-ops and jump to encoding
-        with patch.object(
-            Datasplitter,
-            "fill_train_and_tests",
-            wraps=ds.fill_train_and_tests,
-        ):
-            # Simulate the encoding phase directly
-            ds.label_encoder = LabelEncoder()
-            glob_conf.set_label_encoder(ds.label_encoder)
-            ds.df_train["emotion"] = ds.label_encoder.fit_transform(
-                ds.df_train["emotion"]
-            )
-            # Now test the guarded transform
-            try:
-                ds.df_test["emotion"] = ds.label_encoder.transform(
-                    ds.df_test["emotion"]
-                )
-            except ValueError:
-                test_labels = set(ds.df_test["emotion"].unique())
-                train_labels = set(ds.label_encoder.classes_)
-                unseen = test_labels - train_labels
-                ds.util.error(
-                    f"Test set contains labels not seen in training: "
-                    f"{unseen}. Training labels are: {train_labels}. "
-                    f"Consider using a combined split strategy or "
-                    f"filtering unseen labels."
-                )
+        ds.fill_train_and_tests()
 
         assert len(errors) == 1
         assert "unknown" in errors[0]
@@ -310,50 +320,46 @@ class TestUnseenLabelsError:
         assert "Training labels are" in errors[0]
 
     def test_unseen_label_in_dev_set(self, tmp_path):
-        """Transform with unseen dev labels calls util.error with descriptive message."""
-        from sklearn.preprocessing import LabelEncoder
-
+        """fill_train_and_tests emits a descriptive error when dev labels are unseen."""
         errors = []
 
+        class FakeDataset:
+            name = "fake_db"
+            is_labeled = True
+            got_gender = False
+            got_speaker = False
+
+            def split_3(self):
+                self.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
+                self.df_train.is_labeled = True
+                self.df_train.got_gender = False
+                self.df_train.got_speaker = False
+
+                self.df_test = pd.DataFrame({"emotion": ["happy", "sad"]})
+                self.df_test.is_labeled = True
+                self.df_test.got_gender = False
+                self.df_test.got_speaker = False
+
+                self.df_dev = pd.DataFrame({"emotion": ["happy", "novelcat"]})
+                self.df_dev.is_labeled = True
+                self.df_dev.got_gender = False
+                self.df_dev.got_speaker = False
+
+            def prepare_labels(self):
+                pass
+
+            df_train = pd.DataFrame()
+            df_test = pd.DataFrame()
+            df_dev = pd.DataFrame()
+
         ds = Datasplitter.__new__(Datasplitter)
-        ds.util = type(
-            "U",
-            (),
-            {
-                "get_path": lambda self, k: str(tmp_path) + "/",
-                "config_val": lambda self, sec, key, default: default,
-                "debug": lambda self, m: None,
-                "warn": lambda self, m: None,
-                "error": lambda self, m: errors.append(m),
-                "copy_flags": lambda self, src, tgt: None,
-                "exp_is_classification": lambda self: True,
-            },
-        )()
+        ds.util = self._make_util(tmp_path, errors)
         ds.target = "emotion"
         ds.split3 = True
         ds.got_speaker = False
+        ds.datasets = {"fake_db": FakeDataset()}
 
-        # Simulate the encoding phase directly
-        ds.label_encoder = LabelEncoder()
-        ds.label_encoder.fit(["happy", "sad"])
-
-        ds.df_dev = pd.DataFrame({"emotion": ["happy", "novelcat"]})
-        ds.df_dev.is_labeled = True
-
-        try:
-            ds.df_dev["emotion"] = ds.label_encoder.transform(
-                ds.df_dev["emotion"]
-            )
-        except ValueError:
-            dev_labels = set(ds.df_dev["emotion"].unique())
-            train_labels = set(ds.label_encoder.classes_)
-            unseen = dev_labels - train_labels
-            ds.util.error(
-                f"Dev set contains labels not seen in training: "
-                f"{unseen}. Training labels are: {train_labels}. "
-                f"Consider using a combined split strategy or "
-                f"filtering unseen labels."
-            )
+        ds.fill_train_and_tests()
 
         assert len(errors) == 1
         assert "novelcat" in errors[0]
