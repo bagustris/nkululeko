@@ -49,7 +49,7 @@ class TRILLset(Featureset):
         store = self.util.get_path("store")
         storage = f"{store}{self.name}.pkl"
         extract = self.util.config_val("FEATS", "needs_feature_extraction", False)
-        no_reuse = eval(self.util.config_val("FEATS", "no_reuse", "False"))
+        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
         if extract or no_reuse or not os.path.isfile(storage):
             self.util.debug("extracting TRILL embeddings, this might take a while...")
             if self.model is None:

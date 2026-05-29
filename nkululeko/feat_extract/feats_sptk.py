@@ -6,6 +6,7 @@ pip install diffsptk
 
 """
 
+import ast
 import os
 
 import numpy as np
@@ -54,7 +55,7 @@ class SptkSet(Featureset):
             "FEATS", "sptk.features", "['stft', 'fbank']"
         )
         if isinstance(self.features_requested, str):
-            self.features_requested = eval(self.features_requested)
+            self.features_requested = ast.literal_eval(self.features_requested)
 
     def extract(self):
         """Extract the features or load them from disk if present."""
@@ -62,7 +63,7 @@ class SptkSet(Featureset):
         store_format = self.util.config_val("FEATS", "store_format", "pkl")
         storage = f"{store}{self.name}.{store_format}"
         extract = self.util.config_val("FEATS", "needs_feature_extraction", False)
-        no_reuse = eval(self.util.config_val("FEATS", "no_reuse", "False"))
+        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
         if extract or no_reuse or not os.path.isfile(storage):
             self.util.debug("extracting SPTK, this might take a while...")
 

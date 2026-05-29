@@ -56,7 +56,7 @@ class Bert(Featureset):
         store = self.util.get_path("store")
         storage = os.path.join(store, f"{self.name}.pkl")
         extract = self.util.config_val("FEATS", "needs_feature_extraction", False)
-        no_reuse = eval(self.util.config_val("FEATS", "no_reuse", "False"))
+        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
         text_column = self.util.config_val("FEATS", "bert.text_column", "text")
         if extract or no_reuse or not os.path.isfile(storage):
             if not self.model_initialized:

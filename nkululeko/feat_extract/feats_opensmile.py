@@ -61,7 +61,7 @@ class Opensmileset(Featureset):
             )
 
         try:
-            self.feature_set = eval(f"opensmile.FeatureSet.{self.featset}")
+            self.feature_set = getattr(opensmile.FeatureSet, self.featset)
         except (AttributeError, SyntaxError) as e:
             self.util.error(f"Invalid feature set: {self.featset}. Error: {str(e)}")
             raise ValueError(f"Invalid feature set: {self.featset}")
@@ -83,7 +83,7 @@ class Opensmileset(Featureset):
             )
 
         try:
-            self.feature_level = eval(f"opensmile.FeatureLevel.{self.featlevel}")
+            self.feature_level = getattr(opensmile.FeatureLevel, self.featlevel)
         except (AttributeError, SyntaxError) as e:
             self.util.error(f"Invalid feature level: {self.featlevel}. Error: {str(e)}")
             raise ValueError(f"Invalid feature level: {self.featlevel}")
@@ -108,10 +108,8 @@ class Opensmileset(Featureset):
         storage = f"{store}{self.name}.{store_format}"
 
         # Check if we need to extract features or use existing ones
-        extract = eval(
-            self.util.config_val("FEATS", "needs_feature_extraction", "False")
-        )
-        no_reuse = eval(self.util.config_val("FEATS", "no_reuse", "False"))
+        extract = self.util.config_val_bool("FEATS", "needs_feature_extraction", False)
+        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
 
         if extract or not os.path.isfile(storage) or no_reuse:
             self.util.debug(

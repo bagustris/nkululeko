@@ -138,7 +138,7 @@ class FeatureAnalyser:
         model_name = "_".join(models)
         max_feat_num = int(self.util.config_val("EXPL", "max_feats", "10"))
         # https://scikit-learn.org/stable/modules/permutation_importance.html
-        permutation = eval(self.util.config_val("EXPL", "permutation", "False"))
+        permutation = self.util.config_val_bool("EXPL", "permutation", False)
         importance = None
         self.util.debug("analysing features...")
         result_importances = {}
@@ -210,7 +210,7 @@ class FeatureAnalyser:
                     result_importances[model_s] = self._get_importance(
                         model, permutation
                     )
-                    plot_tree = eval(self.util.config_val("EXPL", "plot_tree", "False"))
+                    plot_tree = self.util.config_val_bool("EXPL", "plot_tree", False)
                     if plot_tree:
                         plots = Plots()
                         plots.plot_tree(model, self.features)
@@ -219,7 +219,7 @@ class FeatureAnalyser:
                     result_importances[model_s] = self._get_importance(
                         model, permutation
                     )
-                    plot_tree = eval(self.util.config_val("EXPL", "plot_tree", "False"))
+                    plot_tree = self.util.config_val_bool("EXPL", "plot_tree", False)
                     if plot_tree:
                         plots = Plots()
                         plots.plot_tree(model, self.features)

@@ -65,7 +65,7 @@ class Wav2vec2(Featureset):
         else:
             storage = f"{store}{self.name}_l{str(self.hidden_layer)}.pkl"
         extract = self.util.config_val("FEATS", "needs_feature_extraction", False)
-        no_reuse = eval(self.util.config_val("FEATS", "no_reuse", "False"))
+        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
         if extract or no_reuse or not os.path.isfile(storage):
             if not self.model_initialized:
                 self.init_model()

@@ -287,6 +287,22 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
     def reset_logged_configs(cls):
         cls.logged_configs.clear()
 
+    def config_val_bool(self, section, key, default=False):
+        """Get a boolean configuration value safely without using eval().
+
+        Args:
+            section: The config section name.
+            key: The config key name.
+            default: The default value (bool or string).
+
+        Returns:
+            bool: The boolean value of the config entry.
+        """
+        val = self.config_val(section, key, str(default))
+        if isinstance(val, bool):
+            return val
+        return str(val).strip().lower() in ("true", "1", "yes")
+
     def config_val_list(self, section, key, default):
         try:
             return ast.literal_eval(self.config[section][key])
