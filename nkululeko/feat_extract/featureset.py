@@ -54,7 +54,7 @@ class Featureset:
             try:
                 emb = extract_fn(file, start, end)
                 emb_series.iloc[idx] = emb
-            except Exception as e:
+            except (IOError, OSError, RuntimeError, ValueError) as e:
                 self.util.warn(f"skipping {file}: {e}")
         valid = emb_series.notna()
         if not valid.all():

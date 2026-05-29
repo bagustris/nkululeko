@@ -33,15 +33,6 @@ class Dataset:
         self.target = self.util.config_val("DATA", "target", None)
         self.plot = Plots()
         self.limit = int(self.util.config_val_data(self.name, "limit", 0))
-        self.target_tables_append = eval(
-            self.util.config_val_data(self.name, "target_tables_append", "False")
-        )
-        if self.target_tables_append:
-            self.util.warn(
-                f"{self.name}: 'target_tables_append' is no longer supported "
-                "and has no effect. Tables are now merged automatically via "
-                "audformat db.get(). Please remove it from your config."
-            )
         self.start_fresh = eval(self.util.config_val("DATA", "no_reuse", "False"))
         self.is_labeled, self.got_speaker, self.got_gender, self.got_age = (
             False,
@@ -164,7 +155,15 @@ class Dataset:
                 )
                 df = self.db.get(self.col_label, columns)
                 if self.util.is_numeric(df[self.col_label]):
-                    glob_conf.config["EXP"]["type"] = "regression"
+                    user_type = self.util.config_val("EXP", "type", None)
+                    if user_type is None:
+                        glob_conf.config["EXP"]["type"] = "regression"
+                    elif user_type != "regression":
+                        self.util.warn(
+                            f"{self.name}: data looks like regression (numeric labels) "
+                            f"but experiment type is configured as '{user_type}'. "
+                            "Respecting configured type. Set [EXP] type explicitly to suppress this warning."
+                        )
             else:
                 df = pd.DataFrame(index=self.db.files)
         elif len(tables) > 0:

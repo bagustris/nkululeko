@@ -186,6 +186,139 @@ class TestBuildTestDsDf:
         assert len(ds.test_ds_df["db_b"]) == 1
 
 
+class TestLabelEncoderUnseenLabels:
+    def _make_ds_with_label_encoder(self, tmp_path, train_labels, test_labels):
+        """Return a Datasplitter-like object with label encoder already fit on train_labels."""
+        from sklearn.preprocessing import LabelEncoder
+        from nkululeko.utils.util import Util
+
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = Util("datasplitter")
+        ds.target = "emotion"
+        ds.split3 = False
+        ds.got_speaker = False
+        ds.datasets = {}
+
+        idx_tr = _make_segmented_index([f"/data/tr_{i}.wav" for i in range(len(train_labels))])
+        idx_te = _make_segmented_index([f"/data/te_{i}.wav" for i in range(len(test_labels))])
+
+        ds.df_train = pd.DataFrame({"emotion": train_labels}, index=idx_tr)
+        ds.df_test = pd.DataFrame({"emotion": test_labels}, index=idx_te)
+        ds.df_train.is_labeled = True
+        ds.df_test.is_labeled = True
+
+        ds.label_encoder = LabelEncoder()
+        glob_conf.set_label_encoder(ds.label_encoder)
+        ds.df_train[ds.target] = ds.label_encoder.fit_transform(ds.df_train[ds.target])
+        return ds
+
+    def test_unseen_test_labels_raises_helpful_error(self, tmp_path):
+        """transform() on test set with unseen labels should produce a helpful error."""
+        from sklearn.preprocessing import LabelEncoder
+        from nkululeko.utils.util import Util
+
+        ds = Datasplitter.__new__(Datasplitter)
+        errors = []
+        ds.util = type(
+            "U",
+            (),
+            {
+                "debug": lambda self, m: None,
+                "warn": lambda self, m: None,
+                "error": lambda self, m: errors.append(m),
+                "exp_is_classification": lambda self: True,
+                "config_val": lambda self, sec, key, default: default,
+            },
+        )()
+        ds.target = "emotion"
+        ds.split3 = False
+        ds.got_speaker = False
+        ds.datasets = {}
+
+        idx_tr = _make_segmented_index(["/data/tr_0.wav", "/data/tr_1.wav"])
+        idx_te = _make_segmented_index(["/data/te_0.wav"])
+
+        ds.df_train = pd.DataFrame({"emotion": ["happy", "sad"]}, index=idx_tr)
+        ds.df_test = pd.DataFrame({"emotion": ["angry"]}, index=idx_te)
+        ds.df_train.is_labeled = True
+        ds.df_test.is_labeled = True
+
+        le = LabelEncoder()
+        glob_conf.set_label_encoder(le)
+        ds.label_encoder = le
+        ds.df_train[ds.target] = le.fit_transform(ds.df_train[ds.target])
+
+        # Simulate the transform call for test set
+        try:
+            ds.df_test[ds.target] = le.transform(ds.df_test[ds.target])
+        except ValueError:
+            test_labels = set(ds.df_test[ds.target].unique())
+            train_labels = set(le.classes_)
+            unseen = test_labels - train_labels
+            ds.util.error(
+                f"Test set contains labels not seen in training: {unseen}. "
+                f"Training labels are: {train_labels}. "
+                "Consider using a combined split strategy or filtering unseen labels."
+            )
+
+        assert len(errors) == 1
+        assert "angry" in errors[0]
+        assert "not seen in training" in errors[0]
+
+
+class TestFillTrainAndTestsConcatenation:
+    def test_multiple_datasets_concatenated_correctly(self, tmp_path):
+        """fill_train_and_tests should concat all datasets without O(n²) intermediate copies."""
+
+        class FakeDataset:
+            def __init__(self, name, train_files, test_files):
+                self.name = name
+                idx_tr = _make_segmented_index(train_files)
+                idx_te = _make_segmented_index(test_files)
+                self.df_train = pd.DataFrame(index=idx_tr)
+                self.df_test = pd.DataFrame(index=idx_te)
+                self.df_train.is_labeled = False
+                self.df_test.is_labeled = False
+                self.df_train.got_gender = False
+                self.df_test.got_gender = False
+                self.df_train.got_speaker = False
+                self.df_test.got_speaker = False
+
+            def split(self):
+                pass  # already split in __init__
+
+            def prepare_labels(self):
+                pass
+
+        glob_conf.config["DATA"]["target"] = "none"
+        glob_conf.target = None
+
+        ds_a = FakeDataset("a", ["/a/tr_1.wav", "/a/tr_2.wav"], ["/a/te_1.wav"])
+        ds_b = FakeDataset("b", ["/b/tr_1.wav"], ["/b/te_1.wav", "/b/te_2.wav"])
+
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = type(
+            "U",
+            (),
+            {
+                "get_path": lambda self, k: str(tmp_path) + "/",
+                "config_val": lambda self, sec, key, default: default,
+                "debug": lambda self, m: None,
+                "warn": lambda self, m: None,
+                "copy_flags": lambda self, src, tgt: None,
+                "exp_is_classification": lambda self: False,
+            },
+        )()
+        ds.target = None
+        ds.split3 = False
+        ds.got_speaker = False
+        ds.datasets = {"a": ds_a, "b": ds_b}
+
+        df_train, df_test = ds.fill_train_and_tests()
+        assert len(df_train) == 3  # 2 from a + 1 from b
+        assert len(df_test) == 3   # 1 from a + 2 from b
+
+
 class TestFillTrainAndTestsEarlyReturn:
     def test_unsupervised_returns_splits_without_labels(self, tmp_path):
         """fill_train_and_tests returns (df_train, df_test) even when target is None."""

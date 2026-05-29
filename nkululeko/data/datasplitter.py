@@ -51,15 +51,9 @@ class Datasplitter:
 
     def fill_train_and_tests(self):
         """Set up train and development sets. The method should be specified in the config."""
-        self.df_train, self.df_test, self.df_dev = (
-            pd.DataFrame(),
-            pd.DataFrame(),
-            pd.DataFrame(),
-        )
-        if self.split3:
-            self.df_dev = pd.DataFrame()
-        else:
-            self.df_dev = None
+        self.df_dev = None
+        train_dfs, test_dfs, dev_dfs = [], [], []
+        last_d = None
         for d in self.datasets.values():
             if self.split3:
                 d.split_3()
@@ -71,19 +65,27 @@ class Datasplitter:
             if d.df_train.shape[0] == 0:
                 self.util.debug(f"warn: {d.name} train empty")
             else:
-                self.df_train = pd.concat([self.df_train, d.df_train])
-                self.util.copy_flags(d, self.df_train)
+                train_dfs.append(d.df_train)
             if d.df_test.shape[0] == 0:
                 self.util.debug(f"warn: {d.name} test empty")
             else:
-                self.df_test = pd.concat([self.df_test, d.df_test])
-                self.util.copy_flags(d, self.df_test)
+                test_dfs.append(d.df_test)
             if self.split3:
                 if d.df_dev.shape[0] == 0:
                     self.util.debug(f"warn: {d.name} dev empty")
                 else:
-                    self.df_dev = pd.concat([self.df_dev, d.df_dev])
-                    self.util.copy_flags(d, self.df_dev)
+                    dev_dfs.append(d.df_dev)
+            last_d = d
+
+        self.df_train = pd.concat(train_dfs) if train_dfs else pd.DataFrame()
+        self.df_test = pd.concat(test_dfs) if test_dfs else pd.DataFrame()
+        if last_d is not None:
+            self.util.copy_flags(last_d, self.df_train)
+            self.util.copy_flags(last_d, self.df_test)
+        if self.split3:
+            self.df_dev = pd.concat(dev_dfs) if dev_dfs else pd.DataFrame()
+            if last_d is not None:
+                self.util.copy_flags(last_d, self.df_dev)
 
         # Return early for unlabeled/unsupervised runs, but still return the split dataframes
         if self.target is None or self.target == "none":
@@ -164,15 +166,35 @@ class Datasplitter:
                 if self.df_test.is_labeled:
                     self.util.debug(f"Categories test: {test_cats}")
                 if not self.df_train.empty:
-                    self.df_test[self.target] = self.label_encoder.transform(
-                        self.df_test[self.target]
-                    )
+                    try:
+                        self.df_test[self.target] = self.label_encoder.transform(
+                            self.df_test[self.target]
+                        )
+                    except ValueError:
+                        test_labels = set(self.df_test[self.target].unique())
+                        train_labels = set(self.label_encoder.classes_)
+                        unseen = test_labels - train_labels
+                        self.util.error(
+                            f"Test set contains labels not seen in training: {unseen}. "
+                            f"Training labels are: {train_labels}. "
+                            "Consider using a combined split strategy or filtering unseen labels."
+                        )
             if self.split3 and not self.df_dev.empty:
                 self.util.debug(f"Categories dev: {dev_cats}")
                 if not self.df_train.empty:
-                    self.df_dev[self.target] = self.label_encoder.transform(
-                        self.df_dev[self.target]
-                    )
+                    try:
+                        self.df_dev[self.target] = self.label_encoder.transform(
+                            self.df_dev[self.target]
+                        )
+                    except ValueError:
+                        dev_labels = set(self.df_dev[self.target].unique())
+                        train_labels = set(self.label_encoder.classes_)
+                        unseen = dev_labels - train_labels
+                        self.util.error(
+                            f"Dev set contains labels not seen in training: {unseen}. "
+                            f"Training labels are: {train_labels}. "
+                            "Consider using a combined split strategy or filtering unseen labels."
+                        )
         if self.got_speaker:
             speakers_train = (
                 0
