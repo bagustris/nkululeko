@@ -263,11 +263,9 @@ class Model:
         # check for NANs in the features
         # set up the data_loaders
         if self.feats_train.isna().to_numpy().any():
-            self.util.debug(
-                "Model, train: replacing"
-                f" {self.feats_train.isna().sum().sum()} NANs with 0"
+            self.feats_train = self.util.handle_nan(
+                self.feats_train, context="Model, train"
             )
-            self.feats_train = self.feats_train.fillna(0)
         # remove labels from features
         feats = self.feats_train.to_numpy()
         # compute class weights
@@ -345,11 +343,9 @@ class Model:
 
     def predict(self):
         if self.feats_test.isna().to_numpy().any():
-            self.util.debug(
-                "Model, test: replacing"
-                f" {self.feats_test.isna().sum().sum()} NANs with 0"
+            self.feats_test = self.util.handle_nan(
+                self.feats_test, context="Model, test"
             )
-            self.feats_test = self.feats_test.fillna(0)
         if self.logo or self.xfoldx:
             report = Reporter(
                 self.truths.astype(float), self.preds, self.run, self.epoch

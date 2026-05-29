@@ -32,17 +32,10 @@ class FeatureAnalyser:
         # Create a copy of df_features to avoid modifying the original DataFrame
         df_features = df_features.copy()
         # check for NaN values in the features
-        for col in df_features.columns:
-            if df_features[col].isnull().values.any():
-                self.util.debug(
-                    f"{col} includes {df_features[col].isnull().sum()} nan,"
-                    " inserting mean values"
-                )
-                mean_val = df_features[col].mean()
-                if not np.isnan(mean_val):
-                    df_features[col] = df_features[col].fillna(mean_val)
-                else:
-                    df_features[col] = df_features[col].fillna(0)
+        if df_features.isnull().values.any():
+            df_features = self.util.handle_nan(
+                df_features, context="feature analysis"
+            )
 
         self.features = df_features
         self.label = label

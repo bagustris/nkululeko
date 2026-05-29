@@ -419,3 +419,75 @@ class TestConfigValData:
         u = Util("test")
         result = u.config_val_data("emodb", "", "fallback")
         assert result == "/direct/path"
+
+
+# ---------------------------------------------------------------------------
+# handle_nan()
+# ---------------------------------------------------------------------------
+
+
+class TestHandleNan:
+    def test_no_nan_returns_unchanged(self):
+        import pandas as pd
+
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
+        result = u.handle_nan(df, context="test")
+        pd.testing.assert_frame_equal(result, df)
+
+    def test_default_strategy_fills_with_zero(self):
+        import pandas as pd
+        import numpy as np
+
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, np.nan], "b": [np.nan, 4.0]})
+        result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[1, 0] == 0.0
+        assert result.iloc[0, 1] == 0.0
+
+    def test_mean_strategy(self):
+        import pandas as pd
+        import numpy as np
+
+        glob_conf.config["FEATS"]["nan_strategy"] = "mean"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, 3.0, np.nan], "b": [2.0, np.nan, 6.0]})
+        result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[2, 0] == pytest.approx(2.0)  # mean of 1, 3
+        assert result.iloc[1, 1] == pytest.approx(4.0)  # mean of 2, 6
+
+    def test_median_strategy(self):
+        import pandas as pd
+        import numpy as np
+
+        glob_conf.config["FEATS"]["nan_strategy"] = "median"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, 3.0, 5.0, np.nan]})
+        result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[3, 0] == pytest.approx(3.0)  # median of 1, 3, 5
+
+    def test_drop_strategy(self):
+        import pandas as pd
+        import numpy as np
+
+        glob_conf.config["FEATS"]["nan_strategy"] = "drop"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, np.nan, 3.0], "b": [4.0, 5.0, 6.0]})
+        result = u.handle_nan(df, context="test")
+        assert len(result) == 2
+        assert not result.isna().any().any()
+
+    def test_warns_with_count_and_percentage(self, caplog):
+        import pandas as pd
+        import numpy as np
+
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, np.nan], "b": [np.nan, 4.0]})
+        with caplog.at_level(logging.WARNING):
+            u.handle_nan(df, context="Model, train")
+        assert "2 NaN values" in caplog.text
+        assert "50.0%" in caplog.text
+        assert "Model, train" in caplog.text

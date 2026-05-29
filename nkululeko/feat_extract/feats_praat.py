@@ -64,17 +64,8 @@ class PraatSet(Featureset):
         index = audformat.utils.to_segmented_index(df.index, allow_nat=False)
         df = feats_praat_core.compute_features(index)
         df.set_index(index)
-        for i, col in enumerate(df.columns):
-            if df[col].isnull().values.any():
-                self.util.debug(
-                    f"{col} includes {df[col].isnull().sum()} nan,"
-                    " inserting mean values"
-                )
-                mean_val = df[col].mean()
-                if not np.isnan(mean_val):
-                    df[col] = df[col].fillna(mean_val)
-                else:
-                    df[col] = df[col].fillna(0)
+        if df.isnull().values.any():
+            df = self.util.handle_nan(df, context="praat features")
         df = df.astype(float)
         feats = df.to_numpy()
         return feats

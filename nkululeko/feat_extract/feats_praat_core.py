@@ -376,7 +376,13 @@ def run_pca(df):
 
     # x = StandardScaler().fit_transform(x)
     if np.any(np.isnan(x[0])):
-        print(f"Warning: {np.count_nonzero(np.isnan(x))} Nans in x, replacing with 0")
+        import warnings
+
+        nan_count = np.count_nonzero(np.isnan(x))
+        nan_pct = 100 * nan_count / x.size
+        warnings.warn(
+            f"PCA input: {nan_count} NaN values ({nan_pct:.1f}% of data), replacing with 0"
+        )
         x[np.isnan(x)] = 0
     # if np.any(np.isfinite(x[0])):
     #     print(f"Warning: {np.count_nonzero(np.isfinite(x))} finite in x")

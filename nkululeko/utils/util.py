@@ -260,6 +260,38 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         else:
             print(f"DEBUG: {message}", flush=True)
 
+    def handle_nan(self, df, context="features"):
+        """Handle NaN values in a DataFrame with configurable strategy.
+
+        Args:
+            df: pandas DataFrame to check and fill NaN values in.
+            context: string describing where the NaN was found (for logging).
+
+        Returns:
+            DataFrame with NaN values handled according to configured strategy.
+        """
+        if not df.isna().to_numpy().any():
+            return df
+
+        nan_count = df.isna().sum().sum()
+        nan_pct = 100 * nan_count / df.size
+        strategy = self.config_val("FEATS", "nan_strategy", "zero")
+
+        self.warn(
+            f"{context}: replacing {nan_count} NaN values"
+            f" ({nan_pct:.1f}% of data) with strategy '{strategy}'"
+        )
+
+        if strategy == "mean":
+            return df.fillna(df.mean())
+        elif strategy == "median":
+            return df.fillna(df.median())
+        elif strategy == "drop":
+            return df.dropna()
+        else:
+            # Default: zero
+            return df.fillna(0)
+
     def set_config_val(self, section, key, value):
         try:
             # does the section already exists?

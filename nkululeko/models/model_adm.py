@@ -197,15 +197,9 @@ class ADMModel(Model):
 
         # Handle NaN values
         if feats_train.isna().to_numpy().any():
-            self.util.debug(
-                f"Model, train: replacing {feats_train.isna().sum().sum()} NANs with 0"
-            )
-            feats_train = feats_train.fillna(0)
+            feats_train = self.util.handle_nan(feats_train, context="Model, train")
         if feats_test.isna().to_numpy().any():
-            self.util.debug(
-                f"Model, test: replacing {feats_test.isna().sum().sum()} NANs with 0"
-            )
-            feats_test = feats_test.fillna(0)
+            feats_test = self.util.handle_nan(feats_test, context="Model, test")
 
         # Set up data loaders
         self.trainloader = self.get_loader(feats_train, df_train, True)

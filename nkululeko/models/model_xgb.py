@@ -48,11 +48,9 @@ class XGB_model(Model):
         """Train the XGBoost model with optional early stopping."""
         # Check if NANs in features and handle them
         if self.feats_train.isna().to_numpy().any():
-            self.util.debug(
-                "Model, train: replacing"
-                f" {self.feats_train.isna().sum().sum()} NANs with 0"
+            self.feats_train = self.util.handle_nan(
+                self.feats_train, context="Model, train"
             )
-            self.feats_train = self.feats_train.fillna(0)
 
         # then if leave one speaker group out validation is wanted
         if self.logo:
@@ -85,11 +83,10 @@ class XGB_model(Model):
 
                 # Handle NANs in dev features
                 if self.feats_test.isna().to_numpy().any():
-                    self.util.debug(
-                        "Model, dev: replacing"
-                        f" {self.feats_test.isna().sum().sum()} NANs with 0"
+                    self.feats_test = self.util.handle_nan(
+                        self.feats_test, context="Model, dev"
                     )
-                    feats_dev = self.feats_test.fillna(0).to_numpy()
+                    feats_dev = self.feats_test.to_numpy()
 
                 # Set up early stopping with validation data
                 eval_set = [(feats, labels), (feats_dev, labels_dev)]
