@@ -248,6 +248,13 @@ class TestUnseenLabelsError:
         "got_speaker",
     )
 
+    @staticmethod
+    def _tag_df(df):
+        """Set the standard split flags on a DataFrame in-place."""
+        df.is_labeled = True
+        df.got_gender = False
+        df.got_speaker = False
+
     def _make_util(self, tmp_path, errors):
         """Return a mock Util with working copy_flags and error capturing."""
         flags = self._FLAGS
@@ -281,6 +288,7 @@ class TestUnseenLabelsError:
     def test_unseen_label_in_test_set(self, tmp_path):
         """fill_train_and_tests emits a descriptive error when test labels are unseen."""
         errors = []
+        tag = self._tag_df
 
         class FakeDataset:
             name = "fake_db"
@@ -290,14 +298,9 @@ class TestUnseenLabelsError:
 
             def split(self):
                 self.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
-                self.df_train.is_labeled = True
-                self.df_train.got_gender = False
-                self.df_train.got_speaker = False
-
+                tag(self.df_train)
                 self.df_test = pd.DataFrame({"emotion": ["happy", "unknown"]})
-                self.df_test.is_labeled = True
-                self.df_test.got_gender = False
-                self.df_test.got_speaker = False
+                tag(self.df_test)
 
             def prepare_labels(self):
                 pass
@@ -322,6 +325,7 @@ class TestUnseenLabelsError:
     def test_unseen_label_in_dev_set(self, tmp_path):
         """fill_train_and_tests emits a descriptive error when dev labels are unseen."""
         errors = []
+        tag = self._tag_df
 
         class FakeDataset:
             name = "fake_db"
@@ -331,19 +335,11 @@ class TestUnseenLabelsError:
 
             def split_3(self):
                 self.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
-                self.df_train.is_labeled = True
-                self.df_train.got_gender = False
-                self.df_train.got_speaker = False
-
+                tag(self.df_train)
                 self.df_test = pd.DataFrame({"emotion": ["happy", "sad"]})
-                self.df_test.is_labeled = True
-                self.df_test.got_gender = False
-                self.df_test.got_speaker = False
-
+                tag(self.df_test)
                 self.df_dev = pd.DataFrame({"emotion": ["happy", "novelcat"]})
-                self.df_dev.is_labeled = True
-                self.df_dev.got_gender = False
-                self.df_dev.got_speaker = False
+                tag(self.df_dev)
 
             def prepare_labels(self):
                 pass
