@@ -8,6 +8,7 @@ taken June 23rd 2022.
 #!/usr/bin/env python3
 import math
 import statistics
+import warnings
 
 import audiofile
 import numpy as np
@@ -376,8 +377,6 @@ def run_pca(df):
 
     # x = StandardScaler().fit_transform(x)
     if np.any(np.isnan(x[0])):
-        import warnings
-
         nan_count = np.count_nonzero(np.isnan(x))
         nan_pct = 100 * nan_count / x.size
         warnings.warn(

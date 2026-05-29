@@ -1,4 +1,5 @@
 import math
+import warnings
 from itertools import combinations
 from typing import Tuple
 
@@ -9,8 +10,6 @@ from scipy import stats
 
 def check_na(a):
     if np.isnan(a).any():
-        import warnings
-
         count = np.count_nonzero(np.isnan(a))
         pct = 100 * count / a.size
         warnings.warn(
