@@ -133,6 +133,21 @@ class TestSelectModel:
         mr = Modelrunner(df_train, df_test, feats_train, feats_test, run=0)
         assert isinstance(mr.model, SVR_model)
 
+    def test_classifier_model_with_regression_exp_raises(self, dummy_dfs):
+        glob_conf.config["EXP"]["type"] = "regression"
+        glob_conf.config["MODEL"]["type"] = "svm"
+        glob_conf.config["MODEL"]["measure"] = "mse"
+        df_train, df_test, feats_train, feats_test = dummy_dfs
+        with pytest.raises(SystemExit):
+            Modelrunner(df_train, df_test, feats_train, feats_test, run=0)
+
+    def test_regressor_model_with_classification_exp_raises(self, dummy_dfs):
+        glob_conf.config["EXP"]["type"] = "classification"
+        glob_conf.config["MODEL"]["type"] = "svr"
+        df_train, df_test, feats_train, feats_test = dummy_dfs
+        with pytest.raises(SystemExit):
+            Modelrunner(df_train, df_test, feats_train, feats_test, run=0)
+
 
 class TestCheckFeatureBalancing:
     def test_no_balancing_config_no_change(self, dummy_dfs):

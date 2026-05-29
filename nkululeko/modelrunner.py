@@ -6,6 +6,15 @@ from nkululeko import glob_conf
 from nkululeko.utils.util import Util
 from nkululeko.balance import DataBalancer
 
+# Model types that only support classification
+CLASSIFIER_TYPES = frozenset(
+    {"svm", "xgb", "bayes", "gmm", "knn", "tree", "cnn", "mlp", "adm"}
+)
+# Model types that only support regression
+REGRESSOR_TYPES = frozenset(
+    {"svr", "xgr", "knn_reg", "lin_reg", "tree_reg", "mlp_reg"}
+)
+
 
 class Modelrunner:
     """Class to model one run."""
@@ -187,6 +196,18 @@ class Modelrunner:
         self._check_balancing()
         self._check_feature_balancing()
 
+        # Validate model/experiment type compatibility before instantiation
+        if model_type in CLASSIFIER_TYPES and not self.util.exp_is_classification():
+            self.util.error(
+                f"Model '{model_type}' is a classifier but experiment type is"
+                " regression"
+            )
+        if model_type in REGRESSOR_TYPES and self.util.exp_is_classification():
+            self.util.error(
+                f"Model '{model_type}' is a regressor but experiment type is"
+                " classification"
+            )
+
         if model_type == "svm":
             from nkululeko.models.model_svm import SVM_model
 
@@ -285,11 +306,6 @@ class Modelrunner:
             )
         else:
             self.util.error(f"unknown model type: '{model_type}'")
-        if self.util.exp_is_classification() and not self.model.is_classifier:
-            self.util.error(
-                "Experiment type set to classification but model type is not a"
-                " classifier"
-            )
         return self.model
 
     def _check_feature_balancing(self):
