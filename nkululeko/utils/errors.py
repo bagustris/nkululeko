@@ -8,5 +8,3 @@ class NkululukoError(RuntimeError):
     This replaces direct sys.exit() calls so that nkululeko can be used
     as a library without terminating the host process.
     """
-
-    pass

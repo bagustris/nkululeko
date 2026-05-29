@@ -218,8 +218,6 @@ def main():
         print(str(e))
         sys.exit(1)
 
-    util.debug("DONE")
-
 
 # ---------------------------------------------------------------------------
 # Backwards-compatible API (for nkululeko.flags)
