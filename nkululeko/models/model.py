@@ -13,10 +13,9 @@ import sklearn.utils
 
 import audeer
 
-from nkululeko.utils.pickle_integrity import save_checksum, verify_checksum
-
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.reporter import Reporter
+from nkululeko.utils.pickle_integrity import save_checksum, verify_checksum
 from nkululeko.utils.util import Util
 
 

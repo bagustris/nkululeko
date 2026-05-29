@@ -10,8 +10,6 @@ import typing
 import audeer
 import audiofile
 import audmetric
-
-from nkululeko.utils.pickle_integrity import verify_checksum
 import datasets
 import numpy as np
 import pandas as pd
@@ -25,6 +23,7 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import (
 import nkululeko.glob_conf as glob_conf
 from nkululeko.models.model import Model as BaseModel
 from nkululeko.reporting.reporter import Reporter
+from nkululeko.utils.pickle_integrity import verify_checksum
 
 
 class TunedModel(BaseModel):
