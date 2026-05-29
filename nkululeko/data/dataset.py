@@ -170,8 +170,9 @@ class Dataset:
                     elif user_type != "regression":
                         self.util.warn(
                             f"Configured type={user_type} but data looks like "
-                            f"regression. Respecting configured type. Set type "
-                            f"explicitly to suppress this warning."
+                            f"regression. Respecting configured type. Verify "
+                            f"your data or type configuration if this is "
+                            f"unintended."
                         )
             else:
                 df = pd.DataFrame(index=self.db.files)
