@@ -53,8 +53,8 @@ class Datasplitter:
         """Set up train and development sets. The method should be specified in the config."""
         self.df_dev = None
         train_dfs, test_dfs, dev_dfs = [], [], []
-        last_d = None
-        for d in self.datasets.values():
+        all_datasets = list(self.datasets.values())
+        for d in all_datasets:
             if self.split3:
                 d.split_3()
             else:
@@ -75,17 +75,24 @@ class Datasplitter:
                     self.util.debug(f"warn: {d.name} dev empty")
                 else:
                     dev_dfs.append(d.df_dev)
-            last_d = d
 
         self.df_train = pd.concat(train_dfs) if train_dfs else pd.DataFrame()
         self.df_test = pd.concat(test_dfs) if test_dfs else pd.DataFrame()
-        if last_d is not None:
-            self.util.copy_flags(last_d, self.df_train)
-            self.util.copy_flags(last_d, self.df_test)
         if self.split3:
             self.df_dev = pd.concat(dev_dfs) if dev_dfs else pd.DataFrame()
-            if last_d is not None:
-                self.util.copy_flags(last_d, self.df_dev)
+
+        # Aggregate boolean flags across all datasets (any-wins semantics):
+        # a combined DataFrame is labeled / has speaker / gender / age if ANY
+        # contributing dataset has that attribute set.
+        if all_datasets:
+            for flag in ("is_labeled", "got_gender", "got_age", "got_speaker"):
+                aggregated = any(
+                    getattr(d, flag, False) for d in all_datasets
+                )
+                setattr(self.df_train, flag, aggregated)
+                setattr(self.df_test, flag, aggregated)
+                if self.split3:
+                    setattr(self.df_dev, flag, aggregated)
 
         # Return early for unlabeled/unsupervised runs, but still return the split dataframes
         if self.target is None or self.target == "none":
