@@ -164,7 +164,15 @@ class Dataset:
                 )
                 df = self.db.get(self.col_label, columns)
                 if self.util.is_numeric(df[self.col_label]):
-                    glob_conf.config["EXP"]["type"] = "regression"
+                    user_type = self.util.config_val("EXP", "type", None)
+                    if user_type is None:
+                        glob_conf.config["EXP"]["type"] = "regression"
+                    elif user_type != "regression":
+                        self.util.warn(
+                            f"Configured type={user_type} but data looks like "
+                            f"regression. Respecting configured type. Set type "
+                            f"explicitly to suppress this warning."
+                        )
             else:
                 df = pd.DataFrame(index=self.db.files)
         elif len(tables) > 0:
