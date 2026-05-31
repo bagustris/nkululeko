@@ -41,6 +41,23 @@ class Datasplitter:
             )
         return df
 
+    def _encode_labels_safe(self, df, split_name):
+        """Encode labels in df using the fitted label encoder.
+
+        Emits a helpful error if df contains labels unseen during training.
+        """
+        try:
+            df[self.target] = self.label_encoder.transform(df[self.target])
+        except ValueError:
+            split_labels = set(df[self.target].unique())
+            train_labels = set(self.label_encoder.classes_)
+            unseen = split_labels - train_labels
+            self.util.error(
+                f"{split_name} set contains labels not seen in training: {unseen}. "
+                f"Training labels are: {train_labels}. "
+                "Consider using a combined split strategy or filtering unseen labels."
+            )
+
     def _add_random_target(self, df):
         labels = glob_conf.labels
         a = [None] * len(df)
@@ -173,35 +190,11 @@ class Datasplitter:
                 if self.df_test.is_labeled:
                     self.util.debug(f"Categories test: {test_cats}")
                 if not self.df_train.empty:
-                    try:
-                        self.df_test[self.target] = self.label_encoder.transform(
-                            self.df_test[self.target]
-                        )
-                    except ValueError:
-                        test_labels = set(self.df_test[self.target].unique())
-                        train_labels = set(self.label_encoder.classes_)
-                        unseen = test_labels - train_labels
-                        self.util.error(
-                            f"Test set contains labels not seen in training: {unseen}. "
-                            f"Training labels are: {train_labels}. "
-                            "Consider using a combined split strategy or filtering unseen labels."
-                        )
+                    self._encode_labels_safe(self.df_test, "Test")
             if self.split3 and not self.df_dev.empty:
                 self.util.debug(f"Categories dev: {dev_cats}")
                 if not self.df_train.empty:
-                    try:
-                        self.df_dev[self.target] = self.label_encoder.transform(
-                            self.df_dev[self.target]
-                        )
-                    except ValueError:
-                        dev_labels = set(self.df_dev[self.target].unique())
-                        train_labels = set(self.label_encoder.classes_)
-                        unseen = dev_labels - train_labels
-                        self.util.error(
-                            f"Dev set contains labels not seen in training: {unseen}. "
-                            f"Training labels are: {train_labels}. "
-                            "Consider using a combined split strategy or filtering unseen labels."
-                        )
+                    self._encode_labels_safe(self.df_dev, "Dev")
         if self.got_speaker:
             speakers_train = (
                 0

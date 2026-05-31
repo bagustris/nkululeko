@@ -213,53 +213,16 @@ class TestLabelEncoderUnseenLabels:
         return ds
 
     def test_unseen_test_labels_raises_helpful_error(self, tmp_path):
-        """transform() on test set with unseen labels should produce a helpful error."""
-        from sklearn.preprocessing import LabelEncoder
-        from nkululeko.utils.util import Util
-
-        ds = Datasplitter.__new__(Datasplitter)
+        """_encode_labels_safe on test set with unseen labels should produce a helpful error."""
+        ds = self._make_ds_with_label_encoder(
+            tmp_path,
+            train_labels=["happy", "sad"],
+            test_labels=["angry"],
+        )
         errors = []
-        ds.util = type(
-            "U",
-            (),
-            {
-                "debug": lambda self, m: None,
-                "warn": lambda self, m: None,
-                "error": lambda self, m: errors.append(m),
-                "exp_is_classification": lambda self: True,
-                "config_val": lambda self, sec, key, default: default,
-            },
-        )()
-        ds.target = "emotion"
-        ds.split3 = False
-        ds.got_speaker = False
-        ds.datasets = {}
+        ds.util.error = lambda m: errors.append(m)
 
-        idx_tr = _make_segmented_index(["/data/tr_0.wav", "/data/tr_1.wav"])
-        idx_te = _make_segmented_index(["/data/te_0.wav"])
-
-        ds.df_train = pd.DataFrame({"emotion": ["happy", "sad"]}, index=idx_tr)
-        ds.df_test = pd.DataFrame({"emotion": ["angry"]}, index=idx_te)
-        ds.df_train.is_labeled = True
-        ds.df_test.is_labeled = True
-
-        le = LabelEncoder()
-        glob_conf.set_label_encoder(le)
-        ds.label_encoder = le
-        ds.df_train[ds.target] = le.fit_transform(ds.df_train[ds.target])
-
-        # Simulate the transform call for test set
-        try:
-            ds.df_test[ds.target] = le.transform(ds.df_test[ds.target])
-        except ValueError:
-            test_labels = set(ds.df_test[ds.target].unique())
-            train_labels = set(le.classes_)
-            unseen = test_labels - train_labels
-            ds.util.error(
-                f"Test set contains labels not seen in training: {unseen}. "
-                f"Training labels are: {train_labels}. "
-                "Consider using a combined split strategy or filtering unseen labels."
-            )
+        ds._encode_labels_safe(ds.df_test, "Test")
 
         assert len(errors) == 1
         assert "angry" in errors[0]
