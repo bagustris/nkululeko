@@ -102,14 +102,13 @@ class Datasplitter:
         # a combined DataFrame is labeled / has speaker / gender / age if ANY
         # contributing dataset has that attribute set.
         if all_datasets:
+            active_splits = [self.df_train, self.df_test]
+            if self.split3:
+                active_splits.append(self.df_dev)
             for flag in ("is_labeled", "got_gender", "got_age", "got_speaker"):
-                aggregated = any(
-                    getattr(d, flag, False) for d in all_datasets
-                )
-                setattr(self.df_train, flag, aggregated)
-                setattr(self.df_test, flag, aggregated)
-                if self.split3:
-                    setattr(self.df_dev, flag, aggregated)
+                aggregated = any(getattr(d, flag, False) for d in all_datasets)
+                for split_df in active_splits:
+                    setattr(split_df, flag, aggregated)
 
         # Return early for unlabeled/unsupervised runs, but still return the split dataframes
         if self.target is None or self.target == "none":

@@ -19,6 +19,14 @@ def _make_segmented_index(files):
     return pd.MultiIndex.from_arrays(arrays, names=["file", "start", "end"])
 
 
+def _tag_df(df):
+    """Set standard boolean flags to False on a split DataFrame."""
+    df.is_labeled = False
+    df.got_gender = False
+    df.got_speaker = False
+    return df
+
+
 @pytest.fixture(autouse=True)
 def setup_glob_conf(tmp_path):
     config = configparser.ConfigParser()
@@ -238,14 +246,8 @@ class TestFillTrainAndTestsConcatenation:
                 self.name = name
                 idx_tr = _make_segmented_index(train_files)
                 idx_te = _make_segmented_index(test_files)
-                self.df_train = pd.DataFrame(index=idx_tr)
-                self.df_test = pd.DataFrame(index=idx_te)
-                self.df_train.is_labeled = False
-                self.df_test.is_labeled = False
-                self.df_train.got_gender = False
-                self.df_test.got_gender = False
-                self.df_train.got_speaker = False
-                self.df_test.got_speaker = False
+                self.df_train = _tag_df(pd.DataFrame(index=idx_tr))
+                self.df_test = _tag_df(pd.DataFrame(index=idx_te))
 
             def split(self):
                 pass  # already split in __init__
@@ -288,14 +290,8 @@ class TestFillTrainAndTestsEarlyReturn:
 
         class FakeDataset:
             def split(self):
-                self.df_train = pd.DataFrame(index=range(2))
-                self.df_test = pd.DataFrame(index=range(1))
-                self.df_train.is_labeled = False
-                self.df_test.is_labeled = False
-                self.df_train.got_gender = False
-                self.df_test.got_gender = False
-                self.df_train.got_speaker = False
-                self.df_test.got_speaker = False
+                self.df_train = _tag_df(pd.DataFrame(index=range(2)))
+                self.df_test = _tag_df(pd.DataFrame(index=range(1)))
 
             def prepare_labels(self):
                 pass  # no-op: unsupervised run has no labels to encode
