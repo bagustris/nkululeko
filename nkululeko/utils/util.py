@@ -299,8 +299,6 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             bool: The boolean value of the config entry.
         """
         val = self.config_val(section, key, str(default))
-        if isinstance(val, bool):
-            return val
         return str(val).strip().lower() in ("true", "1", "yes")
 
     def config_val_list(self, section, key, default):

@@ -117,9 +117,21 @@ class TestConfigValBool:
         assert u.config_val_bool("FEATS", "nonexistent", False) is False
         assert u.config_val_bool("FEATS", "nonexistent", True) is True
 
-    def test_handles_bool_default(self):
+    def test_trims_whitespace_in_boolean_values(self):
+        glob_conf.config["FEATS"]["no_reuse"] = "  yes  "
         u = Util("test")
-        assert u.config_val_bool("FEATS", "nonexistent", False) is False
+        assert u.config_val_bool("FEATS", "no_reuse", False) is True
+
+        glob_conf.config["FEATS"]["no_reuse"] = "  False  "
+        assert u.config_val_bool("FEATS", "no_reuse", True) is False
+
+    def test_returns_existing_bool_value(self):
+        # ConfigParser stores strings only; verify bool defaults convert correctly
+        u = Util("test", has_config=False)
+        # Default True → stringified to "True" → parsed as True
+        assert u.config_val_bool("FEATS", "no_reuse", True) is True
+        # Default False → stringified to "False" → parsed as False
+        assert u.config_val_bool("FEATS", "no_reuse", False) is False
 
     def test_rejects_arbitrary_code(self):
         glob_conf.config["FEATS"]["no_reuse"] = "__import__('os').system('echo hacked')"
