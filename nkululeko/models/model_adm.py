@@ -299,9 +299,9 @@ class ADMModel(Model):
         with torch.no_grad():
             for index, (features, labels) in enumerate(loader):
                 start_index = index * loader.batch_size
-                end_index = (index + 1) * loader.batch_size
-                if end_index > len(loader.dataset):
-                    end_index = len(loader.dataset)
+                end_index = start_index + len(
+                    labels
+                )  # use actual batch size (last batch may be smaller)
 
                 # Convert features to float32
                 features = features.float()
