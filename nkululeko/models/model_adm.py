@@ -195,11 +195,21 @@ class ADMModel(Model):
         )
         self.threshold = float(self.util.config_val("MODEL", "threshold", "0.5"))
 
-        # Handle NaN values
-        if feats_train.isna().to_numpy().any():
-            feats_train = self.util.handle_nan(feats_train, context="Model, train")
-        if feats_test.isna().to_numpy().any():
-            feats_test = self.util.handle_nan(feats_test, context="Model, test")
+        # Model paths use MODEL.nan_strategy so FEATS.nan_strategy=drop cannot
+        # remove feature rows without labels.
+        model_nan_strategy = self.util.config_val("MODEL", "nan_strategy", "zero")
+        feats_train = self.util.handle_nan(
+            feats_train,
+            context="Model, train",
+            strategy=model_nan_strategy,
+            allow_drop=False,
+        )
+        feats_test = self.util.handle_nan(
+            feats_test,
+            context="Model, test",
+            strategy=model_nan_strategy,
+            allow_drop=False,
+        )
 
         # Set up data loaders
         self.trainloader = self.get_loader(feats_train, df_train, True)
@@ -385,12 +395,38 @@ class ADMModel(Model):
 
     def get_loader(self, df_x, df_y, shuffle):
         """Create a data loader for training or testing."""
-        data = []
-        for i in range(len(df_x)):
-            data.append([df_x.values[i], df_y[self.target].iloc[i]])
+        features = torch.tensor(df_x.values, dtype=torch.float32)
+        labels = torch.tensor(
+            self._encode_labels(df_y[self.target]), dtype=torch.float32
+        )
+        data = torch.utils.data.TensorDataset(features, labels)
         return torch.utils.data.DataLoader(
             data, shuffle=shuffle, batch_size=self.batch_size
         )
+
+    def _encode_labels(self, labels):
+        """Encode ADM labels as numeric values for binary BCE training."""
+        try:
+            return pd.to_numeric(labels, errors="raise").to_numpy(dtype=float)
+        except (TypeError, ValueError):
+            pass
+
+        label_encoder = getattr(glob_conf, "label_encoder", None)
+        if label_encoder is not None:
+            try:
+                return label_encoder.transform(labels).astype(float)
+            except ValueError:
+                pass
+
+        label_names = list(glob_conf.labels or [])
+        label_map = {label: index for index, label in enumerate(label_names)}
+        unknown_labels = sorted(set(labels.dropna()) - set(label_map))
+        if unknown_labels:
+            raise ValueError(
+                f"unknown labels for ADM model: {unknown_labels}; "
+                f"known labels are: {label_names}"
+            )
+        return labels.map(label_map).to_numpy(dtype=float)
 
     def set_id(self, run, epoch):
         """Set run and epoch ID with branch configuration in filename."""
@@ -435,7 +471,9 @@ class ADMModel(Model):
         ).to(self.device)
 
         try:
-            self.model.load_state_dict(torch.load(self.store_path))
+            self.model.load_state_dict(
+                torch.load(self.store_path, map_location=self.device, weights_only=True)
+            )
         except FileNotFoundError:
             self.util.error(f"model file not found: {self.store_path}")
         self.model.eval()

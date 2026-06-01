@@ -259,12 +259,14 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         else:
             print(f"DEBUG: {message}", flush=True)
 
-    def handle_nan(self, df, context="features"):
+    def handle_nan(self, df, context="features", strategy=None, allow_drop=True):
         """Handle NaN values in a DataFrame with configurable strategy.
 
         Args:
             df: pandas DataFrame to check and fill NaN values in.
             context: string describing where the NaN was found (for logging).
+            strategy: optional strategy override. If unset, FEATS.nan_strategy is used.
+            allow_drop: whether the drop strategy may remove rows.
 
         Returns:
             DataFrame with NaN values handled according to configured strategy.
@@ -274,7 +276,24 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
 
         nan_count = df.isna().sum().sum()
         nan_pct = 100 * nan_count / df.size
-        strategy = self.config_val("FEATS", "nan_strategy", "zero")
+        raw_strategy = (
+            strategy
+            if strategy is not None
+            else self.config_val("FEATS", "nan_strategy", "zero")
+        )
+        strategy = str(raw_strategy).strip().lower()
+        valid_strategies = {"zero", "mean", "median", "drop"}
+        if strategy not in valid_strategies:
+            self.warn(
+                f"{context}: unknown NaN strategy '{raw_strategy}', using strategy 'zero'"
+            )
+            strategy = "zero"
+        elif strategy == "drop" and not allow_drop:
+            self.warn(
+                f"{context}: NaN strategy 'drop' is not allowed because it can "
+                "misalign features and labels, using strategy 'zero'"
+            )
+            strategy = "zero"
 
         self.warn(
             f"{context}: replacing {nan_count} NaN values"
@@ -283,10 +302,12 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
 
         if strategy == "mean":
             # Second fillna(0) handles columns where all values are NaN (mean is NaN)
-            return df.fillna(df.mean()).fillna(0)
+            numeric_means = df.mean(numeric_only=True)
+            return df.fillna(numeric_means).fillna(0)
         elif strategy == "median":
             # Second fillna(0) handles columns where all values are NaN (median is NaN)
-            return df.fillna(df.median()).fillna(0)
+            numeric_medians = df.median(numeric_only=True)
+            return df.fillna(numeric_medians).fillna(0)
         elif strategy == "drop":
             return df.dropna()
         else:

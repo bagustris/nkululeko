@@ -257,12 +257,14 @@ class Model:
             self._x_fold_cross()
             return
 
-        # check for NANs in the features
-        # set up the data_loaders
-        if self.feats_train.isna().to_numpy().any():
-            self.feats_train = self.util.handle_nan(
-                self.feats_train, context="Model, train"
-            )
+        # Check for NANs in the features. Model paths use MODEL.nan_strategy so
+        # FEATS.nan_strategy=drop cannot remove feature rows without labels.
+        self.feats_train = self.util.handle_nan(
+            self.feats_train,
+            context="Model, train",
+            strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
+            allow_drop=False,
+        )
         # remove labels from features
         feats = self.feats_train.to_numpy()
         # compute class weights
@@ -339,10 +341,12 @@ class Model:
         return predictions, probas
 
     def predict(self):
-        if self.feats_test.isna().to_numpy().any():
-            self.feats_test = self.util.handle_nan(
-                self.feats_test, context="Model, test"
-            )
+        self.feats_test = self.util.handle_nan(
+            self.feats_test,
+            context="Model, test",
+            strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
+            allow_drop=False,
+        )
         if self.logo or self.xfoldx:
             report = Reporter(
                 self.truths.astype(float), self.preds, self.run, self.epoch

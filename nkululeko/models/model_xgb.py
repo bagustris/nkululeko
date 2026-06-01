@@ -50,11 +50,14 @@ class XGB_model(Model):
 
     def train(self):
         """Train the XGBoost model with optional early stopping."""
-        # Check if NANs in features and handle them
-        if self.feats_train.isna().to_numpy().any():
-            self.feats_train = self.util.handle_nan(
-                self.feats_train, context="Model, train"
-            )
+        # Model paths use MODEL.nan_strategy so FEATS.nan_strategy=drop cannot
+        # remove feature rows without labels.
+        self.feats_train = self.util.handle_nan(
+            self.feats_train,
+            context="Model, train",
+            strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
+            allow_drop=False,
+        )
 
         # then if leave one speaker group out validation is wanted
         if self.logo:
@@ -82,11 +85,13 @@ class XGB_model(Model):
                 # In split3 mode, self.feats_test and self.df_test are actually the dev set
                 labels_dev = self.df_test[self.target]
 
-                # Handle NANs in dev features
-                if self.feats_test.isna().to_numpy().any():
-                    self.feats_test = self.util.handle_nan(
-                        self.feats_test, context="Model, dev"
-                    )
+                # Handle NANs in dev features without dropping rows.
+                self.feats_test = self.util.handle_nan(
+                    self.feats_test,
+                    context="Model, dev",
+                    strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
+                    allow_drop=False,
+                )
                 feats_dev = self.feats_test.to_numpy()
 
                 # Set up early stopping with validation data
@@ -145,9 +150,7 @@ class XGB_model(Model):
         class_weight = self.util.config_val("MODEL", "class_weight", False)
         if class_weight:
             self.util.debug("using class weight")
-            classes_weights = compute_sample_weight(
-                class_weight="balanced", y=labels
-            )
+            classes_weights = compute_sample_weight(class_weight="balanced", y=labels)
             fit_params["sample_weight"] = classes_weights
 
         # Train the model

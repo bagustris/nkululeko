@@ -428,8 +428,8 @@ class TestHandleNan:
         df = pd.DataFrame({"a": [1.0, np.nan], "b": [np.nan, 4.0]})
         result = u.handle_nan(df, context="test")
         assert not result.isna().any().any()
-        assert result.iloc[1, 0] == 0.0
-        assert result.iloc[0, 1] == 0.0
+        assert result.iloc[1, 0] == pytest.approx(0.0)
+        assert result.iloc[0, 1] == pytest.approx(0.0)
 
     def test_mean_strategy(self):
         glob_conf.config["FEATS"]["nan_strategy"] = "mean"
@@ -447,6 +447,38 @@ class TestHandleNan:
         result = u.handle_nan(df, context="test")
         assert not result.isna().any().any()
         assert result.iloc[3, 0] == pytest.approx(3.0)  # median of 1, 3, 5
+
+    def test_mean_strategy_handles_non_numeric_columns(self):
+        glob_conf.config["FEATS"]["nan_strategy"] = "mean"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, 3.0, np.nan], "b": ["x", None, "z"]})
+        result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[2, 0] == pytest.approx(2.0)
+        assert result.iloc[1, 1] == pytest.approx(0.0)
+
+    def test_invalid_strategy_falls_back_to_zero_and_logs_actual_strategy(self, caplog):
+        glob_conf.config["FEATS"]["nan_strategy"] = "invalid"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, np.nan]})
+        with caplog.at_level(logging.WARNING):
+            result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[1, 0] == pytest.approx(0.0)
+        assert "unknown NaN strategy 'invalid'" in caplog.text
+        assert "strategy 'zero'" in caplog.text
+
+    def test_drop_strategy_can_be_disallowed_to_preserve_row_alignment(self, caplog):
+        glob_conf.config["FEATS"]["nan_strategy"] = "drop"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, np.nan], "b": [3.0, 4.0]})
+        with caplog.at_level(logging.WARNING):
+            result = u.handle_nan(df, context="Model, train", allow_drop=False)
+        assert len(result) == 2
+        assert not result.isna().any().any()
+        assert result.iloc[1, 0] == pytest.approx(0.0)
+        assert "drop" in caplog.text
+        assert "misalign features and labels" in caplog.text
 
     def test_drop_strategy(self):
         glob_conf.config["FEATS"]["nan_strategy"] = "drop"
@@ -471,5 +503,14 @@ class TestHandleNan:
         df = pd.DataFrame({"a": [1.0, 3.0], "b": [np.nan, np.nan]})
         result = u.handle_nan(df, context="test")
         assert not result.isna().any().any()
-        assert result.iloc[0, 1] == 0.0
-        assert result.iloc[1, 1] == 0.0
+        assert result.iloc[0, 1] == pytest.approx(0.0)
+        assert result.iloc[1, 1] == pytest.approx(0.0)
+
+    def test_median_strategy_all_nan_column_falls_back_to_zero(self):
+        glob_conf.config["FEATS"]["nan_strategy"] = "median"
+        u = Util("test")
+        df = pd.DataFrame({"a": [1.0, 3.0], "b": [np.nan, np.nan]})
+        result = u.handle_nan(df, context="test")
+        assert not result.isna().any().any()
+        assert result.iloc[0, 1] == pytest.approx(0.0)
+        assert result.iloc[1, 1] == pytest.approx(0.0)
