@@ -16,6 +16,49 @@ REGRESSOR_TYPES = frozenset(
 )
 
 
+def validate_model_task_support(
+    model_type: str, task: str, model=None
+) -> None:
+    """Ensure model_type is compatible with the requested task.
+
+    When a model instance is provided its own capability flags
+    (``is_classifier`` / ``is_regressor``) take precedence over the
+    type-based allow-lists.  This lets future model implementations declare
+    their own capabilities without touching these sets.
+
+    :param model_type: model type string (e.g. ``'svm'``, ``'svr'``)
+    :param task: ``'classification'`` or ``'regression'``
+    :param model: optional instantiated model; checked for
+        ``is_classifier`` / ``is_regressor`` attributes when provided
+    """
+    util = Util("modelrunner")
+
+    if model is not None:
+        is_classifier = getattr(model, "is_classifier", None)
+        is_regressor = getattr(model, "is_regressor", None)
+        if task == "classification" and is_classifier is False:
+            util.error(f"Model '{model_type}' does not support classification.")
+        if task == "regression" and is_regressor is False:
+            util.error(f"Model '{model_type}' does not support regression.")
+        # Explicit positive flag short-circuits type-set fallback
+        if task == "classification" and is_classifier is True:
+            return
+        if task == "regression" and is_regressor is True:
+            return
+
+    # Fall back to type-set heuristics for models without capability flags
+    if task == "regression" and model_type in CLASSIFIER_TYPES:
+        util.error(
+            f"Model '{model_type}' is a classifier but experiment type is"
+            " regression"
+        )
+    if task == "classification" and model_type in REGRESSOR_TYPES:
+        util.error(
+            f"Model '{model_type}' is a regressor but experiment type is"
+            " classification"
+        )
+
+
 class Modelrunner:
     """Class to model one run."""
 
@@ -197,16 +240,8 @@ class Modelrunner:
         self._check_feature_balancing()
 
         # Validate model/experiment type compatibility before instantiation
-        if model_type in CLASSIFIER_TYPES and not self.util.exp_is_classification():
-            self.util.error(
-                f"Model '{model_type}' is a classifier but experiment type is"
-                " regression"
-            )
-        if model_type in REGRESSOR_TYPES and self.util.exp_is_classification():
-            self.util.error(
-                f"Model '{model_type}' is a regressor but experiment type is"
-                " classification"
-            )
+        task = "classification" if self.util.exp_is_classification() else "regression"
+        validate_model_task_support(model_type, task)
 
         if model_type == "svm":
             from nkululeko.models.model_svm import SVM_model

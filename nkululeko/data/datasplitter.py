@@ -51,10 +51,10 @@ class Datasplitter:
         except ValueError:
             split_labels = set(df[self.target].unique())
             train_labels = set(self.label_encoder.classes_)
-            unseen = split_labels - train_labels
+            unseen = sorted(split_labels - train_labels)
             self.util.error(
                 f"{split_name} set contains labels not seen in training: {unseen}. "
-                f"Training labels are: {train_labels}. "
+                f"Training labels are: {sorted(train_labels)}. "
                 "Consider using a combined split strategy or filtering unseen labels."
             )
 
@@ -107,6 +107,7 @@ class Datasplitter:
                 active_splits.append(self.df_dev)
             for flag in ("is_labeled", "got_gender", "got_age", "got_speaker"):
                 aggregated = any(getattr(d, flag, False) for d in all_datasets)
+                setattr(self, flag, aggregated)
                 for split_df in active_splits:
                     setattr(split_df, flag, aggregated)
 

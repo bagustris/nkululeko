@@ -27,6 +27,22 @@ def _tag_df(df):
     return df
 
 
+def _make_fake_util(tmp_path):
+    """Return a minimal no-op utility stub for Datasplitter tests."""
+    return type(
+        "U",
+        (),
+        {
+            "get_path": lambda self, k: str(tmp_path) + "/",
+            "config_val": lambda self, sec, key, default: default,
+            "debug": lambda self, m: None,
+            "warn": lambda self, m: None,
+            "copy_flags": lambda self, src, tgt: None,
+            "exp_is_classification": lambda self: False,
+        },
+    )()
+
+
 @pytest.fixture(autouse=True)
 def setup_glob_conf(tmp_path):
     config = configparser.ConfigParser()
@@ -195,42 +211,84 @@ class TestBuildTestDsDf:
 
 
 class TestLabelEncoderUnseenLabels:
-    def _make_ds_with_label_encoder(self, tmp_path, train_labels, test_labels):
-        """Return a Datasplitter-like object with label encoder already fit on train_labels."""
-        from sklearn.preprocessing import LabelEncoder
+    """Verify fill_train_and_tests surfaces helpful errors for unseen labels."""
+
+    class _FakeDataset:
+        """Minimal dataset stub with pre-built splits."""
+
+        is_labeled = True
+        got_gender = False
+        got_age = False
+        got_speaker = False
+        name = "fake_db"
+
+        def __init__(self, train_labels, test_labels, dev_labels=None):
+            idx_tr = _make_segmented_index(
+                [f"/data/tr_{i}.wav" for i in range(len(train_labels))]
+            )
+            idx_te = _make_segmented_index(
+                [f"/data/te_{i}.wav" for i in range(len(test_labels))]
+            )
+            self.df_train = _tag_df(pd.DataFrame({"emotion": train_labels}, index=idx_tr))
+            self.df_test = _tag_df(pd.DataFrame({"emotion": test_labels}, index=idx_te))
+            self.df_train.is_labeled = True
+            self.df_test.is_labeled = True
+            if dev_labels is not None:
+                idx_dev = _make_segmented_index(
+                    [f"/data/dev_{i}.wav" for i in range(len(dev_labels))]
+                )
+                self.df_dev = _tag_df(
+                    pd.DataFrame({"emotion": dev_labels}, index=idx_dev)
+                )
+                self.df_dev.is_labeled = True
+
+        def split(self):
+            pass
+
+        def split_3(self):
+            pass
+
+        def prepare_labels(self):
+            pass
+
+    def _make_ds(self, datasets, split3=False):
+        """Build a Datasplitter with real Util whose error() is captured."""
         from nkululeko.utils.util import Util
 
         ds = Datasplitter.__new__(Datasplitter)
         ds.util = Util("datasplitter")
+        errors = []
+        ds.util.error = lambda m: errors.append(m)
         ds.target = "emotion"
-        ds.split3 = False
+        ds.split3 = split3
         ds.got_speaker = False
-        ds.datasets = {}
+        ds.datasets = datasets
+        return ds, errors
 
-        idx_tr = _make_segmented_index([f"/data/tr_{i}.wav" for i in range(len(train_labels))])
-        idx_te = _make_segmented_index([f"/data/te_{i}.wav" for i in range(len(test_labels))])
-
-        ds.df_train = pd.DataFrame({"emotion": train_labels}, index=idx_tr)
-        ds.df_test = pd.DataFrame({"emotion": test_labels}, index=idx_te)
-        ds.df_train.is_labeled = True
-        ds.df_test.is_labeled = True
-
-        ds.label_encoder = LabelEncoder()
-        glob_conf.set_label_encoder(ds.label_encoder)
-        ds.df_train[ds.target] = ds.label_encoder.fit_transform(ds.df_train[ds.target])
-        return ds
-
-    def test_unseen_test_labels_raises_helpful_error(self, tmp_path):
-        """_encode_labels_safe on test set with unseen labels should produce a helpful error."""
-        ds = self._make_ds_with_label_encoder(
-            tmp_path,
+    def test_unseen_test_labels_calls_util_error(self):
+        """fill_train_and_tests should report labels in test split not seen in training."""
+        fake_ds = self._FakeDataset(
             train_labels=["happy", "sad"],
             test_labels=["angry"],
         )
-        errors = []
-        ds.util.error = lambda m: errors.append(m)
+        ds, errors = self._make_ds({"db": fake_ds})
 
-        ds._encode_labels_safe(ds.df_test, "Test")
+        ds.fill_train_and_tests()
+
+        assert len(errors) == 1
+        assert "angry" in errors[0]
+        assert "not seen in training" in errors[0]
+
+    def test_unseen_dev_labels_calls_util_error(self):
+        """fill_train_and_tests should report unseen dev-split labels when split3=True."""
+        fake_ds = self._FakeDataset(
+            train_labels=["happy", "sad"],
+            test_labels=["happy"],  # no unseen in test
+            dev_labels=["angry"],   # unseen in dev
+        )
+        ds, errors = self._make_ds({"db": fake_ds}, split3=True)
+
+        ds.fill_train_and_tests()
 
         assert len(errors) == 1
         assert "angry" in errors[0]
@@ -262,18 +320,7 @@ class TestFillTrainAndTestsConcatenation:
         ds_b = FakeDataset("b", ["/b/tr_1.wav"], ["/b/te_1.wav", "/b/te_2.wav"])
 
         ds = Datasplitter.__new__(Datasplitter)
-        ds.util = type(
-            "U",
-            (),
-            {
-                "get_path": lambda self, k: str(tmp_path) + "/",
-                "config_val": lambda self, sec, key, default: default,
-                "debug": lambda self, m: None,
-                "warn": lambda self, m: None,
-                "copy_flags": lambda self, src, tgt: None,
-                "exp_is_classification": lambda self: False,
-            },
-        )()
+        ds.util = _make_fake_util(tmp_path)
         ds.target = None
         ds.split3 = False
         ds.got_speaker = False
@@ -305,18 +352,7 @@ class TestFillTrainAndTestsEarlyReturn:
 
         fake_ds = FakeDataset()
         ds = Datasplitter.__new__(Datasplitter)
-        ds.util = type(
-            "U",
-            (),
-            {
-                "get_path": lambda self, k: str(tmp_path) + "/",
-                "config_val": lambda self, sec, key, default: default,
-                "debug": lambda self, m: None,
-                "warn": lambda self, m: None,
-                "copy_flags": lambda self, src, tgt: None,
-                "exp_is_classification": lambda self: False,
-            },
-        )()
+        ds.util = _make_fake_util(tmp_path)
         ds.target = None
         ds.split3 = False
         ds.got_speaker = False
