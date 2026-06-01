@@ -119,9 +119,7 @@ class AudmodelSet(Featureset):
             storage = f"{store}{self.name}.{store_format}"
         else:
             storage = f"{store}{self.name}_l{self.hidden_layer}.{store_format}"
-        extract = self.util.config_val_bool("FEATS", "needs_feature_extraction", False)
-        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
-        if no_reuse or extract or not os.path.isfile(storage):
+        if self._needs_extraction(storage):
             self.util.debug(
                 "extracting audmodel embeddings, this might take a while..."
             )

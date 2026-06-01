@@ -63,6 +63,12 @@ class FeatureAnalyser:
             importance = model.feature_importances_
         return importance
 
+    def _maybe_plot_tree(self, model):
+        """Plot decision tree if configured."""
+        if self.util.config_val_bool("EXPL", "plot_tree", False):
+            plots = Plots()
+            plots.plot_tree(model, self.features)
+
     def analyse_shap(self, model):
         """Shap analysis.
 
@@ -210,19 +216,13 @@ class FeatureAnalyser:
                     result_importances[model_s] = self._get_importance(
                         model, permutation
                     )
-                    plot_tree = self.util.config_val_bool("EXPL", "plot_tree", False)
-                    if plot_tree:
-                        plots = Plots()
-                        plots.plot_tree(model, self.features)
+                    self._maybe_plot_tree(model)
                 elif model_s == "tree":
                     model = DecisionTreeClassifier(random_state=42)
                     result_importances[model_s] = self._get_importance(
                         model, permutation
                     )
-                    plot_tree = self.util.config_val_bool("EXPL", "plot_tree", False)
-                    if plot_tree:
-                        plots = Plots()
-                        plots.plot_tree(model, self.features)
+                    self._maybe_plot_tree(model)
                 elif model_s == "xgb":
                     from xgboost import XGBClassifier
 

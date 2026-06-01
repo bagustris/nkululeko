@@ -27,9 +27,7 @@ class Openxbow(Featureset):
             raise ValueError(f"Invalid feature set: {self.featset}")
         store = self.util.get_path("store")
         storage = f"{store}{self.name}_{self.featset}.pkl"
-        extract = self.util.config_val("FEATS", "needs_feature_extraction", False)
-        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
-        if extract or no_reuse or not os.path.isfile(storage):
+        if self._needs_extraction(storage):
             # extract smile features first
             self.util.debug("extracting openSmile features, this might take a while...")
             smile = opensmile.Smile(

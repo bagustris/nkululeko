@@ -107,11 +107,7 @@ class Opensmileset(Featureset):
         store_format = self.util.config_val("FEATS", "store_format", "pkl")
         storage = f"{store}{self.name}.{store_format}"
 
-        # Check if we need to extract features or use existing ones
-        extract = self.util.config_val_bool("FEATS", "needs_feature_extraction", False)
-        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
-
-        if extract or not os.path.isfile(storage) or no_reuse:
+        if self._needs_extraction(storage):
             self.util.debug(
                 f"Extracting OpenSMILE {self.featset} features, this might take a while..."
             )
