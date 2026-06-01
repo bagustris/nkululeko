@@ -8,7 +8,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import audeer
 import nkululeko.glob_conf as glob_conf
+import nkululeko.utils.util as util_mod
 from nkululeko.utils.util import Util
 
 
@@ -191,8 +193,6 @@ class TestNumericHelpers:
 class TestSetupLogging:
     def _reset_logger(self):
         """Remove all handlers from the shared module logger between tests."""
-        import nkululeko.utils.util as util_mod
-
         logger = logging.getLogger(util_mod.__name__)
         for h in logger.handlers[:]:
             h.close()
@@ -205,8 +205,6 @@ class TestSetupLogging:
         self._reset_logger()
 
     def test_file_handler_created_when_exp_config_present(self, tmp_path):
-        import nkululeko.utils.util as util_mod
-
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "logtest"
         Util("test")
@@ -218,8 +216,6 @@ class TestSetupLogging:
         assert file_handlers[0].baseFilename.endswith(".log")
 
     def test_no_duplicate_file_handler_on_second_util(self, tmp_path):
-        import nkululeko.utils.util as util_mod
-
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "logtest"
         Util("test")
@@ -231,8 +227,6 @@ class TestSetupLogging:
         assert len(file_handlers) == 1
 
     def test_file_handler_replaced_when_experiment_changes(self, tmp_path):
-        import nkululeko.utils.util as util_mod
-
         # First experiment
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "exp_one"
@@ -255,8 +249,6 @@ class TestSetupLogging:
         assert "exp_two" in second_handlers[0].baseFilename
 
     def test_no_file_handler_without_config(self, tmp_path):
-        import nkululeko.utils.util as util_mod
-
         glob_conf.config = None
         Util("test", has_config=False)
         logger = logging.getLogger(util_mod.__name__)
@@ -266,9 +258,6 @@ class TestSetupLogging:
         assert len(file_handlers) == 0
 
     def test_oserror_falls_back_to_console_only(self, tmp_path, monkeypatch):
-        import nkululeko.utils.util as util_mod
-        import audeer
-
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "logtest"
 
