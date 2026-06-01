@@ -87,50 +87,27 @@ class TestConfigVal:
 
 
 class TestConfigValBool:
-    def test_returns_true_for_true_string(self):
-        glob_conf.config["FEATS"]["no_reuse"] = "True"
+    @pytest.mark.parametrize("value", ["True", "TRUE", "1", "yes", "  yes  "])
+    def test_truthy_string_values(self, value):
+        glob_conf.config["FEATS"]["no_reuse"] = value
         u = Util("test")
         assert u.config_val_bool("FEATS", "no_reuse", False) is True
 
-    def test_returns_true_for_case_insensitive(self):
-        glob_conf.config["FEATS"]["no_reuse"] = "TRUE"
-        u = Util("test")
-        assert u.config_val_bool("FEATS", "no_reuse", False) is True
-
-    def test_returns_false_for_false_string(self):
-        glob_conf.config["FEATS"]["no_reuse"] = "False"
+    @pytest.mark.parametrize("value", ["False", "  False  "])
+    def test_falsy_string_values(self, value):
+        glob_conf.config["FEATS"]["no_reuse"] = value
         u = Util("test")
         assert u.config_val_bool("FEATS", "no_reuse", True) is False
-
-    def test_returns_true_for_one(self):
-        glob_conf.config["FEATS"]["no_reuse"] = "1"
-        u = Util("test")
-        assert u.config_val_bool("FEATS", "no_reuse", False) is True
-
-    def test_returns_true_for_yes(self):
-        glob_conf.config["FEATS"]["no_reuse"] = "yes"
-        u = Util("test")
-        assert u.config_val_bool("FEATS", "no_reuse", False) is True
 
     def test_returns_default_for_missing_key(self):
         u = Util("test")
         assert u.config_val_bool("FEATS", "nonexistent", False) is False
         assert u.config_val_bool("FEATS", "nonexistent", True) is True
 
-    def test_trims_whitespace_in_boolean_values(self):
-        glob_conf.config["FEATS"]["no_reuse"] = "  yes  "
-        u = Util("test")
-        assert u.config_val_bool("FEATS", "no_reuse", False) is True
-
-        glob_conf.config["FEATS"]["no_reuse"] = "  False  "
-        assert u.config_val_bool("FEATS", "no_reuse", True) is False
-
     def test_returns_existing_bool_value(self):
         # ConfigParser stores strings only; verify bool defaults convert correctly
         u = Util("test", has_config=False)
-        # Default True → stringified to "True" → parsed as True
         assert u.config_val_bool("FEATS", "no_reuse", True) is True
-        # Default False → stringified to "False" → parsed as False
         assert u.config_val_bool("FEATS", "no_reuse", False) is False
 
     def test_rejects_arbitrary_code(self):
