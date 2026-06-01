@@ -62,7 +62,7 @@ class Opensmileset(Featureset):
 
         try:
             self.feature_set = getattr(opensmile.FeatureSet, self.featset)
-        except (AttributeError, SyntaxError) as e:
+        except AttributeError as e:
             self.util.error(f"Invalid feature set: {self.featset}. Error: {str(e)}")
             raise ValueError(f"Invalid feature set: {self.featset}")
 
@@ -84,7 +84,7 @@ class Opensmileset(Featureset):
 
         try:
             self.feature_level = getattr(opensmile.FeatureLevel, self.featlevel)
-        except (AttributeError, SyntaxError) as e:
+        except AttributeError as e:
             self.util.error(f"Invalid feature level: {self.featlevel}. Error: {str(e)}")
             raise ValueError(f"Invalid feature level: {self.featlevel}")
         self.print_feats = (
