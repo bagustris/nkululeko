@@ -257,14 +257,7 @@ class Model:
             self._x_fold_cross()
             return
 
-        # Check for NANs in the features. Model paths use MODEL.nan_strategy so
-        # FEATS.nan_strategy=drop cannot remove feature rows without labels.
-        self.feats_train = self.util.handle_nan(
-            self.feats_train,
-            context="Model, train",
-            strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
-            allow_drop=False,
-        )
+        self.feats_train = self._handle_model_nan(self.feats_train, "Model, train")
         # remove labels from features
         feats = self.feats_train.to_numpy()
         # compute class weights
@@ -341,12 +334,7 @@ class Model:
         return predictions, probas
 
     def predict(self):
-        self.feats_test = self.util.handle_nan(
-            self.feats_test,
-            context="Model, test",
-            strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
-            allow_drop=False,
-        )
+        self.feats_test = self._handle_model_nan(self.feats_test, "Model, test")
         if self.logo or self.xfoldx:
             report = Reporter(
                 self.truths.astype(float), self.preds, self.run, self.epoch
@@ -364,6 +352,15 @@ class Model:
         )
         report.print_probabilities()
         return report
+
+    def _handle_model_nan(self, feats, context):
+        """Handle feature NaNs without changing row alignment with labels."""
+        return self.util.handle_nan(
+            feats,
+            context=context,
+            strategy=self.util.config_val("MODEL", "nan_strategy", "zero"),
+            allow_drop=False,
+        )
 
     def get_type(self):
         return "generic"

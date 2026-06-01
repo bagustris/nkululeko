@@ -195,21 +195,8 @@ class ADMModel(Model):
         )
         self.threshold = float(self.util.config_val("MODEL", "threshold", "0.5"))
 
-        # Model paths use MODEL.nan_strategy so FEATS.nan_strategy=drop cannot
-        # remove feature rows without labels.
-        model_nan_strategy = self.util.config_val("MODEL", "nan_strategy", "zero")
-        feats_train = self.util.handle_nan(
-            feats_train,
-            context="Model, train",
-            strategy=model_nan_strategy,
-            allow_drop=False,
-        )
-        feats_test = self.util.handle_nan(
-            feats_test,
-            context="Model, test",
-            strategy=model_nan_strategy,
-            allow_drop=False,
-        )
+        feats_train = self._handle_model_nan(feats_train, "Model, train")
+        feats_test = self._handle_model_nan(feats_test, "Model, test")
 
         # Set up data loaders
         self.trainloader = self.get_loader(feats_train, df_train, True)
