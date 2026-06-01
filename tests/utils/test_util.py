@@ -2,7 +2,10 @@
 
 import configparser
 import logging
+import os
 
+import numpy as np
+import pandas as pd
 import pytest
 
 import nkululeko.glob_conf as glob_conf
@@ -348,8 +351,6 @@ class TestGetPath:
         glob_conf.config["EXP"]["root"] = str(tmp_path)
         glob_conf.config["EXP"]["name"] = "newexp"
         u = Util("test")
-        import os
-
         path = u.get_path("res_dir")
         assert os.path.isdir(path)
 
@@ -362,8 +363,6 @@ class TestGetPath:
 class TestCheckClassLabel:
     def test_renames_class_label_to_target(self):
         u = Util("test")
-        import pandas as pd
-
         df = pd.DataFrame({"emotion": [1, 2], "class_label": ["A", "B"]})
         result = u.check_class_label(df)
         assert "class_label" not in result.columns
@@ -373,8 +372,6 @@ class TestCheckClassLabel:
 
     def test_no_class_label_column_unchanged(self):
         u = Util("test")
-        import pandas as pd
-
         df = pd.DataFrame({"emotion": [1, 2, 3], "other": [4, 5, 6]})
         result = u.check_class_label(df)
         assert list(result.columns) == ["emotion", "other"]
@@ -383,8 +380,6 @@ class TestCheckClassLabel:
         # Remove the target key so config_val returns None (the default)
         del glob_conf.config["DATA"]["target"]
         u = Util("test")
-        import pandas as pd
-
         df = pd.DataFrame({"emotion": [1], "class_label": ["A"]})
         result = u.check_class_label(df)
         # target is None → condition is False, no rename
@@ -434,17 +429,12 @@ class TestHandleNan:
         glob_conf.config.remove_option("FEATS", "nan_strategy")
 
     def test_no_nan_returns_unchanged(self):
-        import pandas as pd
-
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
         result = u.handle_nan(df, context="test")
         pd.testing.assert_frame_equal(result, df)
 
     def test_default_strategy_fills_with_zero(self):
-        import pandas as pd
-        import numpy as np
-
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, np.nan], "b": [np.nan, 4.0]})
         result = u.handle_nan(df, context="test")
@@ -453,9 +443,6 @@ class TestHandleNan:
         assert result.iloc[0, 1] == 0.0
 
     def test_mean_strategy(self):
-        import pandas as pd
-        import numpy as np
-
         glob_conf.config["FEATS"]["nan_strategy"] = "mean"
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, 3.0, np.nan], "b": [2.0, np.nan, 6.0]})
@@ -465,9 +452,6 @@ class TestHandleNan:
         assert result.iloc[1, 1] == pytest.approx(4.0)  # mean of 2, 6
 
     def test_median_strategy(self):
-        import pandas as pd
-        import numpy as np
-
         glob_conf.config["FEATS"]["nan_strategy"] = "median"
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, 3.0, 5.0, np.nan]})
@@ -476,9 +460,6 @@ class TestHandleNan:
         assert result.iloc[3, 0] == pytest.approx(3.0)  # median of 1, 3, 5
 
     def test_drop_strategy(self):
-        import pandas as pd
-        import numpy as np
-
         glob_conf.config["FEATS"]["nan_strategy"] = "drop"
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, np.nan, 3.0], "b": [4.0, 5.0, 6.0]})
@@ -487,9 +468,6 @@ class TestHandleNan:
         assert not result.isna().any().any()
 
     def test_warns_with_count_and_percentage(self, caplog):
-        import pandas as pd
-        import numpy as np
-
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, np.nan], "b": [np.nan, 4.0]})
         with caplog.at_level(logging.WARNING):
@@ -499,9 +477,6 @@ class TestHandleNan:
         assert "Model, train" in caplog.text
 
     def test_mean_strategy_all_nan_column_falls_back_to_zero(self):
-        import pandas as pd
-        import numpy as np
-
         glob_conf.config["FEATS"]["nan_strategy"] = "mean"
         u = Util("test")
         df = pd.DataFrame({"a": [1.0, 3.0], "b": [np.nan, np.nan]})

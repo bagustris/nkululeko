@@ -1,5 +1,9 @@
 # model_xgb.py
 
+import ast
+
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
 
 from nkululeko.models.model import Model
@@ -70,15 +74,12 @@ class XGB_model(Model):
         # Check if early stopping is configured
         if self.early_stopping_rounds:
             # Check if we're in split3 mode (train/dev/test) where validation data is available
-            import ast
-
             split3 = ast.literal_eval(
                 self.util.config_val("EXP", "traindevtest", "False")
             )
 
             if split3 and self.feats_test is not None and self.df_test is not None:
                 # In split3 mode, self.feats_test and self.df_test are actually the dev set
-                feats_dev = self.feats_test.to_numpy()
                 labels_dev = self.df_test[self.target]
 
                 # Handle NANs in dev features
@@ -86,7 +87,7 @@ class XGB_model(Model):
                     self.feats_test = self.util.handle_nan(
                         self.feats_test, context="Model, dev"
                     )
-                    feats_dev = self.feats_test.to_numpy()
+                feats_dev = self.feats_test.to_numpy()
 
                 # Set up early stopping with validation data
                 eval_set = [(feats, labels), (feats_dev, labels_dev)]
@@ -101,8 +102,6 @@ class XGB_model(Model):
                 self.util.debug(f"  - validation set size: {feats_dev.shape[0]}")
             else:
                 # For train/test split only: use a portion of training data for validation
-                from sklearn.model_selection import train_test_split
-
                 # Get validation split ratio (default 0.2 = 20% of training data)
                 val_split = float(
                     self.util.config_val("MODEL", "validation_split", 0.2)
@@ -145,10 +144,8 @@ class XGB_model(Model):
         # Handle class weights if configured
         class_weight = self.util.config_val("MODEL", "class_weight", False)
         if class_weight:
-            import sklearn.utils.class_weight
-
             self.util.debug("using class weight")
-            classes_weights = sklearn.utils.class_weight.compute_sample_weight(
+            classes_weights = compute_sample_weight(
                 class_weight="balanced", y=labels
             )
             fit_params["sample_weight"] = classes_weights
