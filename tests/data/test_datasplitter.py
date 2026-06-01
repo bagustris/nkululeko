@@ -2,6 +2,7 @@
 
 import configparser
 from datetime import timedelta
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -29,18 +30,11 @@ def _tag_df(df):
 
 def _make_fake_util(tmp_path):
     """Return a minimal no-op utility stub for Datasplitter tests."""
-    return type(
-        "U",
-        (),
-        {
-            "get_path": lambda self, k: str(tmp_path) + "/",
-            "config_val": lambda self, sec, key, default: default,
-            "debug": lambda self, m: None,
-            "warn": lambda self, m: None,
-            "copy_flags": lambda self, src, tgt: None,
-            "exp_is_classification": lambda self: False,
-        },
-    )()
+    util = MagicMock()
+    util.get_path.return_value = str(tmp_path) + "/"
+    util.config_val.side_effect = lambda sec, key, default: default
+    util.exp_is_classification.return_value = False
+    return util
 
 
 @pytest.fixture(autouse=True)

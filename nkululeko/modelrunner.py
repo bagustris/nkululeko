@@ -6,6 +6,8 @@ from nkululeko import glob_conf
 from nkululeko.utils.util import Util
 from nkululeko.balance import DataBalancer
 
+# Fallback type-based heuristics used when a model instance is not yet available
+# or when the model does not declare explicit is_classifier / is_regressor flags.
 # Model types that only support classification
 CLASSIFIER_TYPES = frozenset(
     {"svm", "xgb", "bayes", "gmm", "knn", "tree", "cnn", "mlp", "adm"}

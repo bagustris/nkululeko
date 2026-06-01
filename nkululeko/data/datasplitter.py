@@ -101,6 +101,9 @@ class Datasplitter:
         # Aggregate boolean flags across all datasets (any-wins semantics):
         # a combined DataFrame is labeled / has speaker / gender / age if ANY
         # contributing dataset has that attribute set.
+        # NOTE: self.{flag} must be updated here so that the subsequent
+        # copy_flags(self, ...) calls propagate the correctly aggregated values
+        # onto each split DataFrame.
         if all_datasets:
             active_splits = [self.df_train, self.df_test]
             if self.split3:

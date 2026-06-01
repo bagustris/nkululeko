@@ -226,6 +226,7 @@ class TestExtractEmbeddingsWithErrorHandling:
             )
 
     def test_embedding_values_correct(self, multiindex_featureset, multiindex_data_df):
+        """Embeddings returned by extract_fn appear as rows in the result DataFrame."""
         rng = np.random.default_rng(0)
         embeddings = [rng.random(6) for _ in range(len(multiindex_data_df))]
         call_count = {"n": 0}
