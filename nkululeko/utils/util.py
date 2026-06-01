@@ -267,7 +267,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         if self.logger is not None:
             self.logger.error(full_msg)
         else:
-            print(f"ERROR: {message}")
+            print(full_msg)
         raise NkululukoError(full_msg)
 
     def warn(self, message):
