@@ -8,6 +8,9 @@ Multi-stream neural model that detects synthesis artifacts using:
 - PhaseADM: phase-dynamics artifacts from STFT features
 """
 
+import json
+import os
+import zlib
 import numpy as np
 import pandas as pd
 import torch
@@ -286,9 +289,9 @@ class ADMModel(Model):
         with torch.no_grad():
             for index, (features, labels) in enumerate(loader):
                 start_index = index * loader.batch_size
-                end_index = (index + 1) * loader.batch_size
-                if end_index > len(loader.dataset):
-                    end_index = len(loader.dataset)
+                end_index = start_index + len(
+                    labels
+                )  # use actual batch size (last batch may be smaller)
 
                 # Convert features to float32
                 features = features.float()
@@ -329,8 +332,9 @@ class ADMModel(Model):
         """Convert logits to probability dataframe."""
         # For binary classification with BCEWithLogitsLoss
         proba_d = {}
-        classes = self.df_test[self.target].unique()
-        classes.sort()
+        # Use all known classes from glob_conf to ensure both classes are always
+        # present, even if the test set only contains one class.
+        classes = np.arange(len(glob_conf.labels))
 
         # Apply sigmoid to get probabilities; clean non-finite logits first
         logits_clean = torch.nan_to_num(logits, nan=0.0, posinf=10.0, neginf=-10.0)
@@ -381,18 +385,17 @@ class ADMModel(Model):
         return (predictions.numpy(), self.get_probas(logits))
 
     def get_loader(self, df_x, df_y, shuffle):
-        """Create a data loader for training or testing."""
-        features = torch.tensor(df_x.values, dtype=torch.float32)
-        labels = torch.tensor(
-            self._encode_labels(df_y[self.target]), dtype=torch.float32
-        )
-        data = torch.utils.data.TensorDataset(features, labels)
+        """Create a data loader using TensorDataset for efficient batch loading."""
+        features_tensor = torch.tensor(df_x.values, dtype=torch.float32)
+        label_values = self._encode_labels(df_y[self.target])
+        labels_tensor = torch.tensor(label_values, dtype=torch.float32)
+        dataset = torch.utils.data.TensorDataset(features_tensor, labels_tensor)
         return torch.utils.data.DataLoader(
-            data, shuffle=shuffle, batch_size=self.batch_size
+            dataset, shuffle=shuffle, batch_size=self.batch_size
         )
 
     def _encode_labels(self, labels):
-        """Encode ADM labels as numeric values for binary BCE training."""
+        """Encode class labels as floats for binary BCE training/evaluation."""
         try:
             return pd.to_numeric(labels, errors="raise").to_numpy(dtype=float)
         except (TypeError, ValueError):
@@ -428,8 +431,18 @@ class ADMModel(Model):
         self.store_path = dir + name
 
     def store(self):
-        """Store the model to disk."""
+        """Store the model weights and feature split metadata to disk."""
         torch.save(self.model.state_dict(), self.store_path)
+        meta = {
+            "ssl_feat_dim": self.ssl_feat_dim,
+            "sptk_feat_dim": self.sptk_feat_dim,
+            "fbank_indices": self.fbank_indices,
+            "stft_indices": self.stft_indices,
+        }
+        # Keep metadata filename short to avoid ENAMETOOLONG on long experiment names.
+        meta_path = self._get_meta_path(self.store_path)
+        with open(meta_path, "w") as f:
+            json.dump(meta, f)
 
     def load(self, run, epoch):
         """Load a trained model from disk."""
@@ -437,6 +450,33 @@ class ADMModel(Model):
         self.set_id(run, epoch)
         cuda = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = self.util.config_val("MODEL", "device", cuda)
+
+        # Restore feature split metadata if available, otherwise fall back to
+        # instance attributes set by __init__. Support both the current short
+        # hashed sidecar name and the legacy "<model>.meta.json" sidecar.
+        meta_path = self._get_meta_path(self.store_path)
+        legacy_meta_path = self.store_path + ".meta.json"
+        meta = None
+        try:
+            with open(meta_path) as f:
+                meta = json.load(f)
+        except FileNotFoundError:
+            try:
+                with open(legacy_meta_path) as f:
+                    meta = json.load(f)
+            except FileNotFoundError:
+                pass
+
+        if meta is not None:
+            self.ssl_feat_dim = meta["ssl_feat_dim"]
+            self.sptk_feat_dim = meta["sptk_feat_dim"]
+            self.fbank_indices = meta["fbank_indices"]
+            self.stft_indices = meta["stft_indices"]
+        else:
+            self.util.debug(
+                f"ADM metadata file not found ({meta_path} or {legacy_meta_path}), "
+                "using feature indices from current feature data"
+            )
 
         # Recreate model architecture with actual dimensions
         fusion = self.util.config_val("MODEL", "adm.fusion", "weighted")
@@ -464,3 +504,10 @@ class ADMModel(Model):
         except FileNotFoundError:
             self.util.error(f"model file not found: {self.store_path}")
         self.model.eval()
+
+    @staticmethod
+    def _get_meta_path(model_path):
+        """Build a short metadata sidecar path for a model file."""
+        model_dir = os.path.dirname(model_path)
+        model_id = zlib.crc32(model_path.encode("utf-8"))
+        return os.path.join(model_dir, f"adm_meta_{model_id:08x}.json")
