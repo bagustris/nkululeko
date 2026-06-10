@@ -274,6 +274,11 @@ def main():
 
             segmenter = Pyannote_segmenter(config)
             df_seg = segmenter.segment_dataframe(df)
+        elif method == "energy":
+            from nkululeko.segmenting.seg_energy import Energy_segmenter
+
+            segmenter = Energy_segmenter()
+            df_seg = segmenter.segment_dataframe(df)
         else:
             util.error(f"unknown segmenter: {method}")
         # segment also the gaps between segments to get a full coverage of the original audio

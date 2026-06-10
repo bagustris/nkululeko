@@ -66,7 +66,16 @@ dependencies = [
     "umap-learn>=0.5.0",
     "xgboost>=1.0.0",
     "pylatex>=1.0.0",
+    "audiokit",
 ]
+
+# audiokit is a local sibling package providing the shared audio plumbing:
+# the SNR estimator (reused by feats_snr/ap_snr) and the energy-VAD backend
+# (nkululeko/segmenting/seg_energy.py). Resolved via path for local
+# development; uv reads this source, so use `uv sync` or
+# `uv pip install -e ../audiokit` before `uv pip install -e .`.
+[tool.uv.sources]
+audiokit = { path = "../audiokit", editable = true }
 
 [project.optional-dependencies]
 torch = [
