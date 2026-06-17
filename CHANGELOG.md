@@ -1,6 +1,30 @@
 Changelog
 =========
 
+Version 1.7.8 (26-06-16)
+------------------------
+* added automated binning
+
+Version 1.7.7 (26-06-09)
+------------------------
+* new features for SPTK: lfcc and cqcc
+* configurable audMLD feature sets
+* handle multiple name-target combinations in the flags module
+* handle also explore module with flags, beneath nkululeko
+* store statistical results as text
+
+Version 1.7.6 (26-06-03)
+------------------------
+* ease the transfer of projects by aligning file_paths
+
+Version 1.7.5 (26-06-02)
+------------------------
+* fixed bug in barplots for EXPL.feature distribution
+
+Version 1.7.4 (26-06-02)
+------------------------
+* added different plots for EXPL.feature distribution
+
 Version 1.7.3 (26-05-28)
 ------------------------
 * added caching for audmodel

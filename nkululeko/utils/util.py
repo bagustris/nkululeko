@@ -7,6 +7,8 @@ import os.path
 import shutil
 import sys
 
+from pathlib import Path
+
 import numpy as np
 
 import audeer
@@ -35,6 +37,9 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         "n_jobs",
         "uar",
         "mse",
+    ]
+    keyvals = [        
+        "kind",
     ]
 
     def __init__(self, caller=None, has_config=True):
@@ -268,6 +273,31 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             self.config.add_section(section)
             self.config[section][key] = str(value)
 
+    def exists_config_val(self, section, key):
+        try:
+            _ = self.config[section][key]
+            return True
+        except KeyError:
+            return False
+
+    def extract_parent_and_name(self, path_str):
+        """Extract (parent_dir_name in 2 levels, filename) from a path string."""
+        p = Path(path_str)
+        return (p.parent.parent.name, p.parent.name, p.name)
+
+    def filter_filepath(self, df_source, df_target):
+        df_source_keys = {
+           self.extract_parent_and_name(path)
+            for path in df_source.index.get_level_values(0)
+        }
+        df_target = df_target[
+            df_target.index.get_level_values(0).map(
+                lambda p: self.extract_parent_and_name(p) in df_source_keys
+            )
+        ]
+        return df_target
+
+
     def check_df(self, i, df):
         """Check a dataframe."""
         print(f"check {i}: {df.shape}")
@@ -279,7 +309,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         try:
             return self.config[section][key]
         except KeyError:
-            if default not in self.stopvals:
+            if default not in self.stopvals and key not in self.keyvals:
                 self.debug(f"value for {key} is not found, using default: {default}")
             return default
 
@@ -336,6 +366,23 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         with open(file_name, "w") as text_file:
             text_file.write(output)
         self.debug(output)
+
+    def append_to_result_file(self, filename, content):
+        """Append *content* as a new line to *filename*, creating the file if needed.
+
+        The line is only written if it is not already present in the file.
+
+        Args:
+            filename: absolute path to the result text file.
+            content: string to append (a newline is added automatically).
+        """
+        existing = []
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                existing = f.read().splitlines()
+        if content not in existing:
+            with open(filename, "a") as f:
+                f.write(content + "\n")
 
     def check_class_label(self, df):
         target = self.config_val("DATA", "target", None)
