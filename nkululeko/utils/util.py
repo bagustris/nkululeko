@@ -6,6 +6,7 @@ import logging
 import os.path
 import shutil
 import sys
+import threading
 
 from pathlib import Path
 
@@ -16,6 +17,8 @@ import audeer
 from nkululeko.utils.dataframe import DataFrameMixin
 from nkululeko.utils.naming import NamingMixin
 from nkululeko.utils.storage import StorageMixin
+
+_log_lock = threading.Lock()
 
 
 class Util(NamingMixin, StorageMixin, DataFrameMixin):
@@ -75,73 +78,80 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         # self.logged_configs = set()
 
     def setup_logging(self):
-        # Setup logging
+        # Setup logging with a lock to prevent race conditions when multiple
+        # threads or Util instances configure the same logger concurrently.
         logger = logging.getLogger(__name__)
-        # Always set DEBUG so messages reach all handlers regardless of whether
-        # an ancestor logger (e.g. root logger in notebooks) already has handlers.
-        logger.setLevel(logging.DEBUG)
 
-        # Create a simple formatter that only shows the message
-        class SimpleFormatter(logging.Formatter):
-            def format(self, record):
-                return record.getMessage()
+        with _log_lock:
+            # Always set DEBUG so messages reach all handlers regardless of whether
+            # an ancestor logger (e.g. root logger in notebooks) already has handlers.
+            logger.setLevel(logging.DEBUG)
 
-        # Only add a console handler if this logger has none yet.
-        # Use logger.handlers (direct handlers) rather than hasHandlers()
-        # so the check is scoped to this logger only, not the full hierarchy.
-        if not logger.handlers:
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(SimpleFormatter())
-            logger.addHandler(console_handler)
+            # Create a simple formatter that only shows the message
+            class SimpleFormatter(logging.Formatter):
+                def format(self, record):
+                    return record.getMessage()
 
-        # Add or replace file handler when config is available
-        if self.config is not None:
-            try:
-                root = self.config["EXP"]["root"]
-                name = self.config["EXP"]["name"]
-                log_dir = os.path.abspath(os.path.join(root, name, "log"))
-                audeer.mkdir(log_dir)
-                # Include seconds to avoid filename collisions between close-together runs
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
+            # Only add a console handler if this logger has none yet.
+            # Use logger.handlers (direct handlers) rather than hasHandlers()
+            # so the check is scoped to this logger only, not the full hierarchy.
+            if not logger.handlers:
+                console_handler = logging.StreamHandler()
+                console_handler.setFormatter(SimpleFormatter())
+                logger.addHandler(console_handler)
 
-                # Collect stale file handlers (different experiment dir) then remove them
-                # to avoid mutating the handlers list during iteration.
-                stale = [
-                    h
-                    for h in logger.handlers
-                    if isinstance(h, logging.FileHandler)
-                    and os.path.dirname(h.baseFilename) != log_dir
-                ]
-                for handler in stale:
-                    handler.close()
-                    logger.removeHandler(handler)
+            # Add or replace file handler when config is available
+            if self.config is not None:
+                try:
+                    root = self.config["EXP"]["root"]
+                    name = self.config["EXP"]["name"]
+                    log_dir = os.path.abspath(os.path.join(root, name, "log"))
+                    audeer.mkdir(log_dir)
+                    # Include seconds to avoid filename collisions between close-together runs
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
 
-                if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-                    file_handler = logging.FileHandler(log_file)
-                    file_handler.setFormatter(SimpleFormatter())
-                    logger.addHandler(file_handler)
+                    # Collect stale file handlers (different experiment dir) then
+                    # remove them to avoid mutating the handlers list during iteration.
+                    stale = [
+                        h
+                        for h in logger.handlers
+                        if isinstance(h, logging.FileHandler)
+                        and os.path.dirname(h.baseFilename) != log_dir
+                    ]
+                    for handler in stale:
+                        handler.close()
+                        logger.removeHandler(handler)
 
-                    # Save a timestamped config snapshot alongside the log file.
-                    # Reads --config from sys.argv so no entry-point changes are needed.
-                    # Preserves the original file's extension (format-independent).
-                    src = None
-                    if "--config" in sys.argv:
-                        idx = sys.argv.index("--config")
-                        if idx + 1 < len(sys.argv):
-                            src = sys.argv[idx + 1]
-                    if src and os.path.isfile(src):
-                        ext = os.path.splitext(src)[1]
-                        config_snapshot = os.path.join(
-                            log_dir, f"{name}_{timestamp}{ext}"
-                        )
-                        shutil.copy2(src, config_snapshot)
-            except KeyError:
-                logger.debug(
-                    "File logging skipped: EXP configuration (root/name) incomplete"
-                )
-            except OSError as e:
-                logger.debug(f"File logging skipped: could not create log file ({e})")
+                    if not any(
+                        isinstance(h, logging.FileHandler) for h in logger.handlers
+                    ):
+                        file_handler = logging.FileHandler(log_file)
+                        file_handler.setFormatter(SimpleFormatter())
+                        logger.addHandler(file_handler)
+
+                        # Save a timestamped config snapshot alongside the log file.
+                        # Reads --config from sys.argv so no entry-point changes are needed.
+                        # Preserves the original file's extension (format-independent).
+                        src = None
+                        if "--config" in sys.argv:
+                            idx = sys.argv.index("--config")
+                            if idx + 1 < len(sys.argv):
+                                src = sys.argv[idx + 1]
+                        if src and os.path.isfile(src):
+                            ext = os.path.splitext(src)[1]
+                            config_snapshot = os.path.join(
+                                log_dir, f"{name}_{timestamp}{ext}"
+                            )
+                            shutil.copy2(src, config_snapshot)
+                except KeyError:
+                    logger.debug(
+                        "File logging skipped: EXP configuration (root/name) incomplete"
+                    )
+                except OSError as e:
+                    logger.debug(
+                        f"File logging skipped: could not create log file ({e})"
+                    )
 
         self.logger = logger
 

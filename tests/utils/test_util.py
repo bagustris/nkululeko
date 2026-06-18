@@ -2,6 +2,7 @@
 
 import configparser
 import logging
+import threading
 
 import pytest
 
@@ -315,6 +316,63 @@ class TestSetupLogging:
             h for h in logger.handlers if isinstance(h, logging.FileHandler)
         ]
         assert len(file_handlers) == 0
+
+    def test_no_duplicate_handlers_under_concurrent_access(self, tmp_path):
+        """Multiple threads creating Util should not produce duplicate handlers."""
+        import nkululeko.utils.util as util_mod
+
+        glob_conf.config["EXP"]["root"] = str(tmp_path)
+        glob_conf.config["EXP"]["name"] = "concurrent_test"
+
+        logger = logging.getLogger(util_mod.__name__)
+
+        # Record initial handler counts to make the assertion resilient to other tests
+        initial_console_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.FileHandler)
+        ]
+        initial_file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
+
+        barrier = threading.Barrier(10)
+        errors = []
+
+        def create_util():
+            try:
+                # Synchronize threads to maximize the chance of exercising the race
+                barrier.wait()
+                util_mod.Util(glob_conf)
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append(exc)
+
+        threads = [threading.Thread(target=create_util) for _ in range(10)]
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        # Ensure no thread failed
+        assert not errors
+
+        # Recompute handler sets after concurrent Util creation
+        console_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.FileHandler)
+        ]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.FileHandler)
+        ]
+
+        # At most one additional console/file handler should be attributable to this test
+        assert len(console_handlers) <= len(initial_console_handlers) + 1
+        assert len(file_handlers) <= len(initial_file_handlers) + 1
 
 
 # ---------------------------------------------------------------------------
