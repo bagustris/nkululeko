@@ -1,6 +1,7 @@
 # feats_analyser.py
 import ast
 import os
+import pickle
 
 import audeer
 import matplotlib.pyplot as plt
@@ -36,6 +37,36 @@ class FeatureAnalyser:
         self.plots = Plots()
 
     def _get_importance(self, model, permutation):
+        """Fit model and return feature importances, with pickle caching.
+
+        Cache is stored under {store}/cache/importance_{ModelClass}[_perm].pkl.
+        On load the cached array length is validated against the current feature count;
+        if it doesn't match the cache is ignored and recomputed (overwriting the old file).
+
+        Args:
+            model: sklearn-compatible estimator with feature_importances_ or coef_ attribute.
+            permutation: if True use permutation importance, otherwise use model's
+                         built-in feature_importances_.
+
+        Returns:
+            numpy array of per-feature importance scores.
+        """
+        model_name = type(model).__name__
+        perm_suffix = "_perm" if permutation else ""
+        cache_dir = os.path.join(self.util.get_path("store"), "cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_path = os.path.join(cache_dir, f"importance_{model_name}{perm_suffix}.pkl")
+        n_feats = len(self.features.columns)
+        if os.path.isfile(cache_path):
+            with open(cache_path, "rb") as f:
+                cached = pickle.load(f)
+            if len(cached) == n_feats:
+                self.util.debug(f"loading cached importance for {model_name}{perm_suffix}")
+                return cached
+            self.util.debug(
+                f"cached importance for {model_name} has {len(cached)} features,"
+                f" current feature set has {n_feats} — recomputing"
+            )
         model.fit(self.features, self.labels)
         if permutation:
             r = permutation_importance(
@@ -46,9 +77,25 @@ class FeatureAnalyser:
                 random_state=0,
             )
             importance = r["importances_mean"]
-        else:
+        elif hasattr(model, "feature_importances_"):
             importance = model.feature_importances_
+        elif hasattr(model, "coef_"):
+            # linear models (e.g. LogisticRegression): use absolute coefficient magnitude
+            importance = np.abs(model.coef_[0])
+        else:
+            raise AttributeError(
+                f"{type(model).__name__} has neither feature_importances_ nor coef_"
+            )
+        with open(cache_path, "wb") as f:
+            pickle.dump(importance, f)
         return importance
+
+    def _maybe_plot_tree(self, model):
+        """Plot decision tree if configured."""
+        if self.util.config_val_bool("EXPL", "plot_tree", False):
+            model.fit(self.features, self.labels)
+            plots = Plots()
+            plots.plot_tree(model, self.features)
 
     def analyse_shap(self, model):
         """Shap analysis.
@@ -125,7 +172,7 @@ class FeatureAnalyser:
         model_name = "_".join(models)
         max_feat_num = int(self.util.config_val("EXPL", "max_feats", "10"))
         # https://scikit-learn.org/stable/modules/permutation_importance.html
-        permutation = eval(self.util.config_val("EXPL", "permutation", "False"))
+        permutation = self.util.config_val_bool("EXPL", "permutation", False)
         importance = None
         self.util.debug("analysing features...")
         result_importances = {}
@@ -176,19 +223,9 @@ class FeatureAnalyser:
                     )
                 elif model_s == "log_reg":
                     model = LogisticRegression()
-                    model.fit(self.features, self.labels)
-                    if permutation:
-                        r = permutation_importance(
-                            model,
-                            self.features,
-                            self.labels,
-                            n_repeats=30,
-                            random_state=0,
-                        )
-                        importance = r["importances_mean"]
-                    else:
-                        importance = model.coef_[0]
-                    result_importances[model_s] = importance
+                    result_importances[model_s] = self._get_importance(
+                        model, permutation
+                    )
                 elif model_s == "svm":
                     from sklearn.svm import SVC
 
@@ -197,19 +234,13 @@ class FeatureAnalyser:
                     result_importances[model_s] = self._get_importance(
                         model, permutation
                     )
-                    plot_tree = eval(self.util.config_val("EXPL", "plot_tree", "False"))
-                    if plot_tree:
-                        plots = Plots()
-                        plots.plot_tree(model, self.features)
+                    self._maybe_plot_tree(model)
                 elif model_s == "tree":
                     model = DecisionTreeClassifier(random_state=42)
                     result_importances[model_s] = self._get_importance(
                         model, permutation
                     )
-                    plot_tree = eval(self.util.config_val("EXPL", "plot_tree", "False"))
-                    if plot_tree:
-                        plots = Plots()
-                        plots.plot_tree(model, self.features)
+                    self._maybe_plot_tree(model)
                 elif model_s == "xgb":
                     from xgboost import XGBClassifier
 

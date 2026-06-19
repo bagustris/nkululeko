@@ -87,6 +87,42 @@ class TestConfigVal:
 
 
 # ---------------------------------------------------------------------------
+# config_val_bool
+# ---------------------------------------------------------------------------
+
+
+class TestConfigValBool:
+    @pytest.mark.parametrize("value", ["True", "TRUE", "1", "yes", "  yes  "])
+    def test_truthy_string_values(self, value):
+        glob_conf.config["FEATS"]["no_reuse"] = value
+        u = Util("test")
+        assert u.config_val_bool("FEATS", "no_reuse", False) is True
+
+    @pytest.mark.parametrize("value", ["False", "  False  "])
+    def test_falsy_string_values(self, value):
+        glob_conf.config["FEATS"]["no_reuse"] = value
+        u = Util("test")
+        assert u.config_val_bool("FEATS", "no_reuse", True) is False
+
+    def test_returns_default_for_missing_key(self):
+        u = Util("test")
+        assert u.config_val_bool("FEATS", "nonexistent", False) is False
+        assert u.config_val_bool("FEATS", "nonexistent", True) is True
+
+    def test_returns_existing_bool_value(self):
+        # ConfigParser stores strings only; verify bool defaults convert correctly
+        u = Util("test", has_config=False)
+        assert u.config_val_bool("FEATS", "no_reuse", True) is True
+        assert u.config_val_bool("FEATS", "no_reuse", False) is False
+
+    def test_rejects_arbitrary_code(self):
+        glob_conf.config["FEATS"]["no_reuse"] = "__import__('os').system('echo hacked')"
+        u = Util("test")
+        # Should safely return False, not execute code
+        assert u.config_val_bool("FEATS", "no_reuse", False) is False
+
+
+# ---------------------------------------------------------------------------
 # set_config_val
 # ---------------------------------------------------------------------------
 
@@ -514,3 +550,47 @@ class TestHandleNan:
         assert not result.isna().any().any()
         assert result.iloc[0, 1] == pytest.approx(0.0)
         assert result.iloc[1, 1] == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# append_to_result_file
+# ---------------------------------------------------------------------------
+
+
+class TestAppendToResultFile:
+    def test_creates_file_and_writes_line(self, tmp_path):
+        u = Util("test")
+        path = str(tmp_path / "results.txt")
+        u.append_to_result_file(path, "hello")
+        assert (tmp_path / "results.txt").read_text() == "hello\n"
+
+    def test_appends_multiple_lines(self, tmp_path):
+        u = Util("test")
+        path = str(tmp_path / "results.txt")
+        u.append_to_result_file(path, "line1")
+        u.append_to_result_file(path, "line2")
+        lines = (tmp_path / "results.txt").read_text().splitlines()
+        assert lines == ["line1", "line2"]
+
+    def test_appends_to_existing_content(self, tmp_path):
+        p = tmp_path / "results.txt"
+        p.write_text("existing\n")
+        u = Util("test")
+        u.append_to_result_file(str(p), "new")
+        lines = p.read_text().splitlines()
+        assert lines == ["existing", "new"]
+
+    def test_does_not_duplicate_existing_line(self, tmp_path):
+        p = tmp_path / "results.txt"
+        p.write_text("already here\n")
+        u = Util("test")
+        u.append_to_result_file(str(p), "already here")
+        assert p.read_text() == "already here\n"
+
+    def test_duplicate_check_is_exact_match(self, tmp_path):
+        u = Util("test")
+        path = str(tmp_path / "results.txt")
+        u.append_to_result_file(path, "line")
+        u.append_to_result_file(path, "line extra")
+        lines = (tmp_path / "results.txt").read_text().splitlines()
+        assert lines == ["line", "line extra"]

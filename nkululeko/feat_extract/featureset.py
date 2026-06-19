@@ -27,6 +27,21 @@ class Featureset:
         self.feats_type = feats_type
         self.n_jobs = int(self.util.config_val("MODEL", "n_jobs", "8"))
 
+    def _needs_extraction(self, storage):
+        """Check whether features need to be (re-)extracted.
+
+        Args:
+            storage: Path to the stored features file.
+
+        Returns:
+            bool: True if extraction is needed.
+        """
+        import os
+
+        extract = self.util.config_val_bool("FEATS", "needs_feature_extraction", False)
+        no_reuse = self.util.config_val_bool("FEATS", "no_reuse", False)
+        return no_reuse or extract or not os.path.isfile(storage)
+
     def extract(self):
         pass
 
@@ -66,7 +81,7 @@ class Featureset:
 
     def filter(self):
         # use only the features that are indexed in the target dataframes
-        self.df = self.df[self.df.index.isin(self.data_df.index)]
+        self.df = self.util.filter_filepath(self.data_df, self.df)
         try:
             # use only some features
             selected_features = ast.literal_eval(glob_conf.config["FEATS"]["features"])

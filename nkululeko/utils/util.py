@@ -7,12 +7,19 @@ import os.path
 import shutil
 import sys
 
+from pathlib import Path
+
 import audeer
 import numpy as np
 
 from nkululeko.utils.dataframe import DataFrameMixin
 from nkululeko.utils.naming import NamingMixin
 from nkululeko.utils.storage import StorageMixin
+
+
+class _MessageOnlyFormatter(logging.Formatter):
+    def format(self, record):
+        return record.getMessage()
 
 
 class Util(NamingMixin, StorageMixin, DataFrameMixin):
@@ -34,6 +41,9 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         "n_jobs",
         "uar",
         "mse",
+    ]
+    keyvals = [
+        "kind",
     ]
 
     def __init__(self, caller=None, has_config=True):
@@ -69,75 +79,86 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         # self.logged_configs = set()
 
     def setup_logging(self):
-        # Setup logging
         logger = logging.getLogger(__name__)
         # Always set DEBUG so messages reach all handlers regardless of whether
         # an ancestor logger (e.g. root logger in notebooks) already has handlers.
         logger.setLevel(logging.DEBUG)
+        formatter = _MessageOnlyFormatter()
+        self._ensure_console_handler(logger, formatter)
 
-        # Create a simple formatter that only shows the message
-        class SimpleFormatter(logging.Formatter):
-            def format(self, record):
-                return record.getMessage()
+        if self.config is not None:
+            self._setup_file_logging(logger, formatter)
 
+        self.logger = logger
+
+    @staticmethod
+    def _ensure_console_handler(logger, formatter):
         # Only add a console handler if this logger has none yet.
         # Use logger.handlers (direct handlers) rather than hasHandlers()
         # so the check is scoped to this logger only, not the full hierarchy.
         if not logger.handlers:
             console_handler = logging.StreamHandler()
-            console_handler.setFormatter(SimpleFormatter())
+            console_handler.setFormatter(formatter)
             logger.addHandler(console_handler)
 
-        # Add or replace file handler when config is available
-        if self.config is not None:
-            try:
-                root = self.config["EXP"]["root"]
-                name = self.config["EXP"]["name"]
-                log_dir = os.path.abspath(os.path.join(root, name, "log"))
-                audeer.mkdir(log_dir)
-                # Include seconds to avoid filename collisions between close-together runs
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_file = os.path.join(log_dir, f"{name}_{timestamp}.log")
+    def _setup_file_logging(self, logger, formatter):
+        try:
+            root = self.config["EXP"]["root"]
+            name = self.config["EXP"]["name"]
+            log_dir, log_file, timestamp = self._build_log_path(root, name)
+            self._remove_stale_file_handlers(logger, log_dir)
 
-                # Collect stale file handlers (different experiment dir) then remove them
-                # to avoid mutating the handlers list during iteration.
-                stale = [
-                    h
-                    for h in logger.handlers
-                    if isinstance(h, logging.FileHandler)
-                    and os.path.dirname(h.baseFilename) != log_dir
-                ]
-                for handler in stale:
-                    handler.close()
-                    logger.removeHandler(handler)
+            if self._has_file_handler(logger):
+                return
 
-                if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-                    file_handler = logging.FileHandler(log_file)
-                    file_handler.setFormatter(SimpleFormatter())
-                    logger.addHandler(file_handler)
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            self._copy_config_snapshot(log_dir, name, timestamp)
+        except KeyError:
+            logger.debug("File logging skipped: EXP configuration (root/name) incomplete")
+        except OSError as e:
+            logger.debug(f"File logging skipped: could not create log file ({e})")
 
-                    # Save a timestamped config snapshot alongside the log file.
-                    # Reads --config from sys.argv so no entry-point changes are needed.
-                    # Preserves the original file's extension (format-independent).
-                    src = None
-                    if "--config" in sys.argv:
-                        idx = sys.argv.index("--config")
-                        if idx + 1 < len(sys.argv):
-                            src = sys.argv[idx + 1]
-                    if src and os.path.isfile(src):
-                        ext = os.path.splitext(src)[1]
-                        config_snapshot = os.path.join(
-                            log_dir, f"{name}_{timestamp}{ext}"
-                        )
-                        shutil.copy2(src, config_snapshot)
-            except KeyError:
-                logger.debug(
-                    "File logging skipped: EXP configuration (root/name) incomplete"
-                )
-            except OSError as e:
-                logger.debug(f"File logging skipped: could not create log file ({e})")
+    @staticmethod
+    def _build_log_path(root, name):
+        log_dir = os.path.abspath(os.path.join(root, name, "log"))
+        audeer.mkdir(log_dir)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        return log_dir, os.path.join(log_dir, f"{name}_{timestamp}.log"), timestamp
 
-        self.logger = logger
+    @staticmethod
+    def _remove_stale_file_handlers(logger, log_dir):
+        stale = [
+            handler
+            for handler in logger.handlers
+            if isinstance(handler, logging.FileHandler)
+            and os.path.dirname(handler.baseFilename) != log_dir
+        ]
+        for handler in stale:
+            handler.close()
+            logger.removeHandler(handler)
+
+    @staticmethod
+    def _has_file_handler(logger):
+        return any(isinstance(handler, logging.FileHandler) for handler in logger.handlers)
+
+    @staticmethod
+    def _config_snapshot_source():
+        if "--config" not in sys.argv:
+            return None
+        idx = sys.argv.index("--config")
+        if idx + 1 >= len(sys.argv):
+            return None
+        return sys.argv[idx + 1]
+
+    def _copy_config_snapshot(self, log_dir, name, timestamp):
+        src = self._config_snapshot_source()
+        if not src or not os.path.isfile(src):
+            return
+        ext = os.path.splitext(src)[1]
+        config_snapshot = os.path.join(log_dir, f"{name}_{timestamp}{ext}")
+        shutil.copy2(src, config_snapshot)
 
     def get_path(self, entry):
         """This method allows the user to get the directory path for the given argument."""
@@ -322,6 +343,31 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
             self.config.add_section(section)
             self.config[section][key] = str(value)
 
+    def exists_config_val(self, section, key):
+        try:
+            _ = self.config[section][key]
+            return True
+        except KeyError:
+            return False
+
+    def extract_parent_and_name(self, path_str):
+        """Extract (parent_dir_name in 2 levels, filename) from a path string."""
+        p = Path(path_str)
+        return (p.parent.parent.name, p.parent.name, p.name)
+
+    def filter_filepath(self, df_source, df_target):
+        df_source_keys = {
+           self.extract_parent_and_name(path)
+            for path in df_source.index.get_level_values(0)
+        }
+        df_target = df_target[
+            df_target.index.get_level_values(0).map(
+                lambda p: self.extract_parent_and_name(p) in df_source_keys
+            )
+        ]
+        return df_target
+
+
     def check_df(self, i, df):
         """Check a dataframe."""
         print(f"check {i}: {df.shape}")
@@ -333,13 +379,27 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         try:
             return self.config[section][key]
         except KeyError:
-            if default not in self.stopvals:
+            if default not in self.stopvals and key not in self.keyvals:
                 self.debug(f"value for {key} is not found, using default: {default}")
             return default
 
     @classmethod
     def reset_logged_configs(cls):
         cls.logged_configs.clear()
+
+    def config_val_bool(self, section, key, default=False):
+        """Get a boolean configuration value safely without using eval().
+
+        Args:
+            section: The config section name.
+            key: The config key name.
+            default: The default value (bool or string).
+
+        Returns:
+            bool: The boolean value of the config entry.
+        """
+        val = self.config_val(section, key, str(default))
+        return str(val).strip().lower() in ("true", "1", "yes")
 
     def config_val_list(self, section, key, default):
         try:
@@ -376,6 +436,23 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
         with open(file_name, "w") as text_file:
             text_file.write(output)
         self.debug(output)
+
+    def append_to_result_file(self, filename, content):
+        """Append *content* as a new line to *filename*, creating the file if needed.
+
+        The line is only written if it is not already present in the file.
+
+        Args:
+            filename: absolute path to the result text file.
+            content: string to append (a newline is added automatically).
+        """
+        existing = []
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                existing = f.read().splitlines()
+        if content not in existing:
+            with open(filename, "a") as f:
+                f.write(content + "\n")
 
     def check_class_label(self, df):
         target = self.config_val("DATA", "target", None)
