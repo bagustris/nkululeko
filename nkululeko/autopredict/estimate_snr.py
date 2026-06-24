@@ -2,20 +2,22 @@
 """
 Module for estimating SNR (signal to noise ratio) from an audio signal.
 
-This module provides a class `SNREstimator` which calculates the SNR based on
-the log energy and energy thresholds of the audio signal.
+The estimation logic (frame log-energy percentiles) now lives in the shared
+``audiokit`` package — it was originally extracted from this module — so
+``SNREstimator`` here subclasses ``audiokit.SNREstimator`` and only adds
+nkululeko-specific extras: the matplotlib energy plot and the CLI ``main``.
 
+This keeps a single source of truth for the SNR math (also reused by
+``feats_snr`` and ``ap_snr``) while preserving this module's public API.
 """
 
 import argparse
 
 import audiofile
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.signal.windows import hamming
+from audiokit import SNREstimator as _AudiokitSNREstimator
 
 
-class SNREstimator:
+class SNREstimator(_AudiokitSNREstimator):
     """Estimate SNR from audio signal using log energy and energy thresholds.
 
     Args:
@@ -32,80 +34,15 @@ class SNREstimator:
         >>> input_data, sample_rate = audiofile.read('input.wav')
         >>> snr_estimator = SNREstimator(input_data, sample_rate, window_size=320, hop_size=160)
         >>> estimated_snr, log_energies, energy_threshold_low, energy_threshold_high = snr_estimator.estimate_snr()
+
+    The constructor, ``frame_audio``, ``calculate_log_energy``,
+    ``calculate_snr`` and ``estimate_snr`` are inherited unchanged from
+    ``audiokit.SNREstimator``.
     """
 
-    # Floor for frame energy so log/log10 stay finite on silent frames.
-    _ENERGY_FLOOR = 1e-12
-
-    def __init__(self, input_data, sample_rate, window_size=320, hop_size=160):
-        self.audio_data = input_data
-        self.sample_rate = sample_rate
-        self.frame_length = window_size
-        self.hop_length = hop_size
-
-    def frame_audio(self, signal):
-        # Guard against signals shorter than one frame.
-        if len(signal) < self.frame_length:
-            return []
-        num_frames = 1 + (len(signal) - self.frame_length) // self.hop_length
-        frames = [
-            signal[i * self.hop_length : (i * self.hop_length) + self.frame_length]
-            for i in range(num_frames)
-        ]
-        return frames
-
-    def calculate_log_energy(self, frame):
-        energy = np.sum(frame**2)
-        # Floor zero-energy (silent) frames to avoid log(0) = -inf.
-        return np.log(max(float(energy), self._ENERGY_FLOOR))
-
-    def calculate_snr(self, energy_high, energy_low):
-        # Floor both terms so silent / constant signals return 0 dB instead
-        # of triggering divide-by-zero on the linear-domain ratio.
-        return 10 * np.log10(
-            max(float(energy_high), self._ENERGY_FLOOR)
-            / max(float(energy_low), self._ENERGY_FLOOR)
-        )
-
-    def estimate_snr(self):
-        frames = self.frame_audio(self.audio_data)
-        # Signal too short to contain one window — no SNR can be estimated.
-        if not frames:
-            return 0.0, [], 0.0, 0.0
-
-        log_energies = [
-            self.calculate_log_energy(frame * hamming(self.frame_length))
-            for frame in frames
-        ]
-
-        energy_threshold_low = np.percentile(log_energies, 25)  # First quartile
-        energy_threshold_high = np.percentile(log_energies, 75)  # Third quartile
-
-        low_energy_frames = [
-            log_energy
-            for log_energy in log_energies
-            if log_energy <= energy_threshold_low
-        ]
-        high_energy_frames = [
-            log_energy
-            for log_energy in log_energies
-            if log_energy >= energy_threshold_high
-        ]
-
-        mean_low_energy = np.mean(low_energy_frames)
-        mean_high_energy = np.mean(high_energy_frames)
-
-        estimated_snr = self.calculate_snr(
-            np.exp(mean_high_energy), np.exp(mean_low_energy)
-        )
-        return (
-            estimated_snr,
-            log_energies,
-            energy_threshold_low,
-            energy_threshold_high,
-        )
-
     def plot_energy(self, log_energies, energy_threshold_low, energy_threshold_high):
+        import matplotlib.pyplot as plt
+
         plt.figure(figsize=(10, 6))
         plt.plot(log_energies, label="Log Energy")
         plt.axhline(
