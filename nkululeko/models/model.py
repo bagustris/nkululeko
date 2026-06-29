@@ -12,6 +12,7 @@ from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut, StratifiedKF
 
 import nkululeko.glob_conf as glob_conf
 from nkululeko.reporting.reporter import Reporter
+from nkululeko.utils.pickle_integrity import save_checksum, verify_checksum
 from nkululeko.utils.util import Util
 
 
@@ -383,13 +384,16 @@ class Model:
     def store(self):
         with open(self.store_path, "wb") as handle:
             pickle.dump(self.clf, handle)
+        save_checksum(self.store_path)
 
     def load(self, run, epoch):
         self.set_id(run, epoch)
         dir = self.util.get_path("model_dir")
         name = f"{self.util.get_exp_name(only_train=True)}_{self.run}_{self.epoch:03d}.model"
         try:
-            with open(dir + name, "rb") as handle:
+            path = dir + name
+            verify_checksum(path)
+            with open(path, "rb") as handle:
                 self.clf = pickle.load(handle)
         except FileNotFoundError as fe:
             self.util.error(
@@ -398,6 +402,7 @@ class Model:
 
     def load_path(self, path, run, epoch):
         self.set_id(run, epoch)
+        verify_checksum(path)
         with open(path, "rb") as handle:
             self.clf = pickle.load(handle)
 
