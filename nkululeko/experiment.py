@@ -190,9 +190,20 @@ class Experiment:
             self.df_test.got_speaker = self.got_speaker
             if encode:
                 self.df_test["class_label"] = self.df_test[self.target]
-                self.df_test[self.target] = self.label_encoder.transform(
-                    self.df_test[self.target]
-                )
+                try:
+                    self.df_test[self.target] = self.label_encoder.transform(
+                        self.df_test[self.target]
+                    )
+                except ValueError:
+                    test_labels = set(self.df_test[self.target].unique())
+                    train_labels = set(self.label_encoder.classes_)
+                    unseen = test_labels - train_labels
+                    self.util.error(
+                        f"Test set contains labels not seen in training: "
+                        f"{unseen}. Training labels are: {train_labels}. "
+                        f"Consider using a combined split strategy or "
+                        f"filtering unseen labels."
+                    )
                 self.df_test.to_csv(storage_test)
 
     def fill_train_and_tests(self):
