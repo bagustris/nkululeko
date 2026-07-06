@@ -114,6 +114,8 @@ class FeatureExtractor:
             "sptk",
             "lfcc",
             "cqcc",
+            "mfcc",
+            "cochleagram",
         ):
             return self._get_feat_extractor_by_name(feats_type)
         else:

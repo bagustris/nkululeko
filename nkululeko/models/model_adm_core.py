@@ -5,9 +5,11 @@ Artifact Detection Modules (ADMs) for deepfake detection.
 Adapted for nkululeko's aggregated features (mean-pooled, not time-series).
 
 Modules:
-- TimeADM    : Residual MLP for SSL aggregated features
-- SpectralADM: Residual MLP for spectral aggregated features
-- PhaseADM   : MLP for phase aggregated features
+- TimeADM        : Residual MLP for SSL aggregated features
+- SpectralADM    : Residual MLP for spectral aggregated features
+- PhaseADM       : MLP for phase aggregated features
+- CepstralADM    : MLP for concatenated MFCC/LFCC/CQCC cepstral features
+- CochleagramADM : MLP for cochleagram (auditory model) envelope features
 """
 
 import torch
@@ -179,6 +181,122 @@ class PhaseADM(nn.Module):
 
 
 # --------------------------------------------------
+# Cepstral Artifact Detector (Residual MLP)
+# --------------------------------------------------
+class CepstralADM(nn.Module):
+    """
+    Detects cepstral-domain artifacts using concatenated MFCC, LFCC,
+    and CQCC aggregated features.
+
+    Uses LazyLinear for the first layer since the concatenated width
+    depends on which of the three cepstral feature sets are enabled
+    and their configured coefficient counts.
+
+    Input:
+        x : (B, C) - concatenated MFCC + LFCC + CQCC aggregated features
+    Output:
+        artifact score : (B, 1)
+    """
+
+    def __init__(self, feat_dim=None, hidden_dim=128):
+        super().__init__()
+        self.feat_dim = feat_dim
+        self.hidden_dim = hidden_dim
+
+        self.fc1 = nn.LazyLinear(hidden_dim)
+        self.ln1 = nn.LayerNorm(hidden_dim)
+        self.dropout1 = nn.Dropout(0.2)
+
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.ln2 = nn.LayerNorm(hidden_dim)
+        self.dropout2 = nn.Dropout(0.2)
+
+        self.fc3 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.ln3 = nn.LayerNorm(hidden_dim // 2)
+        self.dropout3 = nn.Dropout(0.2)
+
+        self.fc_out = nn.Linear(hidden_dim // 2, 1)
+
+    def forward(self, x):
+        # x: (B, C) or (B, C, T) - handle both cases
+        if x.dim() == 3:
+            x = x.squeeze(-1)
+
+        x = F.gelu(self.ln1(self.fc1(x)))
+        x = self.dropout1(x)
+
+        # Residual connection (fc2 preserves hidden_dim)
+        residual = x
+        x = F.gelu(self.ln2(self.fc2(x)))
+        x = self.dropout2(x)
+        x = x + residual
+
+        x = F.gelu(self.ln3(self.fc3(x)))
+        x = self.dropout3(x)
+
+        x = self.fc_out(x)
+        return x
+
+
+# --------------------------------------------------
+# Cochleagram Artifact Detector (Residual MLP)
+# --------------------------------------------------
+class CochleagramADM(nn.Module):
+    """
+    Detects auditory-model artifacts using aggregated cochleagram
+    envelope features (biologically-inspired ERB-filterbank envelopes,
+    as opposed to the linear/mel-spectral SpectralADM stream).
+
+    Uses LazyLinear for the first layer since the aggregated width
+    depends on the configured number of cochleagram frequency bands.
+
+    Input:
+        x : (B, C) - aggregated cochleagram envelope features
+    Output:
+        artifact score : (B, 1)
+    """
+
+    def __init__(self, feat_dim=None, hidden_dim=128):
+        super().__init__()
+        self.feat_dim = feat_dim
+        self.hidden_dim = hidden_dim
+
+        self.fc1 = nn.LazyLinear(hidden_dim)
+        self.ln1 = nn.LayerNorm(hidden_dim)
+        self.dropout1 = nn.Dropout(0.2)
+
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.ln2 = nn.LayerNorm(hidden_dim)
+        self.dropout2 = nn.Dropout(0.2)
+
+        self.fc3 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.ln3 = nn.LayerNorm(hidden_dim // 2)
+        self.dropout3 = nn.Dropout(0.2)
+
+        self.fc_out = nn.Linear(hidden_dim // 2, 1)
+
+    def forward(self, x):
+        # x: (B, C) or (B, C, T) - handle both cases
+        if x.dim() == 3:
+            x = x.squeeze(-1)
+
+        x = F.gelu(self.ln1(self.fc1(x)))
+        x = self.dropout1(x)
+
+        # Residual connection (fc2 preserves hidden_dim)
+        residual = x
+        x = F.gelu(self.ln2(self.fc2(x)))
+        x = self.dropout2(x)
+        x = x + residual
+
+        x = F.gelu(self.ln3(self.fc3(x)))
+        x = self.dropout3(x)
+
+        x = self.fc_out(x)
+        return x
+
+
+# --------------------------------------------------
 # Multi-stream Artifact Detection Model
 # --------------------------------------------------
 class DeepfakeADMModel(nn.Module):
@@ -219,9 +337,15 @@ class DeepfakeADMModel(nn.Module):
             if "phase" in branches
             else None
         )
+        _extra_adm_classes = {
+            "cepstral": CepstralADM,
+            "cochleagram": CochleagramADM,
+        }
         self.extra_adms = nn.ModuleDict(
             {
-                name: SpectralADM(feat_dim=feat_dim, hidden_dim=hidden_dim)
+                name: _extra_adm_classes.get(name, SpectralADM)(
+                    feat_dim=feat_dim, hidden_dim=hidden_dim
+                )
                 for name, feat_dim in self.extra_stream_dims.items()
                 if name in branches
             }

@@ -6,6 +6,8 @@ Multi-stream neural model that detects synthesis artifacts using:
 - TimeADM: temporal/micro-prosodic artifacts from SSL features
 - SpectralADM: spectral/vocoder artifacts from mel-filterbank features
 - PhaseADM: phase-dynamics artifacts from STFT features
+- CepstralADM: cepstral-domain artifacts from concatenated MFCC/LFCC/CQCC features
+- CochleagramADM: auditory-model artifacts from cochleagram envelope features
 """
 
 import json
@@ -137,12 +139,22 @@ class ADMModel(Model):
         hidden_dim = int(self.util.config_val("MODEL", "adm.hidden_dim", "256"))
 
         # Branch selection: time (SSL), spectral (fbank/melspec), phase (STFT),
-        # plus optional cepstral streams such as lfcc/cqcc.
+        # plus optional cepstral streams: lfcc/cqcc individually, or the
+        # combined cepstral branch (MFCC+LFCC+CQCC), plus an optional
+        # cochleagram branch (auditory-model ERB filterbank envelopes).
         branches_str = self.util.config_val(
             "MODEL", "adm.branches", "time,spectral,phase,lfcc,cqcc"
         )
         raw_branches = [b.strip() for b in branches_str.split(",") if b.strip()]
-        supported_branches = {"time", "spectral", "phase", "lfcc", "cqcc"}
+        supported_branches = {
+            "time",
+            "spectral",
+            "phase",
+            "lfcc",
+            "cqcc",
+            "cepstral",
+            "cochleagram",
+        }
         unknown_branches = [b for b in raw_branches if b not in supported_branches]
         if unknown_branches:
             raise ValueError(
@@ -155,7 +167,7 @@ class ADMModel(Model):
             raise ValueError(
                 "No valid ADM branches configured. "
                 "Please set [MODEL] adm.branches to a non-empty subset of "
-                "{'time','spectral','phase','lfcc','cqcc'}."
+                "{'time','spectral','phase','lfcc','cqcc','cepstral','cochleagram'}."
             )
         self.branches = branches
         self.util.debug(f"ADM active branches: {branches}")
@@ -295,18 +307,36 @@ class ADMModel(Model):
 
     @staticmethod
     def _get_adm_stream_indices(columns, ssl_feat_dim):
-        """Return acoustic feature column indices for ADM streams."""
+        """Return acoustic feature column indices for ADM streams.
+
+        The "cepstral" extra stream concatenates MFCC, LFCC, and CQCC
+        columns (in that order) so the CepstralADM branch can jointly
+        consume all three classical cepstral feature families. The
+        "cochleagram" extra stream carries auditory-model (ERB
+        filterbank) envelope features for the CochleagramADM branch.
+        """
         acoustic_cols = [c for c in columns if isinstance(c, str)]
         spectral_indices = []
         phase_indices = []
-        extra_indices = {"lfcc": [], "cqcc": []}
+        extra_indices = {
+            "lfcc": [],
+            "cqcc": [],
+            "cepstral": [],
+            "cochleagram": [],
+        }
         for i, col in enumerate(acoustic_cols):
             col_idx = ssl_feat_dim + i
             col_name = str(col).lower()
-            if col_name.startswith("lfcc"):
+            if col_name.startswith("mfcc"):
+                extra_indices["cepstral"].append(col_idx)
+            elif col_name.startswith("lfcc"):
                 extra_indices["lfcc"].append(col_idx)
+                extra_indices["cepstral"].append(col_idx)
             elif col_name.startswith("cqcc"):
                 extra_indices["cqcc"].append(col_idx)
+                extra_indices["cepstral"].append(col_idx)
+            elif col_name.startswith("cochleagram"):
+                extra_indices["cochleagram"].append(col_idx)
             elif col_name.startswith("stft"):
                 phase_indices.append(col_idx)
             else:
@@ -316,11 +346,12 @@ class ADMModel(Model):
     def _active_branches(self, branches):
         """Drop optional extra branches that have no corresponding features."""
         active = []
+        extra_branch_names = ("lfcc", "cqcc", "cepstral", "cochleagram")
         has_extra_streams = any(
-            self.extra_stream_indices.get(name) for name in ("lfcc", "cqcc")
+            self.extra_stream_indices.get(name) for name in extra_branch_names
         )
         for branch in branches:
-            if branch in {"lfcc", "cqcc"}:
+            if branch in extra_branch_names:
                 if self.extra_stream_indices.get(branch):
                     active.append(branch)
             elif branch == "spectral":
