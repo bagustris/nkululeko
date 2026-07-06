@@ -489,7 +489,7 @@ class Util(NamingMixin, StorageMixin, DataFrameMixin):
 
     def to_3_digits_str(self, x):
         """Given a float, return this to 3 digits as string with leading zero."""
-        return f"{self.to_3_digits(x):.3f}"
+        return f"{x:.3f}"
 
     def to_4_digits(self, x):
         """Given a float, return this to 4 digits."""
