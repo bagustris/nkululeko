@@ -268,10 +268,30 @@ def __get_files_by_pattern(
     return myfiles
 
 
+def _safe_path(path, base=None):
+    """Resolve and validate a user-supplied path to prevent traversal attacks.
+
+    If ``base`` is provided, the resolved path must be inside ``base``.
+    Otherwise, the current working directory is used as the base for relative
+    paths, while absolute paths are accepted as-is after resolution.
+    """
+    resolved = Path(path).expanduser().resolve()
+    if base is None:
+        base = Path.cwd()
+    else:
+        base = Path(base).resolve()
+    # Relative paths are not allowed to escape the base directory.
+    if not Path(path).is_absolute() and (
+        base not in resolved.parents and resolved != base
+    ):
+        raise ValueError(f"Path {path} must be within {base}")
+    return str(resolved)
+
+
 def __get_files(dir_name: Union[str, os.PathLike[Any]], extensions: Set[str]):
     """Get a list of files in a single directory"""
-    # Expand out the directory
-    dir_name = os.path.realpath(os.path.expanduser(dir_name))
+    # Expand out the directory and prevent path traversal via relative inputs
+    dir_name = _safe_path(dir_name)
 
     myfiles = set()
 

@@ -18,6 +18,7 @@ import atexit
 import configparser
 import json
 import os
+import pathlib
 import pickle
 import shutil
 import sys
@@ -59,6 +60,26 @@ def _cleanup_path(path):
         pass
 
 
+def _safe_path(path, base=None):
+    """Resolve and validate a user-supplied path to prevent traversal attacks.
+
+    If ``base`` is provided, the resolved path must be inside ``base``.
+    Otherwise, the current working directory is used as the base for relative
+    paths, while absolute paths are accepted as-is after resolution.
+    """
+    resolved = pathlib.Path(path).resolve()
+    if base is None:
+        base = pathlib.Path.cwd()
+    else:
+        base = pathlib.Path(base).resolve()
+    # Relative paths are not allowed to escape the base directory.
+    if not pathlib.Path(path).is_absolute() and (
+        base not in resolved.parents and resolved != base
+    ):
+        raise ValueError(f"Path {path} must be within {base}")
+    return str(resolved)
+
+
 def _load_pickle(path, what):
     """Load a pickle artifact, exiting with a clear message on failure.
 
@@ -66,7 +87,7 @@ def _load_pickle(path, what):
     corrupt file is treated as a bundle integrity error rather than allowing
     inference to silently proceed (which can change predictions).
     """
-    path = os.path.realpath(path)
+    path = _safe_path(path)
     if not os.path.isfile(path):
         _fail(f"bundle integrity error: {what} file not found: {path}")
     try:
@@ -89,7 +110,7 @@ def _load_bundle(bundle_dir):
     Returns:
         dict with keys: manifest, config, model, scaler, label_encoder, feature_schema
     """
-    bundle_dir = os.path.realpath(bundle_dir)
+    bundle_dir = _safe_path(bundle_dir)
 
     manifest_path = os.path.join(bundle_dir, "manifest.json")
     if not os.path.isfile(manifest_path):
@@ -342,7 +363,7 @@ def _run_folder(folder, bundle, util, outfile):
 
 def _run_list(list_path, bundle, util, outfile):
     """Run inference on files specified in a CSV list."""
-    list_path = os.path.realpath(list_path)
+    list_path = _safe_path(list_path)
     if not os.path.isfile(list_path):
         print(f"ERROR: file not found: {list_path}", file=sys.stderr)
         sys.exit(1)
