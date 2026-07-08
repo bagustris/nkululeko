@@ -66,13 +66,20 @@ def _load_pickle(path, what):
     corrupt file is treated as a bundle integrity error rather than allowing
     inference to silently proceed (which can change predictions).
     """
+    path = os.path.realpath(path)
     if not os.path.isfile(path):
         _fail(f"bundle integrity error: {what} file not found: {path}")
     try:
         with open(path, "rb") as f:
             return pickle.load(f)
-    except (pickle.UnpicklingError, EOFError, ValueError, AttributeError,
-            ImportError, ModuleNotFoundError) as e:
+    except (
+        pickle.UnpicklingError,
+        EOFError,
+        ValueError,
+        AttributeError,
+        ImportError,
+        ModuleNotFoundError,
+    ) as e:
         _fail(f"could not load {what} from {path}: {e}")
 
 
@@ -82,7 +89,7 @@ def _load_bundle(bundle_dir):
     Returns:
         dict with keys: manifest, config, model, scaler, label_encoder, feature_schema
     """
-    bundle_dir = os.path.abspath(bundle_dir)
+    bundle_dir = os.path.realpath(bundle_dir)
 
     manifest_path = os.path.join(bundle_dir, "manifest.json")
     if not os.path.isfile(manifest_path):
@@ -103,7 +110,9 @@ def _load_bundle(bundle_dir):
     artifacts = manifest.get("artifacts", {})
 
     # Load inference config (fail fast if missing or unreadable)
-    ini_path = os.path.join(bundle_dir, artifacts.get("inference_config", "inference.ini"))
+    ini_path = os.path.join(
+        bundle_dir, artifacts.get("inference_config", "inference.ini")
+    )
     if not os.path.isfile(ini_path):
         _fail(f"bundle integrity error: inference config not found: {ini_path}")
     config = configparser.ConfigParser()
@@ -271,9 +280,7 @@ def _predict_from_bundle(feats, bundle, util):
         # For classifiers without predict_proba, still decode numeric class IDs
         # to human-readable labels when a label encoder is available.
         if is_classification and label_encoder is not None:
-            predictions = label_encoder.inverse_transform(
-                [int(p) for p in predictions]
-            )
+            predictions = label_encoder.inverse_transform([int(p) for p in predictions])
         results["predicted"] = predictions
 
     return results
@@ -335,6 +342,7 @@ def _run_folder(folder, bundle, util, outfile):
 
 def _run_list(list_path, bundle, util, outfile):
     """Run inference on files specified in a CSV list."""
+    list_path = os.path.realpath(list_path)
     if not os.path.isfile(list_path):
         print(f"ERROR: file not found: {list_path}", file=sys.stderr)
         sys.exit(1)
@@ -371,7 +379,9 @@ def _run_list(list_path, bundle, util, outfile):
     return results
 
 
-def infer_from_bundle(bundle_dir, files=None, folder=None, list_path=None, outfile=None):
+def infer_from_bundle(
+    bundle_dir, files=None, folder=None, list_path=None, outfile=None
+):
     """Run inference from a bundle directory.
 
     This is the programmatic API for bundle inference.
@@ -404,9 +414,7 @@ def infer_from_bundle(bundle_dir, files=None, folder=None, list_path=None, outfi
     elif list_path:
         return _run_list(list_path, bundle, util, outfile or "./bundle_predictions.csv")
     else:
-        print(
-            "ERROR: provide one of --file, --folder, or --list", file=sys.stderr
-        )
+        print("ERROR: provide one of --file, --folder, or --list", file=sys.stderr)
         sys.exit(1)
 
 

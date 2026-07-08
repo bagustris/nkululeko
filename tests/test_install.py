@@ -6,6 +6,7 @@ and runs module tests to ensure the installation works correctly.
 
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -13,7 +14,9 @@ from pathlib import Path
 
 def run_command(cmd):
     """Run a command and return its output"""
-    process = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if isinstance(cmd, str):
+        cmd = shlex.split(cmd)
+    process = subprocess.run(cmd, capture_output=True, text=True)
     return process.stdout, process.stderr, process.returncode
 
 
@@ -135,8 +138,7 @@ def main(python_version=None):
             print(f"Failed to install torch dependencies: {stderr}")
 
     with open("run_tests.py", "w") as f:
-        f.write(
-            f"""
+        f.write(f"""
 import unittest
 import sys
 import os
@@ -145,8 +147,7 @@ from tests.test_modules import TestModules
 
 if __name__ == '__main__':
     unittest.main()
-"""
-        )
+""")
 
     print("Running unit tests...")
     stdout, stderr, returncode = run_command(f"{venv_python} run_tests.py")

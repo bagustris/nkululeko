@@ -20,7 +20,6 @@ from tqdm import tqdm
 
 import audiofile
 
-
 # add new function here
 __all__ = [
     "find_files",
@@ -272,7 +271,7 @@ def __get_files_by_pattern(
 def __get_files(dir_name: Union[str, os.PathLike[Any]], extensions: Set[str]):
     """Get a list of files in a single directory"""
     # Expand out the directory
-    dir_name = os.path.abspath(os.path.expanduser(dir_name))
+    dir_name = os.path.realpath(os.path.expanduser(dir_name))
 
     myfiles = set()
 
