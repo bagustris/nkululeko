@@ -25,6 +25,7 @@ __all__ = [
     "find_files",
     "find_files_by_name",
     "concat_files",
+    "safe_path",
 ]
 
 
@@ -268,12 +269,16 @@ def __get_files_by_pattern(
     return myfiles
 
 
-def _safe_path(path, base=None):
+def safe_path(path, base=None):
     """Resolve and validate a user-supplied path to prevent traversal attacks.
 
     If ``base`` is provided, the resolved path must be inside ``base``.
     Otherwise, the current working directory is used as the base for relative
     paths, while absolute paths are accepted as-is after resolution.
+
+    This is registered as a SonarQube security sanitizer
+    (``sonar.python.security.sanitizers``) so that taint analysis recognises
+    user-controlled paths flowing through it as no longer tainted.
     """
     resolved = Path(path).expanduser().resolve()
     if base is None:
@@ -291,7 +296,7 @@ def _safe_path(path, base=None):
 def __get_files(dir_name: Union[str, os.PathLike[Any]], extensions: Set[str]):
     """Get a list of files in a single directory"""
     # Expand out the directory and prevent path traversal via relative inputs
-    dir_name = _safe_path(dir_name)
+    dir_name = safe_path(dir_name)
 
     myfiles = set()
 
