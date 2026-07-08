@@ -21,6 +21,7 @@ from nkululeko.reporting.report import Report
 from nkululeko.runmanager import Runmanager
 from nkululeko.scaler import Scaler
 from nkululeko.testing_predictor import TestPredictor
+from nkululeko.utils.pickle_integrity import save_checksum, verify_checksum
 from nkululeko.utils.util import Util
 
 
@@ -45,7 +46,9 @@ class Experiment:
         fresh_report = eval(self.util.config_val("REPORT", "fresh", "False"))
         if not fresh_report:
             try:
-                with open(os.path.join(self.data_dir, "report.pkl"), "rb") as handle:
+                report_path = os.path.join(self.data_dir, "report.pkl")
+                verify_checksum(report_path)
+                with open(report_path, "rb") as handle:
                     self.report = pickle.load(handle)
             except FileNotFoundError:
                 self.report = Report()
@@ -68,8 +71,10 @@ class Experiment:
         glob_conf.set_module(module)
 
     def store_report(self):
-        with open(os.path.join(self.data_dir, "report.pkl"), "wb") as handle:
+        report_path = os.path.join(self.data_dir, "report.pkl")
+        with open(report_path, "wb") as handle:
             pickle.dump(self.report, handle)
+        save_checksum(report_path)
         if eval(self.util.config_val("REPORT", "show", "False")):
             self.report.print()
         if self.util.config_val("REPORT", "latex", False):
@@ -773,6 +778,7 @@ class Experiment:
 
     def load(self, filename):
         try:
+            verify_checksum(filename)
             f = open(filename, "rb")
             tmp_dict = pickle.load(f)
             f.close()
@@ -791,6 +797,7 @@ class Experiment:
             f = open(filename, "wb")
             pickle.dump(self.__dict__, f)
             f.close()
+            save_checksum(filename)
         except (TypeError, AttributeError) as error:
             # Strip the un-picklable inner model(s) from every FeatureExtractor
             # stored on the experiment. There are typically two: one set in
@@ -811,6 +818,7 @@ class Experiment:
             f = open(filename, "wb")
             pickle.dump(self.__dict__, f)
             f.close()
+            save_checksum(filename)
             self.util.warn(
                 "Save experiment: Can't pickle the feature extraction model so saving without it."
                 + f"{type(error).__name__} {error}"

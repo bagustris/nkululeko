@@ -33,6 +33,7 @@ import audeer
 import nkululeko.glob_conf as glob_conf
 from nkululeko.constants import VERSION
 from nkululeko.experiment import Experiment
+from nkululeko.utils.files import safe_path
 from nkululeko.utils.util import Util
 
 
@@ -235,6 +236,7 @@ def export_bundle(config_file, output_dir=None):
             "bundle_path",
             os.path.join(expr.root, expr.name, "export"),
         )
+    output_dir = safe_path(output_dir)
     audeer.mkdir(output_dir)
     util.debug(f"exporting bundle to: {output_dir}")
 
@@ -259,8 +261,15 @@ def export_bundle(config_file, output_dir=None):
         )
     try:
         pickle.loads(model_data)
-    except (pickle.UnpicklingError, EOFError, ValueError, AttributeError,
-            ImportError, ModuleNotFoundError, TypeError) as e:
+    except (
+        pickle.UnpicklingError,
+        EOFError,
+        ValueError,
+        AttributeError,
+        ImportError,
+        ModuleNotFoundError,
+        TypeError,
+    ) as e:
         util.error(
             f"Model at {model_path} is not a valid pickle and cannot be "
             f"bundled ({e}). Only plain pickle models (e.g. svm, xgb, knn) "
