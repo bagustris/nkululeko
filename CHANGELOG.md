@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 1.7.12 (26-07-08)
+-------------------------
+* fixed security issues with pickle
+
 Version 1.7.11 (26-07-06)
 -------------------------
 * minor bugfixes

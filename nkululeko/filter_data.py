@@ -123,6 +123,14 @@ class DataFilter:
         else:
             return self.df
 
+    def _check_col(self, col, df):
+        if col not in df.columns:
+            self.util.error(
+                f"Column {col} does not exist in the dataframe! "
+                f"Did you forget to add it to the columns in the"
+                f" config file?"
+            )
+
     def filter_value(self, data_name=""):
         if data_name == "":
             filters_str = self.util.config_val("DATA", "filter", False)
@@ -148,10 +156,19 @@ class DataFilter:
                 for col, val in filters.items():
                     pre = df.shape[0]
                     if isinstance(val, list):
+                        self._check_col(col, df)
                         df = df[df[col].isin(val)]
                     else:
+                        self._check_col(col, df)
                         df = df[df[col].eq(val)]
                     post = df.shape[0]
+                    if post == 0:
+                        vals = df[col].unique()
+                        self.util.error(
+                            f"{data_name}: filtered {col}={val}, reduced samples"
+                            f" from {pre} to {post}, no samples left! remaining"
+                            f" values for {col}: {vals}"
+                        )
                     self.util.debug(
                         f"{data_name}: filtered {col}={val}, reduced samples from"
                         f" {pre} to {post}"
