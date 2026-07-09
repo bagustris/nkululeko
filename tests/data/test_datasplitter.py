@@ -233,3 +233,130 @@ class TestFillTrainAndTestsEarlyReturn:
         result = ds.fill_train_and_tests()
         assert isinstance(result, tuple)
         assert len(result) == 2
+
+
+class TestUnseenLabelsError:
+    """Test that unseen labels in test/dev sets produce helpful error messages."""
+
+    _FLAGS = (
+        "is_labeled",
+        "is_test",
+        "is_train",
+        "is_val",
+        "got_gender",
+        "got_age",
+        "got_speaker",
+    )
+
+    @staticmethod
+    def _tag_df(df):
+        """Set the standard split flags on a DataFrame in-place."""
+        df.is_labeled = True
+        df.got_gender = False
+        df.got_speaker = False
+
+    def _make_util(self, tmp_path, errors):
+        """Return a mock Util with working copy_flags and error capturing."""
+        flags = self._FLAGS
+
+        class MockUtil:
+            def get_path(self, k):
+                return str(tmp_path) + "/"
+
+            def config_val(self, sec, key, default):
+                return default
+
+            def debug(self, m):
+                pass
+
+            def warn(self, m):
+                pass
+
+            def error(self, m):
+                errors.append(m)
+
+            def copy_flags(self, src, tgt):
+                for flag in flags:
+                    if hasattr(src, flag):
+                        setattr(tgt, flag, getattr(src, flag))
+
+            def exp_is_classification(self):
+                return True
+
+        return MockUtil()
+
+    def test_unseen_label_in_test_set(self, tmp_path):
+        """fill_train_and_tests emits a descriptive error when test labels are unseen."""
+        errors = []
+        tag = self._tag_df
+
+        class FakeDataset:
+            name = "fake_db"
+            is_labeled = True
+            got_gender = False
+            got_speaker = False
+
+            def split(self):
+                self.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
+                tag(self.df_train)
+                self.df_test = pd.DataFrame({"emotion": ["happy", "unknown"]})
+                tag(self.df_test)
+
+            def prepare_labels(self):
+                pass
+
+            df_train = pd.DataFrame()
+            df_test = pd.DataFrame()
+
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = self._make_util(tmp_path, errors)
+        ds.target = "emotion"
+        ds.split3 = False
+        ds.got_speaker = False
+        ds.datasets = {"fake_db": FakeDataset()}
+
+        ds.fill_train_and_tests()
+
+        assert len(errors) == 1
+        assert "unknown" in errors[0]
+        assert "not seen in training" in errors[0]
+        assert "Training labels are" in errors[0]
+
+    def test_unseen_label_in_dev_set(self, tmp_path):
+        """fill_train_and_tests emits a descriptive error when dev labels are unseen."""
+        errors = []
+        tag = self._tag_df
+
+        class FakeDataset:
+            name = "fake_db"
+            is_labeled = True
+            got_gender = False
+            got_speaker = False
+
+            def split_3(self):
+                self.df_train = pd.DataFrame({"emotion": ["happy", "sad"]})
+                tag(self.df_train)
+                self.df_test = pd.DataFrame({"emotion": ["happy", "sad"]})
+                tag(self.df_test)
+                self.df_dev = pd.DataFrame({"emotion": ["happy", "novelcat"]})
+                tag(self.df_dev)
+
+            def prepare_labels(self):
+                pass
+
+            df_train = pd.DataFrame()
+            df_test = pd.DataFrame()
+            df_dev = pd.DataFrame()
+
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = self._make_util(tmp_path, errors)
+        ds.target = "emotion"
+        ds.split3 = True
+        ds.got_speaker = False
+        ds.datasets = {"fake_db": FakeDataset()}
+
+        ds.fill_train_and_tests()
+
+        assert len(errors) == 1
+        assert "novelcat" in errors[0]
+        assert "not seen in training" in errors[0]
