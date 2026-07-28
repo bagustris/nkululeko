@@ -6,6 +6,8 @@ import pickle
 import audformat
 import pandas as pd
 
+from nkululeko.utils.pickle_integrity import save_checksum, verify_checksum
+
 
 class StorageMixin:
     """Mixin providing file storage and I/O methods for Util."""
@@ -21,11 +23,13 @@ class StorageMixin:
         self.debug(f"saving {name}")
         with open(name, "wb") as handle:
             pickle.dump(anyobject, handle)
+        save_checksum(name)
 
     def from_pickle(self, name):
         store = self.get_path("store")
         name = "/".join([store, name]) + ".pkl"
         self.debug(f"loading {name}")
+        verify_checksum(name)
         with open(name, "rb") as handle:
             return pickle.load(handle)
 

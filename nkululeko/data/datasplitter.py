@@ -164,15 +164,37 @@ class Datasplitter:
                 if self.df_test.is_labeled:
                     self.util.debug(f"Categories test: {test_cats}")
                 if not self.df_train.empty:
-                    self.df_test[self.target] = self.label_encoder.transform(
-                        self.df_test[self.target]
-                    )
+                    try:
+                        self.df_test[self.target] = self.label_encoder.transform(
+                            self.df_test[self.target]
+                        )
+                    except ValueError:
+                        test_labels = set(self.df_test[self.target].unique())
+                        train_labels = set(self.label_encoder.classes_)
+                        unseen = test_labels - train_labels
+                        self.util.error(
+                            f"Test set contains labels not seen in training: "
+                            f"{unseen}. Training labels are: {train_labels}. "
+                            f"Consider using a combined split strategy or "
+                            f"filtering unseen labels."
+                        )
             if self.split3 and not self.df_dev.empty:
                 self.util.debug(f"Categories dev: {dev_cats}")
                 if not self.df_train.empty:
-                    self.df_dev[self.target] = self.label_encoder.transform(
-                        self.df_dev[self.target]
-                    )
+                    try:
+                        self.df_dev[self.target] = self.label_encoder.transform(
+                            self.df_dev[self.target]
+                        )
+                    except ValueError:
+                        dev_labels = set(self.df_dev[self.target].unique())
+                        train_labels = set(self.label_encoder.classes_)
+                        unseen = dev_labels - train_labels
+                        self.util.error(
+                            f"Dev set contains labels not seen in training: "
+                            f"{unseen}. Training labels are: {train_labels}. "
+                            f"Consider using a combined split strategy or "
+                            f"filtering unseen labels."
+                        )
         if self.got_speaker:
             speakers_train = (
                 0
@@ -312,12 +334,12 @@ class Datasplitter:
             else:
                 return None, None
         if not self.df_train.empty:
-            self.feats_train = all_feats[all_feats.index.isin(self.df_train.index)]
+            self.feats_train = self.util.filter_filepath(self.df_train, all_feats)
         if not self.df_test.empty:
-            self.feats_test = all_feats[all_feats.index.isin(self.df_test.index)]
+            self.feats_test = self.util.filter_filepath(self.df_test, all_feats)
         if self.split3:
             if not self.df_dev.empty:
-                self.feats_dev = all_feats[all_feats.index.isin(self.df_dev.index)]
+                self.feats_dev = self.util.filter_filepath(self.df_dev, all_feats)
                 shps = f"{self.feats_train.shape}/{self.feats_dev.shape}/{self.feats_test.shape}"
                 self.util.debug(f"Train/dev/test features:{shps}")
         else:
@@ -330,16 +352,14 @@ class Datasplitter:
                 f"train feats ({self.feats_train.shape[0]}) != train labels"
                 f" ({self.df_train.shape[0]})"
             )
-            self.df_train = self.df_train[
-                self.df_train.index.isin(self.feats_train.index)
-            ]
+            self.df_train = self.util.filter_filepath(self.feats_train, self.df_train)
             self.util.warn(f"new train labels shape: {self.df_train.shape[0]}")
         if self.feats_test.shape[0] < self.df_test.shape[0]:
             self.util.warn(
                 f"test feats ({self.feats_test.shape[0]}) != test labels"
                 f" ({self.df_test.shape[0]})"
             )
-            self.df_test = self.df_test[self.df_test.index.isin(self.feats_test.index)]
+            self.df_test = self.util.filter_filepath(self.feats_test, self.df_test)
             self.util.warn(f"new test labels shape: {self.df_test.shape[0]}")
         if self.split3:
             if self.feats_dev.shape[0] < self.df_dev.shape[0]:
@@ -347,7 +367,7 @@ class Datasplitter:
                     f"dev feats ({self.feats_dev.shape[0]}) != dev labels"
                     f" ({self.df_dev.shape[0]})"
                 )
-                self.df_dev = self.df_dev[self.df_dev.index.isin(self.feats_dev.index)]
+                self.df_dev = self.util.filter_filepath(self.feats_dev, self.df_dev)
                 self.util.warn(f"new dev labels shape: {self.df_dev.shape[0]}")
 
             return self.feats_train, self.feats_test, self.feats_dev

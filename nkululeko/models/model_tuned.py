@@ -23,6 +23,7 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import (
 import nkululeko.glob_conf as glob_conf
 from nkululeko.models.model import Model as BaseModel
 from nkululeko.reporting.reporter import Reporter
+from nkululeko.utils.pickle_integrity import verify_checksum
 
 
 class TunedModel(BaseModel):
@@ -660,6 +661,7 @@ class TunedModel(BaseModel):
 
     def load_path(self, path, run, epoch):
         self.set_id(run, epoch)
+        verify_checksum(path)
         with open(path, "rb") as handle:
             self.clf = pickle.load(handle)
 

@@ -21,6 +21,7 @@ from nkululeko.reporting.report import Report
 from nkululeko.runmanager import Runmanager
 from nkululeko.scaler import Scaler
 from nkululeko.testing_predictor import TestPredictor
+from nkululeko.utils.pickle_integrity import save_checksum, verify_checksum
 from nkululeko.utils.util import Util
 
 
@@ -45,7 +46,9 @@ class Experiment:
         fresh_report = eval(self.util.config_val("REPORT", "fresh", "False"))
         if not fresh_report:
             try:
-                with open(os.path.join(self.data_dir, "report.pkl"), "rb") as handle:
+                report_path = os.path.join(self.data_dir, "report.pkl")
+                verify_checksum(report_path)
+                with open(report_path, "rb") as handle:
                     self.report = pickle.load(handle)
             except FileNotFoundError:
                 self.report = Report()
@@ -68,8 +71,10 @@ class Experiment:
         glob_conf.set_module(module)
 
     def store_report(self):
-        with open(os.path.join(self.data_dir, "report.pkl"), "wb") as handle:
+        report_path = os.path.join(self.data_dir, "report.pkl")
+        with open(report_path, "wb") as handle:
             pickle.dump(self.report, handle)
+        save_checksum(report_path)
         if eval(self.util.config_val("REPORT", "show", "False")):
             self.report.print()
         if self.util.config_val("REPORT", "latex", False):
@@ -190,9 +195,20 @@ class Experiment:
             self.df_test.got_speaker = self.got_speaker
             if encode:
                 self.df_test["class_label"] = self.df_test[self.target]
-                self.df_test[self.target] = self.label_encoder.transform(
-                    self.df_test[self.target]
-                )
+                try:
+                    self.df_test[self.target] = self.label_encoder.transform(
+                        self.df_test[self.target]
+                    )
+                except ValueError:
+                    test_labels = set(self.df_test[self.target].unique())
+                    train_labels = set(self.label_encoder.classes_)
+                    unseen = test_labels - train_labels
+                    self.util.error(
+                        f"Test set contains labels not seen in training: "
+                        f"{unseen}. Training labels are: {train_labels}. "
+                        f"Consider using a combined split strategy or "
+                        f"filtering unseen labels."
+                    )
                 self.df_test.to_csv(storage_test)
 
     def fill_train_and_tests(self):
@@ -235,13 +251,11 @@ class Experiment:
         best_model = self.runmgr.get_best_model()
         plot_name_suggest = self.util.get_exp_name()
         for ds_name, df_test_ds in self.test_ds_df.items():
-            feats_test_ds = self.feats_test[
-                self.feats_test.index.isin(df_test_ds.index)
-            ]
+            feats_test_ds = self.util.filter_filepath(df_test_ds, self.feats_test)
             if feats_test_ds.shape[0] == 0:
                 self.util.warn(f"{ds_name}: no features found for test set, skipping")
                 continue
-            df_test_aligned = df_test_ds[df_test_ds.index.isin(feats_test_ds.index)]
+            df_test_aligned = self.util.filter_filepath(feats_test_ds, df_test_ds)
             if df_test_aligned.shape[0] == 0:
                 self.util.warn(
                     f"{ds_name}: no samples after alignment with features, skipping"
@@ -480,7 +494,7 @@ class Experiment:
         plot_feats = eval(
             self.util.config_val("EXPL", "feature_distributions", "False")
         )
-        sample_selection = self.util.config_val("EXPL", "sample_selection", "all")
+        sample_selection = self.util.config_val("EXP", "sample_selection", "all")
         # get the data labels
         if sample_selection == "all":
             df_labels = pd.concat([self.df_train, self.df_test])
@@ -735,6 +749,9 @@ class Experiment:
         else:
             truths = best.truths_cont
             preds = best.preds_cont
+        if "speaker" not in self.df_test.columns:
+            self.util.warn("combine_per_speaker: no speaker column in df_test, skipping")
+            return
         speakers = self.df_test.speaker.values
         df = pd.DataFrame(data={"truths": truths, "preds": preds, "speakers": speakers})
         plot_name = f"{self.util.get_exp_name()}_speakercombined_{function}"
@@ -772,6 +789,7 @@ class Experiment:
 
     def load(self, filename):
         try:
+            verify_checksum(filename)
             f = open(filename, "rb")
             tmp_dict = pickle.load(f)
             f.close()
@@ -790,6 +808,7 @@ class Experiment:
             f = open(filename, "wb")
             pickle.dump(self.__dict__, f)
             f.close()
+            save_checksum(filename)
         except (TypeError, AttributeError) as error:
             # Strip the un-picklable inner model(s) from every FeatureExtractor
             # stored on the experiment. There are typically two: one set in
@@ -810,6 +829,7 @@ class Experiment:
             f = open(filename, "wb")
             pickle.dump(self.__dict__, f)
             f.close()
+            save_checksum(filename)
             self.util.warn(
                 "Save experiment: Can't pickle the feature extraction model so saving without it."
                 + f"{type(error).__name__} {error}"

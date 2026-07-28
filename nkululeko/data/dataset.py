@@ -141,6 +141,28 @@ class Dataset:
             glob_conf.report.add_item(ReportItem("Data", "Load report", r_string))
             glob_conf.report.initial = False
 
+    def _autodetect_experiment_type(self, df):
+        """Auto-detect the experiment type from the label column.
+
+        When the labels look numeric and no experiment type is configured
+        explicitly, set ``[EXP] type`` to ``regression``. When a non-regression
+        type is configured explicitly, respect it and emit a warning naming the
+        label column that triggered the detection, instead of silently
+        overwriting the user's configuration.
+        """
+        if not self.util.is_numeric(df[self.col_label]):
+            return
+        user_type = self.util.config_val("EXP", "type", None)
+        if user_type is None:
+            glob_conf.config["EXP"]["type"] = "regression"
+        elif user_type != "regression":
+            self.util.warn(
+                f"{self.name}: Configured [EXP] type={user_type} but label "
+                f"column '{self.col_label}' looks like regression. Respecting "
+                f"configured type. Verify your data or type configuration if "
+                f"this is unintended."
+            )
+
     def load(self):
         """Load the dataframe with files, speakers and task labels"""
         self.root = self._load_db()
@@ -163,8 +185,7 @@ class Dataset:
                     f"set 'DATA.target' or '{self.name}.label' in your configuration."
                 )
                 df = self.db.get(self.col_label, columns)
-                if self.util.is_numeric(df[self.col_label]):
-                    glob_conf.config["EXP"]["type"] = "regression"
+                self._autodetect_experiment_type(df)
             else:
                 df = pd.DataFrame(index=self.db.files)
         elif len(tables) > 0:
@@ -622,8 +643,16 @@ class Dataset:
 
     def split_speakers(self):
         """One way to split train and eval sets: Specify percentage of evaluation speakers"""
-        test_percent = int(self.util.config_val_data(self.name, "test_size", 20))
         df = self.df
+        if "speaker" not in df.columns:
+            self.util.warn(
+                f"split_strategy is speaker_split but {self.name} has no speaker"
+                " column — using all samples as test split"
+            )
+            self.df_test = df
+            self.df_train = pd.DataFrame()
+            return
+        test_percent = int(self.util.config_val_data(self.name, "test_size", 20))
         s_num = df.speaker.nunique()
         test_num = int(s_num * (test_percent / 100))
         test_spkrs = sample(list(df.speaker.unique()), test_num)
@@ -739,6 +768,8 @@ class Dataset:
             return df
         """Rename the labels and remove the ones that are not needed."""
         target = glob_conf.config["DATA"]["target"]
+        if target not in df.columns:
+            return df
         # see if a special mapping should be used
         mappings = self.util.config_val_data(self.name, "mapping", False)
         if mappings:
