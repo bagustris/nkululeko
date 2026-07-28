@@ -231,6 +231,56 @@ class TestExtractEmbeddingsWithErrorHandling:
                 )
         assert mock_error.called
 
+    def test_exact_threshold_no_abort(self, multiindex_featureset):
+        """When failure rate exactly equals the threshold, no abort occurs (strict >)."""
+        # 2 out of 5 fails = 40%, set threshold to exactly 0.4
+        glob_conf.config["FEATS"]["fail_threshold"] = "0.4"
+        extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={1, 3})
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            result = multiindex_featureset._extract_embeddings_with_error_handling(
+                extract_fn
+            )
+        mock_error.assert_not_called()
+        assert len(result) == 3
+
+    def test_invalid_threshold_falls_back_to_default(self, multiindex_featureset):
+        """A non-numeric fail_threshold falls back to the default instead of crashing."""
+        glob_conf.config["FEATS"]["fail_threshold"] = "not-a-number"
+        extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={2})
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            result = multiindex_featureset._extract_embeddings_with_error_handling(
+                extract_fn
+            )
+        # 1/5 = 20%, below the default 50% threshold, so no abort
+        mock_error.assert_not_called()
+        assert len(result) == 4
+
+    def test_out_of_range_threshold_is_clamped(self, multiindex_featureset):
+        """A fail_threshold above 1.0 is clamped to 1.0, so even all failures don't abort."""
+        glob_conf.config["FEATS"]["fail_threshold"] = "2.0"
+        extract_fn = self._make_extract_fn(emb_dim=4, fail_indices={0, 1, 2, 3, 4})
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            multiindex_featureset._extract_embeddings_with_error_handling(extract_fn)
+        mock_error.assert_not_called()
+
+    def test_assertion_error_counted_as_failure(self, multiindex_featureset):
+        """AssertionError (e.g. sample-rate mismatch) is treated as a per-file failure."""
+        call_count = {"n": 0}
+
+        def extract_fn(file, start, end):
+            idx = call_count["n"]
+            call_count["n"] += 1
+            if idx == 2:
+                assert False, "got 8000 instead of 16000"
+            return np.ones(4)
+
+        with patch.object(multiindex_featureset.util, "error") as mock_error:
+            result = multiindex_featureset._extract_embeddings_with_error_handling(
+                extract_fn
+            )
+        mock_error.assert_not_called()
+        assert len(result) == 4
+
     def test_keyboard_interrupt_not_caught(self, multiindex_featureset):
         """KeyboardInterrupt must propagate and not be swallowed."""
         call_count = {"n": 0}
