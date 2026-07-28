@@ -22,6 +22,8 @@ from pydub import AudioSegment
 
 # list audio files given a directory
 def segment_audio(input_dir, output_dir, segment_length, overlap):
+    output_dir = str(Path(output_dir).resolve())
+    input_dir = str(Path(input_dir).resolve())
     # check if input dir exist
     if not Path(input_dir).exists():
         print(f"Directory {input_dir} does not exist.")
