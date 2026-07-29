@@ -30,29 +30,44 @@ def validate_model_task_support(model_type: str, task: str, model=None) -> None:
         ``is_classifier`` / ``is_regressor`` attributes when provided
     """
     util = Util("modelrunner")
+    is_classifier = getattr(model, "is_classifier", None) if model is not None else None
+    is_regressor = getattr(model, "is_regressor", None) if model is not None else None
 
-    if model is not None:
-        is_classifier = getattr(model, "is_classifier", None)
-        is_regressor = getattr(model, "is_regressor", None)
-        if task == "classification" and is_classifier is False:
-            util.error(f"Model '{model_type}' does not support classification.")
-        if task == "regression" and is_regressor is False:
-            util.error(f"Model '{model_type}' does not support regression.")
-        # Explicit positive flag short-circuits type-set fallback
-        if task == "classification" and is_classifier is True:
-            return
-        if task == "regression" and is_regressor is True:
-            return
-
-    # Fall back to type-set heuristics for models without capability flags
-    if task == "regression" and model_type in CLASSIFIER_TYPES:
-        util.error(
-            f"Model '{model_type}' is a classifier but experiment type is" " regression"
+    if task == "classification":
+        _check_task_capability(
+            util, model_type, task, is_classifier, "regressor", REGRESSOR_TYPES
         )
-    if task == "classification" and model_type in REGRESSOR_TYPES:
+    elif task == "regression":
+        _check_task_capability(
+            util, model_type, task, is_regressor, "classifier", CLASSIFIER_TYPES
+        )
+
+
+def _check_task_capability(
+    util, model_type, task, capability, opposite_label, forbidden_types
+) -> None:
+    """Validate a single task direction using capability flag or type fallback.
+
+    :param util: Util instance used to report errors.
+    :param model_type: model type string (e.g. ``'svm'``, ``'svr'``).
+    :param task: ``'classification'`` or ``'regression'``.
+    :param capability: the model's capability flag for this task
+        (``is_classifier`` or ``is_regressor``); ``None`` when not declared.
+    :param opposite_label: label of the opposite task (``'regressor'`` or
+        ``'classifier'``) used in the fallback error message.
+    :param forbidden_types: frozenset of model types that only support the
+        opposite task.
+    """
+    # Explicit negative capability flag is a hard error.
+    if capability is False:
+        util.error(f"Model '{model_type}' does not support {task}.")
+    # Explicit positive flag short-circuits the type-based fallback.
+    if capability is True:
+        return
+    # Fall back to type-set heuristics for models without capability flags.
+    if model_type in forbidden_types:
         util.error(
-            f"Model '{model_type}' is a regressor but experiment type is"
-            " classification"
+            f"Model '{model_type}' is a {opposite_label} but experiment type is {task}"
         )
 
 
