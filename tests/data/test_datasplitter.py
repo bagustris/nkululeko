@@ -223,7 +223,9 @@ class TestLabelEncoderUnseenLabels:
             idx_te = _make_segmented_index(
                 [f"/data/te_{i}.wav" for i in range(len(test_labels))]
             )
-            self.df_train = _tag_df(pd.DataFrame({"emotion": train_labels}, index=idx_tr))
+            self.df_train = _tag_df(
+                pd.DataFrame({"emotion": train_labels}, index=idx_tr)
+            )
             self.df_test = _tag_df(pd.DataFrame({"emotion": test_labels}, index=idx_te))
             self.df_train.is_labeled = True
             self.df_test.is_labeled = True
@@ -278,7 +280,7 @@ class TestLabelEncoderUnseenLabels:
         fake_ds = self._FakeDataset(
             train_labels=["happy", "sad"],
             test_labels=["happy"],  # no unseen in test
-            dev_labels=["angry"],   # unseen in dev
+            dev_labels=["angry"],  # unseen in dev
         )
         ds, errors = self._make_ds({"db": fake_ds}, split3=True)
 
@@ -304,7 +306,7 @@ class TestLabelEncoderUnseenLabels:
 
 
 class TestFillTrainAndTestsConcatenation:
-    def test_multiple_datasets_concatenated_correctly(self, tmp_path):
+    def test_multiple_datasets_concatenated_correctly(self, tmp_path, monkeypatch):
         """fill_train_and_tests should concat all datasets without O(n²) intermediate copies."""
 
         class FakeDataset:
@@ -321,8 +323,8 @@ class TestFillTrainAndTestsConcatenation:
             def prepare_labels(self):
                 pass
 
-        glob_conf.config["DATA"]["target"] = "none"
-        glob_conf.target = None
+        monkeypatch.setitem(glob_conf.config["DATA"], "target", "none")
+        monkeypatch.setattr(glob_conf, "target", None)
 
         ds_a = FakeDataset("a", ["/a/tr_1.wav", "/a/tr_2.wav"], ["/a/te_1.wav"])
         ds_b = FakeDataset("b", ["/b/tr_1.wav"], ["/b/te_1.wav", "/b/te_2.wav"])
@@ -336,9 +338,9 @@ class TestFillTrainAndTestsConcatenation:
 
         df_train, df_test = ds.fill_train_and_tests()
         assert len(df_train) == 3  # 2 from a + 1 from b
-        assert len(df_test) == 3   # 1 from a + 2 from b
+        assert len(df_test) == 3  # 1 from a + 2 from b
 
-    def test_flag_aggregation_any_wins_on_self_and_splits(self, tmp_path):
+    def test_flag_aggregation_any_wins_on_self_and_splits(self, tmp_path, monkeypatch):
         """Flags should be any-wins aggregated onto self and every split DataFrame."""
 
         class FakeDataset:
@@ -357,8 +359,8 @@ class TestFillTrainAndTestsConcatenation:
             def prepare_labels(self):
                 pass
 
-        glob_conf.config["DATA"]["target"] = "none"
-        glob_conf.target = None
+        monkeypatch.setitem(glob_conf.config["DATA"], "target", "none")
+        monkeypatch.setattr(glob_conf, "target", None)
 
         # ds_a has every flag False, ds_b has every flag True: any-wins means
         # the aggregated result must be True on self and every split.
@@ -397,7 +399,7 @@ class TestFillTrainAndTestsConcatenation:
 
 
 class TestFillTrainAndTestsEarlyReturn:
-    def test_unsupervised_returns_splits_without_labels(self, tmp_path):
+    def test_unsupervised_returns_splits_without_labels(self, tmp_path, monkeypatch):
         """fill_train_and_tests returns (df_train, df_test) even when target is None."""
 
         class FakeDataset:
@@ -412,8 +414,8 @@ class TestFillTrainAndTestsEarlyReturn:
             df_test = pd.DataFrame()
             name = "fake"
 
-        glob_conf.config["DATA"]["target"] = "none"
-        glob_conf.target = None
+        monkeypatch.setitem(glob_conf.config["DATA"], "target", "none")
+        monkeypatch.setattr(glob_conf, "target", None)
 
         fake_ds = FakeDataset()
         ds = Datasplitter.__new__(Datasplitter)
