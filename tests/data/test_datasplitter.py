@@ -288,6 +288,20 @@ class TestLabelEncoderUnseenLabels:
         assert "angry" in errors[0]
         assert "not seen in training" in errors[0]
 
+    def test_unseen_test_labels_with_nan_does_not_crash(self):
+        """A partially-labeled test split (containing NaN) must not raise TypeError."""
+        fake_ds = self._FakeDataset(
+            train_labels=["happy", "sad"],
+            test_labels=["angry", float("nan")],
+        )
+        ds, errors = self._make_ds({"db": fake_ds})
+
+        ds.fill_train_and_tests()
+
+        assert len(errors) == 1
+        assert "angry" in errors[0]
+        assert "nan" not in errors[0]
+
 
 class TestFillTrainAndTestsConcatenation:
     def test_multiple_datasets_concatenated_correctly(self, tmp_path):
@@ -323,6 +337,63 @@ class TestFillTrainAndTestsConcatenation:
         df_train, df_test = ds.fill_train_and_tests()
         assert len(df_train) == 3  # 2 from a + 1 from b
         assert len(df_test) == 3   # 1 from a + 2 from b
+
+    def test_flag_aggregation_any_wins_on_self_and_splits(self, tmp_path):
+        """Flags should be any-wins aggregated onto self and every split DataFrame."""
+
+        class FakeDataset:
+            def __init__(self, name, train_files, test_files, **flags):
+                self.name = name
+                idx_tr = _make_segmented_index(train_files)
+                idx_te = _make_segmented_index(test_files)
+                self.df_train = _tag_df(pd.DataFrame(index=idx_tr))
+                self.df_test = _tag_df(pd.DataFrame(index=idx_te))
+                for flag, value in flags.items():
+                    setattr(self, flag, value)
+
+            def split(self):
+                pass  # already split in __init__
+
+            def prepare_labels(self):
+                pass
+
+        glob_conf.config["DATA"]["target"] = "none"
+        glob_conf.target = None
+
+        # ds_a has every flag False, ds_b has every flag True: any-wins means
+        # the aggregated result must be True on self and every split.
+        ds_a = FakeDataset(
+            "a",
+            ["/a/tr_1.wav"],
+            ["/a/te_1.wav"],
+            is_labeled=False,
+            got_gender=False,
+            got_age=False,
+            got_speaker=False,
+        )
+        ds_b = FakeDataset(
+            "b",
+            ["/b/tr_1.wav"],
+            ["/b/te_1.wav"],
+            is_labeled=True,
+            got_gender=True,
+            got_age=True,
+            got_speaker=True,
+        )
+
+        ds = Datasplitter.__new__(Datasplitter)
+        ds.util = _make_fake_util(tmp_path)
+        ds.target = None
+        ds.split3 = False
+        ds.got_speaker = False
+        ds.datasets = {"a": ds_a, "b": ds_b}
+
+        df_train, df_test = ds.fill_train_and_tests()
+
+        for flag in ("is_labeled", "got_gender", "got_age", "got_speaker"):
+            assert getattr(ds, flag) is True
+            assert getattr(df_train, flag) is True
+            assert getattr(df_test, flag) is True
 
 
 class TestFillTrainAndTestsEarlyReturn:

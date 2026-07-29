@@ -50,7 +50,9 @@ class Datasplitter:
         try:
             df[self.target] = self.label_encoder.transform(df[self.target])
         except ValueError:
-            split_labels = set(df[self.target].unique())
+            # Drop NaNs: missing labels aren't real classes and would break
+            # sorted() below when mixed with string class labels.
+            split_labels = set(df[self.target].dropna().unique())
             train_labels = set(self.label_encoder.classes_)
             unseen = sorted(split_labels - train_labels)
             self.util.error(
