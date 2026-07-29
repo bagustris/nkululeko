@@ -3,8 +3,8 @@
 import ast
 
 from nkululeko import glob_conf
-from nkululeko.utils.util import Util
 from nkululeko.balance import DataBalancer
+from nkululeko.utils.util import Util
 
 # Fallback type-based heuristics used when a model instance is not yet available
 # or when the model does not declare explicit is_classifier / is_regressor flags.
@@ -13,14 +13,10 @@ CLASSIFIER_TYPES = frozenset(
     {"svm", "xgb", "bayes", "gmm", "knn", "tree", "cnn", "mlp", "adm"}
 )
 # Model types that only support regression
-REGRESSOR_TYPES = frozenset(
-    {"svr", "xgr", "knn_reg", "lin_reg", "tree_reg", "mlp_reg"}
-)
+REGRESSOR_TYPES = frozenset({"svr", "xgr", "knn_reg", "lin_reg", "tree_reg", "mlp_reg"})
 
 
-def validate_model_task_support(
-    model_type: str, task: str, model=None
-) -> None:
+def validate_model_task_support(model_type: str, task: str, model=None) -> None:
     """Ensure model_type is compatible with the requested task.
 
     When a model instance is provided its own capability flags
@@ -51,8 +47,7 @@ def validate_model_task_support(
     # Fall back to type-set heuristics for models without capability flags
     if task == "regression" and model_type in CLASSIFIER_TYPES:
         util.error(
-            f"Model '{model_type}' is a classifier but experiment type is"
-            " regression"
+            f"Model '{model_type}' is a classifier but experiment type is" " regression"
         )
     if task == "classification" and model_type in REGRESSOR_TYPES:
         util.error(
@@ -343,6 +338,10 @@ class Modelrunner:
             )
         else:
             self.util.error(f"unknown model type: '{model_type}'")
+        # Re-validate using the instantiated model's own capability flags so
+        # that models declaring is_classifier/is_regressor are honored even
+        # when their model_type is absent from the legacy type allow-lists.
+        validate_model_task_support(model_type, task, model=self.model)
         return self.model
 
     def _check_feature_balancing(self):

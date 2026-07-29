@@ -18,8 +18,6 @@ function Help {
     echo "  nkululeko: test basic nkululeko"
     echo "  augment: test augmentation"
     echo "  predict: test the unified predict module with autopredict targets / feature extractors"
-    echo "  demo: test predict --type model on classification configs (replaces the old nkululeko.demo)"
-    echo "  testing: test predict --type model on saved-test-set configs (replaces the old nkululeko.testing)"
     echo "  multidb: test multidb"
     echo "  explore: test explore module (must be run last)"
     echo "  all: test all modules"
@@ -110,21 +108,6 @@ predict_ini_files=(
     praat
     opensmile
 )
-# test demo
-demo_ini_files=(
-    exp_emodb_os_xgb.ini
-    exp_emodb_os_svm.ini
-    exp_emodb_os_knn.ini
-    exp_emodb_os_mlp.ini
-    exp_agedb_os_xgr.ini
-    exp_agedb_os_mlp.ini
-)
-
-# test test module
-test_ini_files=(
-    exp_emodb_os_xgb_test.ini
-    exp_emodb_wav2vec2_test.ini
-)
 
 # test multidb
 multidb_ini_files=(
@@ -154,9 +137,9 @@ start_time=$(date +%s)
 
 # Loop over the module or all modules if -all arg is given
 if [ "$1" == "all" ]; then
-    modules=(nkululeko augment predict demo testing multidb explore)
+    modules=(nkululeko augment predict multidb explore)
 elif [ "$1" == "-spotlight" ]; then
-    modules=(resample nkululeko augment predict demo testing multidb explore)
+    modules=(resample nkululeko augment predict multidb explore)
     # unset last two ini files to exclude spotlight and shap
     unset explore_ini_files[-1]  # Exclude INI file for spotlight 
     unset explore_ini_files[-1]  # and shap
@@ -179,20 +162,10 @@ do
 
     for ini_file in "${!ini_files}"
     do
-        # demo and testing both run the new predict module in model mode
-        # against a small list of audio samples.
-        if [ "$module" == "demo" ] || [ "$module" == "testing" ]; then
-            outfile="/tmp/${module}_${ini_file%.ini}_pred.csv"
-            RunTest python3 -m nkululeko.predict \
-                --type model \
-                --config "$example_dir/$ini_file" \
-                --list "data/test/samples.csv" \
-                --outfile "$outfile"
-
         # The new predict module is driven directly via CLI args, not by a
         # [PREDICT] section. Each entry in predict_ini_files is a model
         # name (autopredict target or feature-extractor name).
-        elif [ "$module" == "predict" ]; then
+        if [ "$module" == "predict" ]; then
             outfile="/tmp/predict_${ini_file}.csv"
             RunTest python3 -m nkululeko.predict \
                 --list "data/test/samples.csv" \

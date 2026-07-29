@@ -1,6 +1,51 @@
 Changelog
 =========
 
+Version 1.7.12 (26-07-08)
+-------------------------
+* fixed security issues with pickle
+
+Version 1.7.11 (26-07-06)
+-------------------------
+* minor bugfixes
+
+Version 1.7.10 (26-06-18)
+-------------------------
+* fix: scatterplots
+
+Version 1.7.9 (26-06-17)
+------------------------
+* fix: replace unsafe eval() with getattr(), config_val_bool(), and ast.literal_eval()
+
+Version 1.7.8 (26-06-16)
+------------------------
+* added automated binning
+
+Version 1.7.7 (26-06-09)
+------------------------
+* new features for SPTK: lfcc and cqcc
+* configurable audMLD feature sets
+* handle multiple name-target combinations in the flags module
+* handle also explore module with flags, beneath nkululeko
+* store statistical results as text
+
+Version 1.7.6 (26-06-03)
+------------------------
+* ease the transfer of projects by aligning file_paths
+
+Version 1.7.5 (26-06-02)
+------------------------
+* fixed bug in barplots for EXPL.feature distribution
+
+Version 1.7.4 (26-06-02)
+------------------------
+* added different plots for EXPL.feature distribution
+
+Version 1.7.3 (26-05-28)
+------------------------
+* added caching for audmodel
+* add layer selection for audmodel
+
 Version 1.7.2 (26-05-28)
 ------------------------
 * fixed database.colnames bug

@@ -19,8 +19,8 @@ class ImportSet(Featureset):
         """Import the features."""
         self.util.debug(f"importing features for {self.name}")
         # import_files_append: set this to True if the multiple tables should be combined row-wise, else they are combined column-wise
-        import_files_append = eval(
-            self.util.config_val("FEATS", "import_files_append", "True")
+        import_files_append = self.util.config_val_bool(
+            "FEATS", "import_files_append", True
         )
         try:
             feat_import_files = self.util.config_val("FEATS", "import_file", False)
@@ -40,11 +40,7 @@ class ImportSet(Featureset):
             if not os.path.isfile(feat_import_file):
                 self.util.error(f"no import file: {feat_import_file}")
             df = audformat.utils.read_csv(feat_import_file)
-            if df.isnull().values.any():
-                self.util.warn(
-                    f"imported features contain {df.isna().sum()} NAN, filling with zero."
-                )
-                df = df.fillna(0)
+            df = self.util.handle_nan(df, context="imported features")
             df = self.util.make_segmented_index(df)
             df = df[df.index.isin(self.data_df.index)]
             if import_files_append:
