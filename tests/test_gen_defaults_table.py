@@ -51,6 +51,17 @@ class TestConfigValVisitor:
         assert rows[0]["default"] == "cuda"
         assert rows[0]["default_is_literal"] is False
 
+    def test_non_literal_section_and_key_rendered_as_placeholders(self, gdt):
+        rows = _rows_from_source(
+            gdt, "self.util.config_val(section_name, key_name, '8')\n"
+        )
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["namespace"] == "<section_name>"
+        assert row["key"] == "<key_name>"
+        assert row["default"] == "'8'"
+        assert row["default_is_literal"] is True
+
     def test_config_val_data_maps_to_data_namespace(self, gdt):
         rows = _rows_from_source(
             gdt, "self.util.config_val_data(self.name, 'target_tables', False)\n"
@@ -121,17 +132,27 @@ class TestRenderDocument:
         doc = gdt.render_document([])
         assert "ini_file.md" in doc
 
-    def test_deterministic_for_same_input(self, gdt):
-        rows = [
-            {
-                "namespace": "'MODEL'",
-                "key": "'n_jobs'",
-                "default": "'8'",
-                "file": "nkululeko/models/model.py",
-                "line": 39,
-            }
-        ]
-        assert gdt.render_document(rows) == gdt.render_document(rows)
+    def test_deterministic_for_equal_but_distinct_input(self, gdt):
+        """Two content-equal (but distinct-object) row lists must render identically.
+
+        Guards against hidden nondeterminism (e.g. dict/set iteration order)
+        that could make --check flap between otherwise-identical CI runs.
+        """
+
+        def make_rows():
+            return [
+                {
+                    "namespace": "'MODEL'",
+                    "key": "'n_jobs'",
+                    "default": "'8'",
+                    "file": "nkululeko/models/model.py",
+                    "line": 39,
+                }
+            ]
+
+        first = gdt.render_document(make_rows())
+        second = gdt.render_document(make_rows())
+        assert first == second
 
 
 class TestScanRealCodebase:
