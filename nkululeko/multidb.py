@@ -40,6 +40,19 @@ def _no_reuse(config):
     return False
 
 
+def _reuse_train(config):
+    """True if EXP.reuse_train asks for the row-wise model-reuse mode
+    (see main()). Parsed as a truthy string, not eval()'d: config values
+    come straight from a user-edited ini file, and eval() both risks
+    executing arbitrary code and rejects the common lowercase spelling
+    ("true") with a NameError -- matching Util.config_val_bool's
+    convention instead, same as _no_reuse() above."""
+    if not config.has_section("EXP"):
+        return False
+    val = config["EXP"].get("reuse_train", "False")
+    return str(val).strip().lower() in ("true", "1", "yes")
+
+
 def _copy_cached_features(src_dir, dst_dir):
     """Copy whole-database feature cache files (``<db>_<feats_type>_all.*``,
     extracted once per database *before* any train/test split -- see
@@ -115,21 +128,28 @@ def main():
         # path nkululeko.py already supports (see its `has_tests` branch),
         # instead of retraining. Not combined with CROSSDB.train_extra --
         # the reuse path assumes a single training database per row.
-        try:
-            reuse_train = eval(config["EXP"]["reuse_train"])
-        except KeyError:
-            reuse_train = False
+        reuse_train = _reuse_train(config)
         if reuse_train and extra_trains:
             raise NkululukoError(
-                "EXP.reuse_train is not supported together with "
-                "CROSSDB.train_extra"
+                "EXP.reuse_train is not supported together with CROSSDB.train_extra"
+            )
+        if reuse_train and config.has_section("AUGMENT"):
+            # aug_train.doit() (dispatched below whenever a cell's config
+            # has an [AUGMENT] section) always augments and trains from
+            # scratch -- it has no DATA.tests fast path, so an off-diagonal
+            # cell here would silently retrain instead of reusing the
+            # diagonal model.
+            raise NkululukoError(
+                "EXP.reuse_train is not supported together with AUGMENT"
             )
 
         for i in range(dim):
             # In reuse mode, train the (i, i) diagonal cell first so its
             # saved model exists before any off-diagonal cell in the row
             # tries to load it.
-            col_order = [i] + [j for j in range(dim) if j != i] if reuse_train else range(dim)
+            col_order = (
+                [i] + [j for j in range(dim) if j != i] if reuse_train else range(dim)
+            )
             for j in col_order:
                 # initialize config
                 config = None
@@ -148,7 +168,15 @@ def main():
                         config["DATA"]["databases"] = f"['{dataset}']"
                     config["EXP"]["name"] = dataset
                     if reuse_train:
+                        # EXP.save controls the top-level experiment pickle
+                        # DATA.tests' fast path checks for; MODEL.save (also
+                        # True by default, but a base config could turn it
+                        # off) controls whether the actual per-epoch model
+                        # weights get written at all. Reuse needs both.
                         config["EXP"]["save"] = "True"
+                        if not config.has_section("MODEL"):
+                            config.add_section("MODEL")
+                        config["MODEL"]["save"] = "True"
                 elif reuse_train:
                     # Off-diagonal cell, reuse mode: same DATA.databases/
                     # EXP.name as this row's (i, i) cell, so get_save_name()
