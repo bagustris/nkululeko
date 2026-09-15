@@ -104,9 +104,33 @@ def main():
             extra_trains = config["CROSSDB"]["train_extra"]
         except KeyError:
             extra_trains = False
+        # EXP.reuse_train: opt-in mode (default off, so existing behavior/
+        # results are unchanged for anyone not setting this). The default
+        # loop below retrains a fresh model for every (i, j) cell, including
+        # the dim-1 cells per row that share the same training data (i is
+        # fixed, only the test db j varies) -- dim x more training than the
+        # science needs. When on, each row trains exactly once (i == i,
+        # with EXP.save forced True) and every other column in that row
+        # reuses that saved model via the DATA.tests load-and-eval-only
+        # path nkululeko.py already supports (see its `has_tests` branch),
+        # instead of retraining. Not combined with CROSSDB.train_extra --
+        # the reuse path assumes a single training database per row.
+        try:
+            reuse_train = eval(config["EXP"]["reuse_train"])
+        except KeyError:
+            reuse_train = False
+        if reuse_train and extra_trains:
+            raise NkululukoError(
+                "EXP.reuse_train is not supported together with "
+                "CROSSDB.train_extra"
+            )
 
         for i in range(dim):
-            for j in range(dim):
+            # In reuse mode, train the (i, i) diagonal cell first so its
+            # saved model exists before any off-diagonal cell in the row
+            # tries to load it.
+            col_order = [i] + [j for j in range(dim) if j != i] if reuse_train else range(dim)
+            for j in col_order:
                 # initialize config
                 config = None
                 config = configparser.ConfigParser()
@@ -123,6 +147,26 @@ def main():
                     else:
                         config["DATA"]["databases"] = f"['{dataset}']"
                     config["EXP"]["name"] = dataset
+                    if reuse_train:
+                        config["EXP"]["save"] = "True"
+                elif reuse_train:
+                    # Off-diagonal cell, reuse mode: same DATA.databases/
+                    # EXP.name as this row's (i, i) cell, so get_save_name()
+                    # / get_path("store") resolve to the model just trained
+                    # for dataset i -- DATA.tests triggers nkululeko.py's
+                    # load-saved-model-and-evaluate-only path instead of a
+                    # fresh training run.
+                    train = datasets[i]
+                    test = datasets[j]
+                    print(f"running train: {train}, test: {test} (reused model)")
+                    config["DATA"]["databases"] = f"['{train}']"
+                    config["DATA"]["tests"] = f"['{test}']"
+                    # Without this, Dataset.split() defaults test's own
+                    # split_strategy to speaker_split (~20% of it), not the
+                    # whole database -- same "test" value the non-reuse
+                    # branch below sets, needed here for the same reason.
+                    config["DATA"][f"{test}.split_strategy"] = "test"
+                    config["EXP"]["name"] = train
                 else:
                     train = datasets[i]
                     test = datasets[j]
@@ -150,6 +194,23 @@ def main():
                             config["DATA"][f"{test}.split_strategy"] = "test"
                             config["DATA"][f"{train}.split_strategy"] = "train"
                     config["EXP"]["name"] = f"{train}_vs_{test}"
+
+                if reuse_train and i != j and np.isnan(results[i, i]):
+                    # This row's (i, i) training cell already failed -- an
+                    # off-diagonal cell here would find no saved model and
+                    # silently fall through to nkululeko.py's normal training
+                    # path, which (with DATA.databases holding only the
+                    # train db) would train+test on dataset i again while
+                    # reporting it as train-i-vs-test-j. Skip explicitly
+                    # instead of recording a wrong number.
+                    print(
+                        f"ERROR: skipping train={datasets[i]}, test={datasets[j]} "
+                        f"-- {datasets[i]}'s row-training cell failed, no saved "
+                        "model to reuse"
+                    )
+                    results[i, j] = np.nan
+                    last_epochs[i, j] = np.nan
+                    continue
 
                 tmp_config = "tmp.ini"
                 with open(tmp_config, "w") as tmp_file:
