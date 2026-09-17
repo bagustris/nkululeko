@@ -76,6 +76,31 @@ class TestModelrunnerInit:
         assert mr.best_performance == 100000
 
 
+class TestTestSplitIsEmpty:
+    """Regression coverage: feats_test is None (not an empty DataFrame) for
+    any model bypassing FeatureExtractor via FEATS.type = [] (finetune,
+    aasist) -- len(None) used to raise TypeError instead of ever meaning
+    "no features for this model type"."""
+
+    def test_none_feats_falls_back_to_df_test_length(self):
+        df_test = pd.DataFrame({"emotion": [0, 1]})
+        assert Modelrunner._test_split_is_empty(df_test, None) is False
+
+    def test_none_feats_with_empty_df_test_is_empty(self):
+        df_test = pd.DataFrame({"emotion": []})
+        assert Modelrunner._test_split_is_empty(df_test, None) is True
+
+    def test_non_none_empty_feats_is_empty(self):
+        df_test = pd.DataFrame({"emotion": [0, 1]})
+        feats_test = pd.DataFrame()
+        assert Modelrunner._test_split_is_empty(df_test, feats_test) is True
+
+    def test_non_none_non_empty_feats_is_not_empty(self):
+        df_test = pd.DataFrame({"emotion": [0, 1]})
+        feats_test = pd.DataFrame({"f": [0.1, 0.2]})
+        assert Modelrunner._test_split_is_empty(df_test, feats_test) is False
+
+
 class TestSelectModel:
     def _make_mr(self, model_type, dummy_dfs):
         glob_conf.config["MODEL"]["type"] = model_type
@@ -258,7 +283,9 @@ class TestEmptyTestSetGuard:
                 pass
 
             def predict(self):
-                raise AssertionError("predict() must not be called for an empty test set")
+                raise AssertionError(
+                    "predict() must not be called for an empty test set"
+                )
 
         report = mr.eval_specific_model(
             FakeModel(), df_test.iloc[0:0], feats_test.iloc[0:0], split_name="test"
