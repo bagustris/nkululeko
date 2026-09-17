@@ -1,0 +1,110 @@
+"""Centralized [AASIST] config reads for AasistModel.
+
+Mirrors nkululeko/models/finetune_config.py's pattern: one dataclass, one
+from_util() classmethod, so every [AASIST] key is resolved in one place.
+MODEL.learning_rate / MODEL.optimizer / MODEL.weight_decay / MODEL.loss /
+MODEL.class_weight / MODEL.patience / EXP.epochs stay in their existing
+shared sections rather than [AASIST] -- they're read the same way ADM
+reads them, for direct comparability between the two model types.
+"""
+
+import dataclasses
+
+
+@dataclasses.dataclass
+class AasistConfig:
+    """Resolved [AASIST] settings, one field per config key."""
+
+    device: str
+    ssl_model: str
+    max_len: int
+    batch_size: int
+    rawboost_algo: int
+    rawboost_n_f: int
+    rawboost_n_bands: int
+    rawboost_min_f: int
+    rawboost_max_f: int
+    rawboost_min_bw: int
+    rawboost_max_bw: int
+    rawboost_min_coeff: int
+    rawboost_max_coeff: int
+    rawboost_min_g: int
+    rawboost_max_g: int
+    rawboost_min_bias_lin_nonlin: int
+    rawboost_max_bias_lin_nonlin: int
+    rawboost_p: int
+    rawboost_g_sd: int
+    rawboost_snr_min: int
+    rawboost_snr_max: int
+
+    @classmethod
+    def from_util(cls, util) -> "AasistConfig":
+        """Build from an experiment Util, resolving all [AASIST] keys.
+
+        `util` is a plain parameter (not `self.util`), matching
+        FinetuneConfig.from_util, so this stays a pure function - testable
+        without an AasistModel/experiment.
+        """
+        import torch
+
+        raw_device = util.config_val("AASIST", "device", False)
+        device = (
+            raw_device
+            if raw_device
+            else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
+
+        # ssl_model: the HuggingFace frontend checkpoint. xls-r-300m matches
+        # the upstream AASIST paper's frontend (via fairseq there); swapped
+        # to HuggingFace's Wav2Vec2Model here to avoid a fairseq dependency
+        # (see model_aasist_core.py's HFWav2Vec2Frontend docstring).
+        ssl_model = util.config_val(
+            "AASIST", "ssl_model", "facebook/wav2vec2-xls-r-300m"
+        )
+
+        # max_len: fixed waveform length in samples every clip is
+        # padded/truncated to. 64600 (~4.0375s at 16kHz) matches upstream's
+        # own default, tuned for ASVspoof-style short utterances.
+        max_len = int(util.config_val("AASIST", "max_len", "64600"))
+
+        batch_size = int(util.config_val("AASIST", "batch_size", "24"))
+
+        # rawboost_algo: 0 disables RawBoost entirely (the "bare AASIST"
+        # skeleton default); 1-8 select upstream's algorithm numbering (see
+        # aasist_rawboost.apply_rawboost's docstring).
+        rawboost_algo = int(util.config_val("AASIST", "rawboost_algo", "0"))
+
+        # RawBoost hyperparameters: defaults copied verbatim from upstream's
+        # main_SSL_LA.py argparse defaults (the published ASVspoof2021
+        # baseline configuration), not re-tuned here.
+        return cls(
+            device=device,
+            ssl_model=ssl_model,
+            max_len=max_len,
+            batch_size=batch_size,
+            rawboost_algo=rawboost_algo,
+            rawboost_n_f=int(util.config_val("AASIST", "rawboost_n_f", "5")),
+            rawboost_n_bands=int(util.config_val("AASIST", "rawboost_n_bands", "5")),
+            rawboost_min_f=int(util.config_val("AASIST", "rawboost_min_f", "20")),
+            rawboost_max_f=int(util.config_val("AASIST", "rawboost_max_f", "8000")),
+            rawboost_min_bw=int(util.config_val("AASIST", "rawboost_min_bw", "100")),
+            rawboost_max_bw=int(util.config_val("AASIST", "rawboost_max_bw", "1000")),
+            rawboost_min_coeff=int(
+                util.config_val("AASIST", "rawboost_min_coeff", "10")
+            ),
+            rawboost_max_coeff=int(
+                util.config_val("AASIST", "rawboost_max_coeff", "100")
+            ),
+            rawboost_min_g=int(util.config_val("AASIST", "rawboost_min_g", "0")),
+            rawboost_max_g=int(util.config_val("AASIST", "rawboost_max_g", "0")),
+            rawboost_min_bias_lin_nonlin=int(
+                util.config_val("AASIST", "rawboost_min_bias_lin_nonlin", "5")
+            ),
+            rawboost_max_bias_lin_nonlin=int(
+                util.config_val("AASIST", "rawboost_max_bias_lin_nonlin", "20")
+            ),
+            rawboost_p=int(util.config_val("AASIST", "rawboost_p", "10")),
+            rawboost_g_sd=int(util.config_val("AASIST", "rawboost_g_sd", "2")),
+            rawboost_snr_min=int(util.config_val("AASIST", "rawboost_snr_min", "10")),
+            rawboost_snr_max=int(util.config_val("AASIST", "rawboost_snr_max", "40")),
+        )

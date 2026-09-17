@@ -113,8 +113,8 @@ This is a contributor-facing cross-check, not user documentation - see [ini_file
 | 'FEATS' | 'aud.model' | `'./audmodel/'` | nkululeko/feat_extract/feats_auddim.py:27, nkululeko/feat_extract/feats_audwav2vec2.py:31 |
 | 'FEATS' | 'audmodel.embeddings_name' | `'hidden_states'` | nkululeko/feat_extract/feats_audmodel.py:39 |
 | 'FEATS' | 'audmodel.id' | `'audmodel'` / `False` | nkululeko/feat_extract/feats_audmodel.py:34, nkululeko/feat_extract/feats_audmodel.py:167 |
-| 'FEATS' | 'balancing' | `False` | nkululeko/modelrunner.py:409 |
-| 'FEATS' | 'balancing_random_state' | `42` | nkululeko/modelrunner.py:415 |
+| 'FEATS' | 'balancing' | `False` | nkululeko/modelrunner.py:415 |
+| 'FEATS' | 'balancing_random_state' | `42` | nkululeko/modelrunner.py:421 |
 | 'FEATS' | 'bert.layer' | `'0'` | nkululeko/feat_extract/feats_bert.py:39 |
 | 'FEATS' | 'bert.model' | `f'{self.feat_type}'` | nkululeko/feat_extract/feats_bert.py:31, nkululeko/feat_extract/feats_bert.py:79 |
 | 'FEATS' | 'bert.text_column' | `'text'` | nkululeko/feat_extract/feats_bert.py:57 |

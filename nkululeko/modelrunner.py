@@ -396,6 +396,12 @@ class Modelrunner(ContextAware):
             self.model = ADMModel(
                 self.df_train, self.df_test, self.feats_train, self.feats_test
             )
+        elif model_type == "aasist":
+            from nkululeko.models.model_aasist import AasistModel
+
+            self.model = AasistModel(
+                self.df_train, self.df_test, self.feats_train, self.feats_test
+            )
         else:
             self.util.error(f"unknown model type: '{model_type}'")
         # Re-validate using the instantiated model's own capability flags so
@@ -416,9 +422,7 @@ class Modelrunner(ContextAware):
             )
 
             # Initialize the data balancer with configurable random state
-            balancer = DataBalancer(
-                random_state=random_state, context=self.context
-            )
+            balancer = DataBalancer(random_state=random_state, context=self.context)
 
             # Apply balancing
             self.df_train, self.feats_train = balancer.balance_features(

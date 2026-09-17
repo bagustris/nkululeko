@@ -1,0 +1,80 @@
+"""Unit tests for AasistConfig (nkululeko/models/aasist_config.py)."""
+
+import configparser
+
+import pytest
+
+import nkululeko.glob_conf as glob_conf
+from nkululeko.models.aasist_config import AasistConfig
+from nkululeko.utils.util import Util
+
+
+def make_util(tmp_path, aasist_section=None):
+    config = configparser.ConfigParser()
+    config["EXP"] = {"type": "classification", "name": "testexp", "root": str(tmp_path)}
+    config["DATA"] = {"target": "label", "databases": "['itw']"}
+    config["MODEL"] = {"type": "aasist"}
+    config["AASIST"] = aasist_section or {}
+    config["FEATS"] = {"type": "[]"}
+    glob_conf.config = config
+    return Util("test")
+
+
+@pytest.fixture(autouse=True)
+def cleanup_glob_conf():
+    yield
+    glob_conf.config = None
+
+
+class TestDefaults:
+    def test_ssl_model_and_max_len_defaults(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.ssl_model == "facebook/wav2vec2-xls-r-300m"
+        assert cfg.max_len == 64600
+        assert cfg.batch_size == 24
+
+    def test_rawboost_disabled_by_default(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.rawboost_algo == 0
+
+    def test_rawboost_hyperparameter_defaults_match_upstream(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.rawboost_n_f == 5
+        assert cfg.rawboost_n_bands == 5
+        assert cfg.rawboost_min_f == 20
+        assert cfg.rawboost_max_f == 8000
+        assert cfg.rawboost_min_bw == 100
+        assert cfg.rawboost_max_bw == 1000
+        assert cfg.rawboost_min_coeff == 10
+        assert cfg.rawboost_max_coeff == 100
+        assert cfg.rawboost_min_g == 0
+        assert cfg.rawboost_max_g == 0
+        assert cfg.rawboost_min_bias_lin_nonlin == 5
+        assert cfg.rawboost_max_bias_lin_nonlin == 20
+        assert cfg.rawboost_p == 10
+        assert cfg.rawboost_g_sd == 2
+        assert cfg.rawboost_snr_min == 10
+        assert cfg.rawboost_snr_max == 40
+
+
+class TestOverrides:
+    def test_ssl_model_and_max_len_overridable(self, tmp_path):
+        util = make_util(
+            tmp_path, {"ssl_model": "facebook/wav2vec2-base", "max_len": "32000"}
+        )
+        cfg = AasistConfig.from_util(util)
+        assert cfg.ssl_model == "facebook/wav2vec2-base"
+        assert cfg.max_len == 32000
+
+    def test_rawboost_algo_overridable(self, tmp_path):
+        util = make_util(tmp_path, {"rawboost_algo": "4"})
+        cfg = AasistConfig.from_util(util)
+        assert cfg.rawboost_algo == 4
+
+    def test_device_override(self, tmp_path):
+        util = make_util(tmp_path, {"device": "cpu"})
+        cfg = AasistConfig.from_util(util)
+        assert cfg.device == "cpu"

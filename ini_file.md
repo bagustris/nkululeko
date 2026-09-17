@@ -18,6 +18,7 @@
     - [FEATS](#feats)
     - [MODEL](#model)
     - [FINETUNE](#finetune)
+    - [AASIST](#aasist)
     - [EXPL](#expl)
     - [PREDICT](#predict)
     - [EXPORT](#export)
@@ -584,6 +585,23 @@ Settings specific to `[MODEL] type = finetune` - finetuning a pretrained transfo
   * measure = ccc
   * possible values: ccc, pcc, mse, mae
   * default: ccc
+
+### AASIST
+
+Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph attention network, Jung et al., ICASSP 2022) with an SSL (wav2vec2/XLS-R) frontend, trained end-to-end on raw waveforms. Only read when `[MODEL] type = aasist`; every key below is optional and has a default. Requires `[FEATS] type = []` (no precomputed features - the model reads audio directly, the same way `[MODEL] type = finetune` does). `[MODEL] learning_rate`/`optimizer`/`weight_decay`/`loss`/`class_weight`/`patience`/`random_seed` are read from the shared `[MODEL]` section (matching `adm`), not from `[AASIST]`, for direct comparability between the two model types.
+
+* **ssl_model**: HuggingFace SSL frontend checkpoint
+  * ssl_model = facebook/wav2vec2-xls-r-300m
+* **max_len**: fixed waveform length in samples every clip is padded (by tiling) or truncated to
+  * max_len = 64600
+  * default: 64600 (~4.0375s at 16kHz), matching the upstream AASIST paper's own setting
+* **batch_size**: batch size (reduce if you hit out-of-memory errors)
+  * batch_size = 24
+* **rawboost_algo**: RawBoost waveform augmentation algorithm, applied to the training split only
+  * rawboost_algo = 4
+  * default: 0 (disabled)
+  * possible values: 0 none, 1 linear/non-linear convolutive noise, 2 impulsive signal-dependent noise, 3 stationary signal-independent noise, 4 series (1+2+3), 5 series (1+2), 6 series (1+3), 7 series (2+3), 8 parallel (1 and 2)
+  * the remaining `rawboost_*` keys (`rawboost_n_f`, `rawboost_n_bands`, `rawboost_min_f`/`max_f`, `rawboost_min_bw`/`max_bw`, `rawboost_min_coeff`/`max_coeff`, `rawboost_min_g`/`max_g`, `rawboost_min_bias_lin_nonlin`/`max_bias_lin_nonlin`, `rawboost_p`, `rawboost_g_sd`, `rawboost_snr_min`/`snr_max`) tune those algorithms; defaults match upstream's published ASVspoof2021 baseline configuration
 
 ### EXPL
 
