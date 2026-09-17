@@ -36,6 +36,7 @@ class AasistConfig:
     rawboost_g_sd: int
     rawboost_snr_min: int
     rawboost_snr_max: int
+    domain_balanced_sampling: bool
 
     @classmethod
     def from_util(cls, util) -> "AasistConfig":
@@ -74,6 +75,11 @@ class AasistConfig:
         # aasist_rawboost.apply_rawboost's docstring).
         rawboost_algo = int(util.config_val("AASIST", "rawboost_algo", "0"))
 
+        # domain_balanced_sampling: draw each training batch with equal
+        # representation from every source_db domain in the pool (see
+        # aasist_sampler.DomainBalancedBatchSampler), instead of plain
+        # shuffling -- default off, matching the bare-AASIST baseline.
+
         # RawBoost hyperparameters: defaults copied verbatim from upstream's
         # main_SSL_LA.py argparse defaults (the published ASVspoof2021
         # baseline configuration), not re-tuned here.
@@ -107,4 +113,7 @@ class AasistConfig:
             rawboost_g_sd=int(util.config_val("AASIST", "rawboost_g_sd", "2")),
             rawboost_snr_min=int(util.config_val("AASIST", "rawboost_snr_min", "10")),
             rawboost_snr_max=int(util.config_val("AASIST", "rawboost_snr_max", "40")),
+            domain_balanced_sampling=util.config_val_bool(
+                "AASIST", "domain_balanced_sampling", False
+            ),
         )

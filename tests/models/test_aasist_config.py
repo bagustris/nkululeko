@@ -59,6 +59,11 @@ class TestDefaults:
         assert cfg.rawboost_snr_min == 10
         assert cfg.rawboost_snr_max == 40
 
+    def test_domain_balanced_sampling_disabled_by_default(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.domain_balanced_sampling is False
+
 
 class TestOverrides:
     def test_ssl_model_and_max_len_overridable(self, tmp_path):
@@ -73,6 +78,11 @@ class TestOverrides:
         util = make_util(tmp_path, {"rawboost_algo": "4"})
         cfg = AasistConfig.from_util(util)
         assert cfg.rawboost_algo == 4
+
+    def test_domain_balanced_sampling_overridable(self, tmp_path):
+        util = make_util(tmp_path, {"domain_balanced_sampling": "True"})
+        cfg = AasistConfig.from_util(util)
+        assert cfg.domain_balanced_sampling is True
 
     def test_device_override(self, tmp_path):
         util = make_util(tmp_path, {"device": "cpu"})

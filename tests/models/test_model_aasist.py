@@ -50,6 +50,7 @@ def _default_cfg(**overrides):
         "rawboost_g_sd": 2,
         "rawboost_snr_min": 10,
         "rawboost_snr_max": 40,
+        "domain_balanced_sampling": False,
     }
     fields.update(overrides)
     return AasistConfig(**fields)
@@ -175,6 +176,49 @@ def aasist_model():
         model.criterion = nn.CrossEntropyLoss()
         model.context = type("Ctx", (), {"labels": ["real", "fake"]})()
         return model
+
+
+class TestGetLoaderDomainBalancedDispatch:
+    """get_loader() must only reach for DomainBalancedBatchSampler on the
+    training split (augment=True) when AASIST.domain_balanced_sampling is
+    on -- never for dev/test, and never when the flag is off."""
+
+    def _model_with_cfg(self, domain_balanced_sampling):
+        with patch.object(AasistModel, "__init__", return_value=None):
+            model = AasistModel(pd.DataFrame(), pd.DataFrame(), None, None)
+            model.cfg = _default_cfg(domain_balanced_sampling=domain_balanced_sampling)
+            model.target = "label"
+            return model
+
+    def _df_with_domains(self):
+        index = pd.MultiIndex.from_tuples(
+            [(f"/f{i}.wav", pd.Timedelta(0), pd.NaT) for i in range(8)],
+            names=["file", "start", "end"],
+        )
+        return pd.DataFrame(
+            {"label": [0, 1] * 4, "source_db": (["a", "b"] * 4)}, index=index
+        )
+
+    def test_uses_batch_sampler_for_train_when_enabled(self):
+        model = self._model_with_cfg(domain_balanced_sampling=True)
+        loader = model.get_loader(self._df_with_domains(), augment=True, shuffle=True)
+        from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+
+        assert isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+    def test_plain_loader_for_dev_test_even_when_enabled(self):
+        model = self._model_with_cfg(domain_balanced_sampling=True)
+        loader = model.get_loader(self._df_with_domains(), augment=False, shuffle=False)
+        from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+
+        assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+    def test_plain_loader_for_train_when_disabled(self):
+        model = self._model_with_cfg(domain_balanced_sampling=False)
+        loader = model.get_loader(self._df_with_domains(), augment=True, shuffle=True)
+        from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+
+        assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
 
 
 class TestEvaluateAndProbas:

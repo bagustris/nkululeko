@@ -602,6 +602,11 @@ Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph at
   * default: 0 (disabled)
   * possible values: 0 none, 1 linear/non-linear convolutive noise, 2 impulsive signal-dependent noise, 3 stationary signal-independent noise, 4 series (1+2+3), 5 series (1+2), 6 series (1+3), 7 series (2+3), 8 parallel (1 and 2)
   * the remaining `rawboost_*` keys (`rawboost_n_f`, `rawboost_n_bands`, `rawboost_min_f`/`max_f`, `rawboost_min_bw`/`max_bw`, `rawboost_min_coeff`/`max_coeff`, `rawboost_min_g`/`max_g`, `rawboost_min_bias_lin_nonlin`/`max_bias_lin_nonlin`, `rawboost_p`, `rawboost_g_sd`, `rawboost_snr_min`/`snr_max`) tune those algorithms; defaults match upstream's published ASVspoof2021 baseline configuration
+* **domain_balanced_sampling**: draw each training batch with equal representation from every `source_db` domain in the pooled training set, instead of plain shuffling
+  * domain_balanced_sampling = True
+  * default: False
+  * requires multiple pooled training databases (the `source_db` column `Datasplitter.fill_train_and_tests()` stamps onto every row when pooling); smaller domains are cycled (reshuffled and repeated) to match the largest domain's per-epoch length
+  * only applied to the training split; dev/test are unaffected
 
 ### EXPL
 

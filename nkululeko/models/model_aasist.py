@@ -17,6 +17,12 @@ to be directly comparable against.
 RawBoost augmentation (MODEL section: AASIST.rawboost_algo, 0 = off) is
 applied to the *train* split only, before pad/truncate, inside
 _WaveformDataset.__getitem__ -- see aasist_rawboost.py.
+
+Domain-balanced batch sampling (AASIST.domain_balanced_sampling, off by
+default) replaces plain shuffling on the train loader with
+DomainBalancedBatchSampler (aasist_sampler.py), which draws equal
+representation from every source_db domain in every batch -- see that
+module's docstring for why.
 """
 
 import numpy as np
@@ -28,6 +34,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from nkululeko.models.aasist_config import AasistConfig
 from nkululeko.models.aasist_rawboost import apply_rawboost
+from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
 from nkululeko.models.model import Model
 from nkululeko.models.model_aasist_core import AasistBackend
 from nkululeko.optimizers import (
@@ -160,6 +167,13 @@ class AasistModel(Model):
 
     def get_loader(self, df, augment, shuffle):
         dataset = _WaveformDataset(df, self.target, self.cfg, augment=augment)
+        # augment=True uniquely marks the training split (see __init__ and
+        # reset_test/set_testdata below) -- domain-balanced sampling only
+        # ever makes sense for training batches; dev/test come from a
+        # single held-out domain in this project's fold designs anyway.
+        if augment and self.cfg.domain_balanced_sampling:
+            sampler = DomainBalancedBatchSampler(df, self.cfg.batch_size)
+            return DataLoader(dataset, batch_sampler=sampler)
         return DataLoader(dataset, batch_size=self.cfg.batch_size, shuffle=shuffle)
 
     def set_testdata(self, data_df, feats_df):
