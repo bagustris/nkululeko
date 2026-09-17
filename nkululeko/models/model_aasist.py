@@ -167,14 +167,28 @@ class AasistModel(Model):
 
     def get_loader(self, df, augment, shuffle):
         dataset = _WaveformDataset(df, self.target, self.cfg, augment=augment)
+        # Each __getitem__ does its own audiofile.read() (+ optional
+        # RawBoost, which is pure-numpy/scipy FIR filtering) -- CPU-bound
+        # work that a single-process loader (num_workers=0) serializes
+        # with GPU compute. MODEL.n_jobs (already read by the base Model
+        # class into self.n_jobs) parallelizes it the same way ADM's
+        # get_loader could but doesn't need to (ADM's TensorDataset has no
+        # per-item work). persistent_workers avoids respawning the worker
+        # pool every epoch when num_workers > 0.
+        loader_kwargs = {}
+        if self.n_jobs > 0:
+            loader_kwargs["num_workers"] = self.n_jobs
+            loader_kwargs["persistent_workers"] = True
         # augment=True uniquely marks the training split (see __init__ and
         # reset_test/set_testdata below) -- domain-balanced sampling only
         # ever makes sense for training batches; dev/test come from a
         # single held-out domain in this project's fold designs anyway.
         if augment and self.cfg.domain_balanced_sampling:
             sampler = DomainBalancedBatchSampler(df, self.cfg.batch_size)
-            return DataLoader(dataset, batch_sampler=sampler)
-        return DataLoader(dataset, batch_size=self.cfg.batch_size, shuffle=shuffle)
+            return DataLoader(dataset, batch_sampler=sampler, **loader_kwargs)
+        return DataLoader(
+            dataset, batch_size=self.cfg.batch_size, shuffle=shuffle, **loader_kwargs
+        )
 
     def set_testdata(self, data_df, feats_df):
         self.df_test, self.feats_test = data_df, feats_df

@@ -78,10 +78,19 @@ def lnl_convolutive_noise(
     max_bias_lin_nonlin,
     fs,
 ):
-    """Linear and non-linear convolutive noise (RawBoost algo 1)."""
+    """Linear and non-linear convolutive noise (RawBoost algo 1).
+
+    g_lo/g_hi are updated (not reset) at i==1 and then stay updated for
+    every later harmonic -- matching upstream's in-place mutation of
+    minG/maxG (RawBoost.py's LnL_convolutive_noise), which our first port
+    got wrong by resetting g_lo/g_hi from min_g/max_g at the top of every
+    iteration, silently dropping the bias for i>=2. Measured impact was
+    small (both versions land around 7-8 dB mean SNR on real audio), but
+    this keeps the port faithful to the published algorithm.
+    """
     y = [0] * x.shape[0]
+    g_lo, g_hi = min_g, max_g
     for i in range(n_f):
-        g_lo, g_hi = min_g, max_g
         if i == 1:
             g_lo = min_g - min_bias_lin_nonlin
             g_hi = max_g - max_bias_lin_nonlin

@@ -597,6 +597,7 @@ Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph at
   * default: 64600 (~4.0375s at 16kHz), matching the upstream AASIST paper's own setting
 * **batch_size**: batch size (reduce if you hit out-of-memory errors)
   * batch_size = 24
+  * `[MODEL] n_jobs` (shared, default 8) sets the DataLoader's `num_workers`, parallelizing each sample's audio read (+ optional RawBoost, itself CPU-bound numpy/scipy FIR filtering) against GPU compute -- set `n_jobs = 0` to fall back to a single-process loader
 * **rawboost_algo**: RawBoost waveform augmentation algorithm, applied to the training split only
   * rawboost_algo = 4
   * default: 0 (disabled)

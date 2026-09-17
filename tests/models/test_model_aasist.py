@@ -183,11 +183,12 @@ class TestGetLoaderDomainBalancedDispatch:
     training split (augment=True) when AASIST.domain_balanced_sampling is
     on -- never for dev/test, and never when the flag is off."""
 
-    def _model_with_cfg(self, domain_balanced_sampling):
+    def _model_with_cfg(self, domain_balanced_sampling, n_jobs=0):
         with patch.object(AasistModel, "__init__", return_value=None):
             model = AasistModel(pd.DataFrame(), pd.DataFrame(), None, None)
             model.cfg = _default_cfg(domain_balanced_sampling=domain_balanced_sampling)
             model.target = "label"
+            model.n_jobs = n_jobs
             return model
 
     def _df_with_domains(self):
@@ -219,6 +220,62 @@ class TestGetLoaderDomainBalancedDispatch:
         from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
 
         assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+
+class TestGetLoaderNumWorkers:
+    """get_loader() must parallelize _WaveformDataset's per-item audio I/O
+    (+ optional RawBoost) via MODEL.n_jobs -- a single-process loader
+    (num_workers=0) serializes that CPU-bound work with GPU compute,
+    which is why AASIST + RawBoost ran ~3x slower per epoch than bare
+    AASIST. self.n_jobs is set by the base Model class from MODEL.n_jobs
+    (default 8); 0 means "no extra workers", matching DataLoader's own
+    default and this project's other CPU-light models (e.g. ADM's
+    TensorDataset-backed loader, which has no per-item work to
+    parallelize).
+    """
+
+    def _model_with_cfg(self, n_jobs):
+        with patch.object(AasistModel, "__init__", return_value=None):
+            model = AasistModel(pd.DataFrame(), pd.DataFrame(), None, None)
+            model.cfg = _default_cfg()
+            model.target = "label"
+            model.n_jobs = n_jobs
+            return model
+
+    def _df(self):
+        index = pd.MultiIndex.from_tuples(
+            [(f"/f{i}.wav", pd.Timedelta(0), pd.NaT) for i in range(4)],
+            names=["file", "start", "end"],
+        )
+        return pd.DataFrame({"label": [0, 1, 0, 1]}, index=index)
+
+    def test_positive_n_jobs_sets_num_workers(self):
+        model = self._model_with_cfg(n_jobs=4)
+        loader = model.get_loader(self._df(), augment=False, shuffle=False)
+        assert loader.num_workers == 4
+        assert loader.persistent_workers is True
+
+    def test_zero_n_jobs_keeps_single_process_loader(self):
+        model = self._model_with_cfg(n_jobs=0)
+        loader = model.get_loader(self._df(), augment=False, shuffle=False)
+        assert loader.num_workers == 0
+
+    def test_num_workers_applied_to_domain_balanced_loader_too(self):
+        with patch.object(AasistModel, "__init__", return_value=None):
+            model = AasistModel(pd.DataFrame(), pd.DataFrame(), None, None)
+            model.cfg = _default_cfg(domain_balanced_sampling=True)
+            model.target = "label"
+            model.n_jobs = 2
+
+        index = pd.MultiIndex.from_tuples(
+            [(f"/f{i}.wav", pd.Timedelta(0), pd.NaT) for i in range(8)],
+            names=["file", "start", "end"],
+        )
+        df = pd.DataFrame(
+            {"label": [0, 1] * 4, "source_db": (["a", "b"] * 4)}, index=index
+        )
+        loader = model.get_loader(df, augment=True, shuffle=True)
+        assert loader.num_workers == 2
 
 
 class TestEvaluateAndProbas:

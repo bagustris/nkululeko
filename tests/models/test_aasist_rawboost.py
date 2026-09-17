@@ -77,3 +77,43 @@ class TestIsdAdditiveNoise:
         out = rb.isd_additive_noise(signal, p=10, g_sd=2)
         assert out.shape == signal.shape
         assert np.all(np.isfinite(out))
+
+
+class TestLnLConvolutiveNoiseGainBiasPersistence:
+    """Regression test: the i==1 gain bias must persist for every later
+    harmonic (i>=2), matching upstream's in-place minG/maxG mutation --
+    not reset back to the unbiased min_g/max_g each iteration, which our
+    first port did by mistake."""
+
+    def test_bias_carries_forward_past_i_equals_one(self, signal, monkeypatch):
+        seen_gains = []
+
+        def fake_gen_notch_coeffs(
+            n_bands, min_f, max_f, min_bw, max_bw, min_coeff, max_coeff, g_lo, g_hi, fs
+        ):
+            seen_gains.append((g_lo, g_hi))
+            return np.array([1.0])  # trivial FIR: passes signal through unchanged
+
+        monkeypatch.setattr(rb, "_gen_notch_coeffs", fake_gen_notch_coeffs)
+
+        rb.lnl_convolutive_noise(
+            signal,
+            n_f=4,
+            n_bands=5,
+            min_f=20,
+            max_f=8000,
+            min_bw=100,
+            max_bw=1000,
+            min_coeff=10,
+            max_coeff=100,
+            min_g=0,
+            max_g=0,
+            min_bias_lin_nonlin=5,
+            max_bias_lin_nonlin=20,
+            fs=16000,
+        )
+
+        assert seen_gains[0] == (0, 0)  # i=0: unbiased
+        assert seen_gains[1] == (-5, -20)  # i=1: bias first applied
+        assert seen_gains[2] == (-5, -20)  # i=2: bias must persist
+        assert seen_gains[3] == (-5, -20)  # i=3: bias must persist
