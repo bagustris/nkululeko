@@ -441,7 +441,7 @@ Model and training specifications. In general, default values should work for cl
 * **sam**: wrap the chosen optimizer in Sharpness-Aware Minimization (Foret et al., ICLR 2021) -- seeks flat loss-landscape regions instead of merely low loss, reported to substantially improve cross-domain generalization for audio deepfake detection specifically (Huang et al., Interspeech 2025; Shim et al. 2023)
   * sam = True
   * default: False
-  * model-agnostic (`nkululeko/optimizers/sam.py`): any neural model whose `train()` loop reads its optimizer from `get_optimizer()` and branches on `is_sam_optimizer()` can use this -- currently wired into `type = aasist` and `type = adm`
+  * model-agnostic (`nkululeko/optimizers/sam.py`): any neural model whose `train()` loop reads its optimizer from `get_optimizer()` and branches on `is_sam_optimizer()` can use this -- currently wired into `type = aasist`, `type = adm`, and `type = mlp`
   * SAM needs two forward/backward passes per training step (an ascent step to find the worst-case point in a neighborhood of the current weights, then a descent step using the gradient computed there), so it is roughly 2x slower per step than the wrapped base optimizer alone
   * related parameter:
     * **sam_rho**: SAM's neighborhood size (default: 0.05, matching the paper)
@@ -470,7 +470,7 @@ Model and training specifications. In general, default values should work for cl
   * default: False
   * requires multiple pooled training databases (the `source_db` column `Datasplitter.fill_train_and_tests()` stamps onto every row when pooling); smaller domains are cycled (reshuffled and repeated) to match the largest domain's per-epoch length
   * only applied to the training split; dev/test are unaffected
-  * model-agnostic (`nkululeko/data/domain_sampler.py`): currently wired into `type = aasist` and `type = adm`'s `get_loader()`, so the same key/class drives both
+  * model-agnostic (`nkululeko/data/domain_sampler.py`): currently wired into `type = aasist`, `type = adm`, and `type = mlp`'s `get_loader()`, so the same key/class drives all three
 * **loss**: loss function for neural networks
   * loss = cross
   * possible values:
