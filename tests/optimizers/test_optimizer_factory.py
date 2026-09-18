@@ -18,6 +18,11 @@ class MockUtil:
         """Mock config_val method."""
         return self.config.get(f"{section}.{key}", default)
 
+    def config_val_bool(self, section, key, default=False):
+        """Mock config_val_bool method, matching Util's real semantics."""
+        val = self.config_val(section, key, str(default))
+        return str(val).strip().lower() in ("true", "1", "yes")
+
     def debug(self, message):
         """Mock debug method."""
         self.debug_messages.append(message)

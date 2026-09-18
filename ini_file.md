@@ -438,6 +438,14 @@ Model and training specifications. In general, default values should work for cl
       * weight_decay = 0.01
     * **momentum**: momentum for SGD optimizer (default: 0.9)
       * momentum = 0.9
+* **sam**: wrap the chosen optimizer in Sharpness-Aware Minimization (Foret et al., ICLR 2021) -- seeks flat loss-landscape regions instead of merely low loss, reported to substantially improve cross-domain generalization for audio deepfake detection specifically (Huang et al., Interspeech 2025; Shim et al. 2023)
+  * sam = True
+  * default: False
+  * model-agnostic (`nkululeko/optimizers/sam.py`): any neural model whose `train()` loop reads its optimizer from `get_optimizer()` and branches on `is_sam_optimizer()` can use this -- currently wired into `type = aasist` and `type = adm`
+  * SAM needs two forward/backward passes per training step (an ascent step to find the worst-case point in a neighborhood of the current weights, then a descent step using the gradient computed there), so it is roughly 2x slower per step than the wrapped base optimizer alone
+  * related parameter:
+    * **sam_rho**: SAM's neighborhood size (default: 0.05, matching the paper)
+      * sam_rho = 0.05
 * **scheduler**: learning rate scheduler for neural networks (case insensitive)
   * scheduler = cosine
   * possible values:
