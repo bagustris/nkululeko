@@ -34,6 +34,12 @@ class TestDefaults:
         assert cfg.max_len == 64600
         assert cfg.batch_size == 24
 
+    def test_ssl_layer_pooling_and_freeze_defaults(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.ssl_layer_pooling == "last"
+        assert cfg.freeze_ssl_frontend is False
+
     def test_rawboost_disabled_by_default(self, tmp_path):
         util = make_util(tmp_path)
         cfg = AasistConfig.from_util(util)
@@ -73,6 +79,23 @@ class TestOverrides:
         cfg = AasistConfig.from_util(util)
         assert cfg.ssl_model == "facebook/wav2vec2-base"
         assert cfg.max_len == 32000
+
+    def test_ssl_layer_pooling_overridable(self, tmp_path):
+        util = make_util(tmp_path, {"ssl_layer_pooling": "weighted"})
+        cfg = AasistConfig.from_util(util)
+        assert cfg.ssl_layer_pooling == "weighted"
+
+    def test_freeze_ssl_frontend_overridable(self, tmp_path):
+        util = make_util(tmp_path, {"freeze_ssl_frontend": "True"})
+        cfg = AasistConfig.from_util(util)
+        assert cfg.freeze_ssl_frontend is True
+
+    def test_unknown_ssl_layer_pooling_raises(self, tmp_path):
+        from nkululeko.utils.errors import NkululukoError
+
+        util = make_util(tmp_path, {"ssl_layer_pooling": "bogus"})
+        with pytest.raises(NkululukoError, match="ssl_layer_pooling"):
+            AasistConfig.from_util(util)
 
     def test_rawboost_algo_overridable(self, tmp_path):
         util = make_util(tmp_path, {"rawboost_algo": "4"})

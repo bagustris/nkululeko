@@ -124,7 +124,11 @@ class AasistModel(Model):
             f"aasist: SSL frontend {self.cfg.ssl_model}, max_len={self.cfg.max_len}, "
             f"rawboost_algo={self.cfg.rawboost_algo}"
         )
-        self.net = AasistBackend(self.cfg.ssl_model).to(self.device)
+        self.net = AasistBackend(
+            self.cfg.ssl_model,
+            layer_pooling=self.cfg.ssl_layer_pooling,
+            freeze_ssl=self.cfg.freeze_ssl_frontend,
+        ).to(self.device)
 
         self._build_criterion(df_train)
 

@@ -35,16 +35,62 @@ class HFWav2Vec2Frontend(nn.Module):
     wav2vec2-base's large variants and XLS-R-300M), rather than hardcoded,
     so a different --ssl_model config value can't silently mismatch the
     backend's first linear layer.
+
+    layer_pooling: "last" (default -- only the final encoder layer's
+    hidden states, matching every earlier AASIST run this session) or
+    "weighted" -- a learnable, softmax-normalized scalar per hidden-state
+    layer (the CNN feature-extractor's output plus every transformer
+    layer, num_hidden_layers + 1 of them) combines all of them, the same
+    "weighted sum of hidden states" technique nkululeko's own
+    [FINETUNE] layer_pooling=weighted already offers for TunedModel.
+    Motivation (Pascu et al., Interspeech 2024; Beheshti et al. 2026):
+    artifact-discriminating signal in wav2vec2/XLS-R concentrates in
+    lower/middle layers, not necessarily the last one.
+
+    freeze: if True, the frontend's own parameters are excluded from
+    training (requires_grad_(False)) -- PyTorch's autograd then skips
+    building a backward graph through the frontend entirely (its output
+    has requires_grad=False whenever every parameter feeding it does),
+    not just skipping the weight update, which is the actual source of
+    the "3-5x faster" speedup layer-selection literature reports for a
+    frozen SSL frontend, not merely skipping optimizer.step() on it.
     """
 
-    def __init__(self, pretrained_model: str):
+    def __init__(
+        self, pretrained_model: str, layer_pooling: str = "last", freeze: bool = False
+    ):
         super().__init__()
         self.model = Wav2Vec2Model.from_pretrained(pretrained_model)
         self.out_dim = self.model.config.hidden_size
+        self.layer_pooling = layer_pooling
+        if freeze:
+            for p in self.model.parameters():
+                p.requires_grad_(False)
+        if layer_pooling == "weighted":
+            # LayerDrop (config.layerdrop, default 0.1 for XLS-R) randomly
+            # skips whole encoder layers during training and does not
+            # append a hidden_states entry for a skipped layer -- so
+            # len(hidden_states) varies call to call under the default
+            # config instead of staying fixed at num_hidden_layers + 1,
+            # breaking layer_weights' fixed-size combination (confirmed:
+            # 22-24 elements instead of the expected 25 across repeated
+            # forward calls in train mode). Disabled here, only for this
+            # pooling mode -- "last" pooling never reads hidden_states, so
+            # it's unaffected regardless of layerdrop.
+            self.model.config.layerdrop = 0.0
+            num_layers = self.model.config.num_hidden_layers + 1
+            self.layer_weights = nn.Parameter(torch.zeros(num_layers))
 
     def extract_feat(self, input_data: torch.Tensor) -> torch.Tensor:
         if input_data.ndim == 3:
             input_data = input_data[:, :, 0]
+        if self.layer_pooling == "weighted":
+            hidden_states = self.model(
+                input_data, output_hidden_states=True
+            ).hidden_states
+            stacked = torch.stack(hidden_states, dim=0)  # (L, B, T, H)
+            weights = F.softmax(self.layer_weights, dim=0).view(-1, 1, 1, 1)
+            return (stacked * weights).sum(dim=0)
         return self.model(input_data).last_hidden_state
 
 
@@ -270,9 +316,13 @@ class AasistBackend(nn.Module):
     class has no opinion on which class means "real" vs "fake").
     """
 
-    def __init__(self, ssl_model: str):
+    def __init__(
+        self, ssl_model: str, layer_pooling: str = "last", freeze_ssl: bool = False
+    ):
         super().__init__()
-        self.ssl_model = HFWav2Vec2Frontend(ssl_model)
+        self.ssl_model = HFWav2Vec2Frontend(
+            ssl_model, layer_pooling=layer_pooling, freeze=freeze_ssl
+        )
         self.ll = nn.Linear(self.ssl_model.out_dim, 128)
 
         self.first_bn = nn.BatchNorm2d(num_features=1)

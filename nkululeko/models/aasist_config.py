@@ -37,6 +37,8 @@ class AasistConfig:
     rawboost_snr_min: int
     rawboost_snr_max: int
     domain_balanced_sampling: bool
+    ssl_layer_pooling: str
+    freeze_ssl_frontend: bool
 
     @classmethod
     def from_util(cls, util) -> "AasistConfig":
@@ -80,6 +82,24 @@ class AasistConfig:
 
         batch_size = int(util.config_val("AASIST", "batch_size", "24"))
 
+        # ssl_layer_pooling: "last" (default, every earlier AASIST run
+        # this session used only the final encoder layer) or "weighted"
+        # (a learnable softmax-normalized combination of every hidden
+        # state layer -- see HFWav2Vec2Frontend's docstring).
+        ssl_layer_pooling = util.config_val("AASIST", "ssl_layer_pooling", "last")
+        if ssl_layer_pooling not in ("last", "weighted"):
+            util.error(
+                f"unknown AASIST.ssl_layer_pooling: {ssl_layer_pooling}; "
+                "expected 'last' or 'weighted'"
+            )
+
+        # freeze_ssl_frontend: skip training the SSL frontend's own
+        # parameters entirely (see HFWav2Vec2Frontend's docstring for why
+        # this is also a speed win, not just a regularization choice).
+        freeze_ssl_frontend = util.config_val_bool(
+            "AASIST", "freeze_ssl_frontend", False
+        )
+
         # rawboost_algo: 0 disables RawBoost entirely (the "bare AASIST"
         # skeleton default); 1-8 select upstream's algorithm numbering (see
         # aasist_rawboost.apply_rawboost's docstring).
@@ -98,6 +118,8 @@ class AasistConfig:
             ssl_model=ssl_model,
             max_len=max_len,
             batch_size=batch_size,
+            ssl_layer_pooling=ssl_layer_pooling,
+            freeze_ssl_frontend=freeze_ssl_frontend,
             rawboost_algo=rawboost_algo,
             rawboost_n_f=int(util.config_val("AASIST", "rawboost_n_f", "5")),
             rawboost_n_bands=int(util.config_val("AASIST", "rawboost_n_bands", "5")),

@@ -51,6 +51,8 @@ def _default_cfg(**overrides):
         "rawboost_snr_min": 10,
         "rawboost_snr_max": 40,
         "domain_balanced_sampling": False,
+        "ssl_layer_pooling": "last",
+        "freeze_ssl_frontend": False,
     }
     fields.update(overrides)
     return AasistConfig(**fields)

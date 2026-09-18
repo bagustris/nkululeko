@@ -598,6 +598,17 @@ Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph at
 * **batch_size**: batch size (reduce if you hit out-of-memory errors)
   * batch_size = 24
   * `[MODEL] n_jobs` (shared, default 8) sets the DataLoader's `num_workers`, parallelizing each sample's audio read (+ optional RawBoost, itself CPU-bound numpy/scipy FIR filtering) against GPU compute -- set `n_jobs = 0` to fall back to a single-process loader
+* **ssl_layer_pooling**: which SSL encoder layer(s) feed the AASIST backend
+  * ssl_layer_pooling = weighted
+  * default: last
+  * possible values:
+    * **last**: only the final encoder layer's hidden states (default, matches every AASIST run before this option existed)
+    * **weighted**: a learnable, softmax-normalized scalar per hidden-state layer (the CNN feature-extractor's output plus every transformer layer) combines all of them -- the same technique `[FINETUNE] layer_pooling=weighted` already offers for `type = finetune`. Motivation: artifact-discriminating signal in wav2vec2/XLS-R concentrates in lower/middle layers, not necessarily the last one (Pascu et al., Interspeech 2024; Beheshti et al. 2026)
+  * `weighted` disables the SSL model's own LayerDrop regularization internally (forces it to 0), since LayerDrop's random per-layer skipping during training makes the number of returned hidden-state layers vary call to call, which a fixed-size learned combination can't tolerate
+* **freeze_ssl_frontend**: skip training the SSL frontend's own parameters entirely
+  * freeze_ssl_frontend = True
+  * default: False
+  * PyTorch's autograd then builds no backward graph through the frontend at all (not just skipping its weight update), which is the actual source of the reported speedup for a frozen SSL frontend in the layer-selection literature above -- expect roughly 3-5x faster training, not a small constant-factor change
 * **rawboost_algo**: RawBoost waveform augmentation algorithm, applied to the training split only
   * rawboost_algo = 4
   * default: 0 (disabled)
