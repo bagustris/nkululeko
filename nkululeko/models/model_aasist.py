@@ -118,10 +118,8 @@ class AasistModel(Model):
                 f"{labels}) -- its output layer is a fixed binary (real/fake) head"
             )
 
-        cuda = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = self.util.config_val("MODEL", "device", cuda)
-
         self.cfg = AasistConfig.from_util(self.util)
+        self.device = self.cfg.device
         self.util.debug(
             f"aasist: SSL frontend {self.cfg.ssl_model}, max_len={self.cfg.max_len}, "
             f"rawboost_algo={self.cfg.rawboost_algo}"

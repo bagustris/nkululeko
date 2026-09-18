@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Version 1.11.0 (26-09-17)
+-------------------------
+* introducing LODO (leave-one-database-out) for multidb
+
+Version 1.10.6 (26-09-16)
+-------------------------
+* generalize PLOT.combine_per_speaker to any column via PLOT.combine_per_speaker.col
+  (e.g. session instead of speaker), defaulting to speaker for backward compatibility
+
 Version 1.10.5 (26-09-16)
 -------------------------
 * avoid redundant retraining via opt-in EXP.reuse_train

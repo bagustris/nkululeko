@@ -66,11 +66,11 @@ General experiment settings: paths, naming, run count, and output options.
   * use_splits = True
 * **reuse_train**: for the *multidb* module only. By default, multidb retrains a fresh model for every (train, test) pair in the matrix, even the ones that share the same training database. Set to True to train each database only once and reuse that saved model for every other database it's tested against, instead of retraining. Not compatible with `train_extra` or an `[AUGMENT]` section.
   * reuse_train = False
-* **lodo**: for the *multidb* module only. Leave-one-dataset-out mode: instead of the default N x N pairwise matrix, rotate which database in `databases` is held out as the fold's test set, training on every other database in the list pooled together. Produces one result per fold (in `results_lodo.txt` and a `lodo.png` bar chart), not a matrix. Not compatible with `reuse_train` or `train_extra`.
+* **lodo**: for the *multidb* module only. Leave-one-dataset-out mode: instead of the default N x N pairwise matrix, rotate which database in `databases` is held out as the fold's test set, training on every other database in the list pooled together. Produces one result per fold (in `results_lodo.txt` and a `lodo.png` bar chart), not a matrix. `databases` needs at least 2 entries. Not compatible with `reuse_train`, `train_extra`, or `use_splits`.
   * lodo = False
 * **lodo_dev**: optional, only used with `lodo = True`. Name of a database to exclude from the fold rotation and use as a fixed, genuine dev split (`split_strategy = dev`) in every fold, for real early-stopping instead of scoring epochs against the fold's own test set. Forces `traindevtest = True` when set. Must not also appear in `databases`.
   * lodo_dev = for2sec
-* **lodo_runs**: optional, only used with `lodo = True`. Number of times to repeat each fold, forcing `EXP.runs = 1` per repeat, then reporting each fold's mean +/- std across those repeats. Set this instead of `EXP.runs` for honest multi-seed averaging in LODO mode: with `EXP.runs > 1`, nkululeko returns only the single best-of-N-runs result per fold (picked by dev performance), not their mean, which would fold multiple random seeds into one slightly-oracle-ish number.
+* **lodo_runs**: optional, only used with `lodo = True`. Number of times to repeat each fold (must be an integer >= 1), forcing `EXP.runs = 1` per repeat, then reporting each fold's mean +/- std across those repeats. Set this instead of `EXP.runs` for honest multi-seed averaging in LODO mode: with `EXP.runs > 1`, nkululeko returns only the single best-of-N-runs result per fold (picked by dev performance), not their mean, which would fold multiple random seeds into one slightly-oracle-ish number. If `MODEL.random_seed` is set, every repeat would otherwise be bit-for-bit identical, so `lodo_runs` is forced back down to 1 (with a warning), the same guard `EXP.runs` gets.
   * lodo_runs = 1
 * **traindevtest**: set to true if you want to specify an extra dev set, that will be used for early stopping (patience) in neural net experiments.
   * traindevtest = False
@@ -588,7 +588,7 @@ Settings specific to `[MODEL] type = finetune` - finetuning a pretrained transfo
 
 ### AASIST
 
-Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph attention network, Jung et al., ICASSP 2022) with an SSL (wav2vec2/XLS-R) frontend, trained end-to-end on raw waveforms. Only read when `[MODEL] type = aasist`; every key below is optional and has a default. Requires `[FEATS] type = []` (no precomputed features - the model reads audio directly, the same way `[MODEL] type = finetune` does). `[MODEL] learning_rate`/`optimizer`/`weight_decay`/`loss`/`class_weight`/`patience`/`random_seed` are read from the shared `[MODEL]` section (matching `adm`), not from `[AASIST]`, for direct comparability between the two model types.
+Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph attention network, Jung et al., ICASSP 2022) with an SSL (wav2vec2/XLS-R) frontend, trained end-to-end on raw waveforms. Only read when `[MODEL] type = aasist`; every key below is optional and has a default. Requires `[FEATS] type = []` (no precomputed features - the model reads audio directly, the same way `[MODEL] type = finetune` does). `[MODEL] learning_rate`/`optimizer`/`weight_decay`/`loss`/`class_weight`/`patience`/`random_seed`/`device`/`n_jobs` are read from the shared `[MODEL]` section (matching `adm`), not from `[AASIST]`, for direct comparability between the two model types.
 
 * **ssl_model**: HuggingFace SSL frontend checkpoint
   * ssl_model = facebook/wav2vec2-xls-r-300m
@@ -699,8 +699,10 @@ Plot styling and output options for result figures.
   * epoch_progression = False
 * **best_model**: search for the best performing model and plot conf matrix (needs *MODEL.store* to be turned on)
   * best_model = False
-* **combine_per_speaker**: print an extra confusion plot where the predictions per speaker are combined, with either the `mode` or the `mean` function
+* **combine_per_speaker**: print an extra confusion plot where the predictions per speaker are combined, with either the `mode` or the `mean` function. Also writes a textual result entry (the combined-level score, not just the plot) to `<combine_per_speaker.col>_combined_<function>_<model_description>.txt` in the results folder.
   * combine_per_speaker = mode
+* **combine_per_speaker.col**: group by this column instead of *speaker* (e.g. *session*, or any other column loaded via `DATA.*db_name*.columns`). Defaults to *speaker*, so existing configs are unaffected.
+  * combine_per_speaker.col = session
 * **format**: format for plots, either *png* or *eps* (for scalable graphics)
   * format = png
 * **ccc**: show concordance correlation coefficient in plot headings

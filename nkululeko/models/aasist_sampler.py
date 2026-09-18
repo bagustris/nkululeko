@@ -32,8 +32,13 @@ class DomainBalancedBatchSampler(Sampler):
         if "source_db" not in df.columns:
             raise ValueError(
                 "DomainBalancedBatchSampler requires a source_db column "
-                f"(added by Datasplitter when pooling multiple databases); "
-                f"got columns: {list(df.columns)}"
+                "(added by Datasplitter when pooling multiple databases); "
+                f"got columns: {list(df.columns)}. If you just enabled "
+                "AASIST.domain_balanced_sampling on an experiment that has "
+                "run before, this split may be a cached selection from "
+                "before source_db existed (Datasplitter.fill_train_and_tests() "
+                "reuses the last split by default) -- set DATA.no_reuse=True "
+                "once to force a fresh split that includes it."
             )
         domains = sorted(df["source_db"].dropna().unique().tolist())
         if len(domains) < 2:

@@ -85,6 +85,9 @@ class TestOverrides:
         assert cfg.domain_balanced_sampling is True
 
     def test_device_override(self, tmp_path):
-        util = make_util(tmp_path, {"device": "cpu"})
+        # device reads from the shared [MODEL] section, not [AASIST] --
+        # see AasistConfig.from_util's docstring for why.
+        util = make_util(tmp_path)
+        glob_conf.config["MODEL"]["device"] = "cpu"
         cfg = AasistConfig.from_util(util)
         assert cfg.device == "cpu"

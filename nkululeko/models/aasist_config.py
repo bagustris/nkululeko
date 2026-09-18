@@ -45,10 +45,20 @@ class AasistConfig:
         `util` is a plain parameter (not `self.util`), matching
         FinetuneConfig.from_util, so this stays a pure function - testable
         without an AasistModel/experiment.
+
+        device reads from the shared [MODEL] section (not [AASIST]) --
+        matching every other shared MODEL.* key this class deliberately
+        does NOT duplicate (see module docstring). An earlier version of
+        this field independently resolved AASIST.device, which
+        AasistModel then silently never used (it built self.device from
+        MODEL.device before self.cfg existed) -- two mechanisms for the
+        same setting, only one of them live. Fixed by having this one
+        mechanism be the real one: AasistModel now sets self.device from
+        self.cfg.device directly.
         """
         import torch
 
-        raw_device = util.config_val("AASIST", "device", False)
+        raw_device = util.config_val("MODEL", "device", False)
         device = (
             raw_device
             if raw_device
