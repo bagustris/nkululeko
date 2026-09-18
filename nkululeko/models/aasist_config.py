@@ -39,6 +39,10 @@ class AasistConfig:
     domain_balanced_sampling: bool
     ssl_layer_pooling: str
     freeze_ssl_frontend: bool
+    dann_columns: list
+    dann_lambda: float
+    dann_weight: float
+    dann_reverse: bool
 
     @classmethod
     def from_util(cls, util) -> "AasistConfig":
@@ -151,4 +155,15 @@ class AasistConfig:
             domain_balanced_sampling=util.config_val_bool(
                 "MODEL", "domain_balanced_sampling", False
             ),
+            # dann_columns: nuisance-label columns to attach a
+            # DomainAdversarialHead to (see nkululeko.models.domain_adversarial),
+            # e.g. ['source_db'] for cross-dataset invariance or
+            # ['source_db', 'language'] for the two-axis design -- empty
+            # (default) means DANN is off entirely. Shared [MODEL] section:
+            # any model exposing a pooled feature vector could read the
+            # same keys, not just AasistModel.
+            dann_columns=util.config_val_list("MODEL", "dann_columns", []),
+            dann_lambda=float(util.config_val("MODEL", "dann_lambda", "1.0")),
+            dann_weight=float(util.config_val("MODEL", "dann_weight", "1.0")),
+            dann_reverse=util.config_val_bool("MODEL", "dann_reverse", True),
         )

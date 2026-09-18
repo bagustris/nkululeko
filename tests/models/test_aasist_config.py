@@ -117,3 +117,34 @@ class TestOverrides:
         glob_conf.config["MODEL"]["device"] = "cpu"
         cfg = AasistConfig.from_util(util)
         assert cfg.device == "cpu"
+
+    def test_dann_columns_default_empty(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.dann_columns == []
+
+    def test_dann_columns_overridable(self, tmp_path):
+        # dann_columns reads from the shared [MODEL] section, like
+        # domain_balanced_sampling/sam -- any model exposing a pooled
+        # feature vector could read the same key.
+        util = make_util(tmp_path)
+        glob_conf.config["MODEL"]["dann_columns"] = "['source_db', 'language']"
+        cfg = AasistConfig.from_util(util)
+        assert cfg.dann_columns == ["source_db", "language"]
+
+    def test_dann_lambda_weight_reverse_defaults(self, tmp_path):
+        util = make_util(tmp_path)
+        cfg = AasistConfig.from_util(util)
+        assert cfg.dann_lambda == pytest.approx(1.0)
+        assert cfg.dann_weight == pytest.approx(1.0)
+        assert cfg.dann_reverse is True
+
+    def test_dann_lambda_weight_reverse_overridable(self, tmp_path):
+        util = make_util(tmp_path)
+        glob_conf.config["MODEL"]["dann_lambda"] = "0.5"
+        glob_conf.config["MODEL"]["dann_weight"] = "0.3"
+        glob_conf.config["MODEL"]["dann_reverse"] = "False"
+        cfg = AasistConfig.from_util(util)
+        assert cfg.dann_lambda == pytest.approx(0.5)
+        assert cfg.dann_weight == pytest.approx(0.3)
+        assert cfg.dann_reverse is False

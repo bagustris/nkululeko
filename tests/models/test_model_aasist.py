@@ -54,6 +54,10 @@ def _default_cfg(**overrides):
         "domain_balanced_sampling": False,
         "ssl_layer_pooling": "last",
         "freeze_ssl_frontend": False,
+        "dann_columns": [],
+        "dann_lambda": 1.0,
+        "dann_weight": 1.0,
+        "dann_reverse": True,
     }
     fields.update(overrides)
     return AasistConfig(**fields)
@@ -151,15 +155,22 @@ class _TinyNet(nn.Module):
     """Stand-in for AasistBackend: maps a raw waveform straight to 2
     logits via mean-pooling + a linear layer, so evaluate()/get_probas()
     can be tested without the real SSL frontend or graph-attention stack
-    (covered separately by test_model_aasist_core.py)."""
+    (covered separately by test_model_aasist_core.py). Also supports
+    return_features=True (feat_dim=1, the pooled scalar itself) so
+    DANN's train()-loop wiring can be tested the same way."""
+
+    feat_dim = 1
 
     def __init__(self):
         super().__init__()
         self.fc = nn.Linear(1, 2)
 
-    def forward(self, x):
+    def forward(self, x, return_features=False):
         pooled = x.mean(dim=1, keepdim=True)
-        return self.fc(pooled)
+        logits = self.fc(pooled)
+        if return_features:
+            return logits, pooled
+        return logits
 
 
 @pytest.fixture
@@ -192,6 +203,7 @@ class TestGetLoaderDomainBalancedDispatch:
             model.cfg = _default_cfg(domain_balanced_sampling=domain_balanced_sampling)
             model.target = "label"
             model.n_jobs = n_jobs
+            model.dann_label_maps = {}
             return model
 
     def _df_with_domains(self):
@@ -243,6 +255,7 @@ class TestGetLoaderNumWorkers:
             model.cfg = _default_cfg()
             model.target = "label"
             model.n_jobs = n_jobs
+            model.dann_label_maps = {}
             return model
 
     def _df(self):
@@ -269,6 +282,7 @@ class TestGetLoaderNumWorkers:
             model.cfg = _default_cfg(domain_balanced_sampling=True)
             model.target = "label"
             model.n_jobs = 2
+            model.dann_label_maps = {}
 
         index = pd.MultiIndex.from_tuples(
             [(f"/f{i}.wav", pd.Timedelta(0), pd.NaT) for i in range(8)],
@@ -320,6 +334,8 @@ class TestTrainSamBranch:
             model.device = "cpu"
             model.net = _TinyNet()
             model.criterion = nn.CrossEntropyLoss()
+            model.cfg = _default_cfg()
+            model.dann_heads = None
             model.optimizer = optimizer_factory(model.net.parameters())
             model.scheduler = None
             model.scheduler_type = "none"
@@ -355,3 +371,173 @@ class TestTrainSamBranch:
         # step away from the starting weights, not a no-op and not left
         # sitting at the ascent-perturbed point.
         assert not torch.allclose(model.net.fc.weight, before)
+
+
+class TestWaveformDatasetDann:
+    """_WaveformDataset must emit the 3-tuple (waveform, label,
+    domain_labels) form only on the training split (augment=True) with
+    DANN enabled (cfg.dann_columns non-empty) -- dev/test and the
+    DANN-off default must stay byte-identical 2-tuples."""
+
+    def _df_with_domain(self, tmp_path, n=4):
+        paths = []
+        for i in range(n):
+            p = tmp_path / f"f{i}.wav"
+            _write_wav(p, seconds=0.5)
+            paths.append(str(p))
+        index = pd.MultiIndex.from_tuples(
+            [(p, pd.Timedelta(0), pd.NaT) for p in paths],
+            names=["file", "start", "end"],
+        )
+        return pd.DataFrame(
+            {"label": [0, 1] * (n // 2), "source_db": (["a", "b"] * (n // 2))},
+            index=index,
+        )
+
+    def test_two_tuple_when_dann_off(self, tmp_path):
+        cfg = _default_cfg(dann_columns=[])
+        df = self._df_with_domain(tmp_path)
+        ds = _WaveformDataset(df, "label", cfg, augment=True, dann_label_maps={})
+
+        item = ds[0]
+
+        assert len(item) == 2
+
+    def test_three_tuple_when_train_and_dann_on(self, tmp_path):
+        cfg = _default_cfg(dann_columns=["source_db"])
+        df = self._df_with_domain(tmp_path)
+        label_maps = {"source_db": {"a": 0, "b": 1}}
+        ds = _WaveformDataset(
+            df, "label", cfg, augment=True, dann_label_maps=label_maps
+        )
+
+        waveform, label, domain_labels = ds[0]
+
+        assert domain_labels.shape == (1,)
+        assert domain_labels.dtype == torch.long
+        assert domain_labels[0].item() == label_maps["source_db"][df["source_db"].iloc[0]]
+
+    def test_two_tuple_for_dev_test_even_when_dann_columns_set(self, tmp_path):
+        """augment=False (dev/test split) must never emit domain labels,
+        even when cfg.dann_columns is non-empty -- DANN only ever trains
+        on the training split."""
+        cfg = _default_cfg(dann_columns=["source_db"])
+        df = self._df_with_domain(tmp_path)
+        label_maps = {"source_db": {"a": 0, "b": 1}}
+        ds = _WaveformDataset(
+            df, "label", cfg, augment=False, dann_label_maps=label_maps
+        )
+
+        item = ds[0]
+
+        assert len(item) == 2
+
+
+class TestBuildDannHeads:
+    """AasistModel._build_dann_heads() builds one DomainAdversarialHead
+    per MODEL.dann_columns entry from df_train's own values."""
+
+    def _model(self):
+        with patch.object(AasistModel, "__init__", return_value=None):
+            model = AasistModel(pd.DataFrame(), pd.DataFrame(), None, None)
+            model.net = _TinyNet()
+            model.device = "cpu"
+            return model
+
+    def test_no_columns_leaves_heads_none(self):
+        model = self._model()
+        model.cfg = _default_cfg(dann_columns=[])
+        model.util = type("U", (), {"debug": lambda self, m: None})()
+
+        model._build_dann_heads(pd.DataFrame({"label": [0, 1]}))
+
+        assert model.dann_heads is None
+        assert model.dann_label_maps == {}
+
+    def test_builds_one_head_per_column_with_correct_class_count(self):
+        model = self._model()
+        model.cfg = _default_cfg(dann_columns=["source_db"])
+        model.util = type("U", (), {"debug": lambda self, m: None})()
+        df_train = pd.DataFrame(
+            {"label": [0, 1, 0, 1], "source_db": ["a", "b", "c", "a"]}
+        )
+
+        model._build_dann_heads(df_train)
+
+        assert set(model.dann_heads.keys()) == {"source_db"}
+        assert model.dann_label_maps["source_db"] == {"a": 0, "b": 1, "c": 2}
+        assert model.dann_heads["source_db"].classifier[-1].out_features == 3
+        assert model.dann_heads["source_db"].classifier[0].in_features == model.net.feat_dim
+
+    def test_errors_on_fewer_than_two_unique_values(self):
+        model = self._model()
+        model.cfg = _default_cfg(dann_columns=["source_db"])
+
+        def _raise_error(self, msg):
+            raise ValueError(msg)
+
+        model.util = type("U", (), {"error": _raise_error, "debug": lambda self, m: None})()
+        df_train = pd.DataFrame({"label": [0, 1], "source_db": ["a", "a"]})
+
+        with pytest.raises(ValueError, match="dann_columns"):
+            model._build_dann_heads(df_train)
+
+
+class TestTrainDannBranch:
+    """train() must dispatch to the DANN combined-loss path (main task
+    loss + per-column adversarial loss) only when self.dann_heads is
+    set, unpacking the trainloader's 3-tuple batches -- and the DANN
+    head's own parameters must actually receive gradient updates (proof
+    the optimizer was built over both self.net and self.dann_heads)."""
+
+    def _model_with_dann(self):
+        df_train = pd.DataFrame({"label": [0, 1, 0, 1]})
+        df_test = pd.DataFrame({"label": [1, 0]})
+        with patch.object(AasistModel, "__init__", return_value=None):
+            model = AasistModel(df_train, df_test, pd.DataFrame(), pd.DataFrame())
+            model.target = "label"
+            model.class_num = 2
+            model.device = "cpu"
+            model.net = _TinyNet()
+            model.criterion = nn.CrossEntropyLoss()
+            model.cfg = _default_cfg(dann_columns=["source_db"], dann_weight=1.0)
+            model.util = type("U", (), {"debug": lambda self, m: None})()
+            model._build_dann_heads(
+                pd.DataFrame({"label": [0, 1, 0, 1], "source_db": ["a", "b", "a", "b"]})
+            )
+            import itertools
+
+            model.optimizer = torch.optim.SGD(
+                itertools.chain(model.net.parameters(), model.dann_heads.parameters()),
+                lr=0.05,
+            )
+            model.scheduler = None
+            model.scheduler_type = "none"
+            model.scheduler_needs_init = False
+            model.trainloader = [
+                (
+                    torch.randn(4, 16000),
+                    torch.tensor([0, 1, 0, 1]),
+                    torch.tensor([[0], [1], [0], [1]]),
+                ),
+                (
+                    torch.randn(4, 16000),
+                    torch.tensor([1, 0, 1, 0]),
+                    torch.tensor([[1], [0], [1], [0]]),
+                ),
+            ]
+            return model
+
+    def test_train_runs_and_updates_both_net_and_dann_head(self):
+        model = self._model_with_dann()
+        net_before = model.net.fc.weight.clone()
+        head_before = model.dann_heads["source_db"].classifier[0].weight.clone()
+
+        model.train()
+
+        assert hasattr(model, "loss")
+        assert torch.isfinite(torch.tensor(model.loss))
+        assert not torch.allclose(model.net.fc.weight, net_before)
+        assert not torch.allclose(
+            model.dann_heads["source_db"].classifier[0].weight, head_before
+        )

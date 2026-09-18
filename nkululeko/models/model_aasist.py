@@ -23,11 +23,25 @@ default, shared with ADMModel) replaces plain shuffling on the train
 loader with DomainBalancedBatchSampler (nkululeko/data/domain_sampler.py,
 model-agnostic), which draws equal representation from every source_db
 domain in every batch -- see that module's docstring for why.
+
+Domain-adversarial training (MODEL.dann_columns, empty/off by default)
+attaches one nkululeko.models.domain_adversarial.DomainAdversarialHead
+per listed nuisance column (e.g. source_db) to the backend's pooled
+feature vector (AasistBackend.forward(..., return_features=True)) --
+only on the *train* split, mirroring RawBoost/domain-balanced sampling's
+own augment-only gating in get_loader(). _WaveformDataset returns a
+3-tuple (waveform, label, domain_labels) instead of the default 2-tuple
+only when both augment=True and cfg.dann_columns is non-empty, so
+dev/test loaders and the no-DANN default path are byte-identical to
+before.
 """
+
+import itertools
 
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn as nn
 from sklearn.metrics import recall_score
 from sklearn.utils.class_weight import compute_class_weight
 from torch.utils.data import DataLoader, Dataset
@@ -35,6 +49,7 @@ from torch.utils.data import DataLoader, Dataset
 from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 from nkululeko.models.aasist_config import AasistConfig
 from nkululeko.models.aasist_rawboost import apply_rawboost
+from nkululeko.models.domain_adversarial import DomainAdversarialHead
 from nkululeko.models.model import Model
 from nkululeko.models.model_aasist_core import AasistBackend
 from nkululeko.optimizers import (
@@ -68,11 +83,15 @@ class _WaveformDataset(Dataset):
     elsewhere in this codebase, in feats_audwav2vec2.py/feats_audmodel.py).
     """
 
-    def __init__(self, df, target, cfg, augment):
+    def __init__(self, df, target, cfg, augment, dann_label_maps=None):
         self.df = df
         self.target = target
         self.cfg = cfg
         self.augment = augment
+        # dann_label_maps: {column: {raw_value: int_index}}, built once by
+        # AasistModel.__init__ from df_train -- only set (non-None) when
+        # this dataset should emit the 3-tuple form (train split, DANN on).
+        self.dann_label_maps = dann_label_maps if (augment and cfg.dann_columns) else None
 
     def __len__(self):
         return len(self.df)
@@ -91,8 +110,17 @@ class _WaveformDataset(Dataset):
             signal = apply_rawboost(signal, sr, self.cfg, self.cfg.rawboost_algo)
 
         signal = _pad_or_tile(signal, self.cfg.max_len)
-        label = self.df.iloc[idx][self.target]
-        return torch.tensor(signal, dtype=torch.float32), label
+        row = self.df.iloc[idx]
+        label = row[self.target]
+        waveform = torch.tensor(signal, dtype=torch.float32)
+        if self.dann_label_maps is None:
+            return waveform, label
+
+        domain_labels = torch.tensor(
+            [self.dann_label_maps[col][row[col]] for col in self.cfg.dann_columns],
+            dtype=torch.long,
+        )
+        return waveform, label, domain_labels
 
 
 class AasistModel(Model):
@@ -132,9 +160,15 @@ class AasistModel(Model):
         ).to(self.device)
 
         self._build_criterion(df_train)
+        self._build_dann_heads(df_train)
 
+        dann_params = (
+            itertools.chain(self.net.parameters(), self.dann_heads.parameters())
+            if self.cfg.dann_columns
+            else self.net.parameters()
+        )
         self.optimizer, self.learning_rate = get_optimizer(
-            self.net.parameters(), self.util, default_lr=1e-5, default_optimizer="adam"
+            dann_params, self.util, default_lr=1e-5, default_optimizer="adam"
         )
         self.scheduler, self.scheduler_type, self.scheduler_needs_init = get_scheduler(
             self.optimizer, self.util, default_scheduler="none"
@@ -142,6 +176,39 @@ class AasistModel(Model):
 
         self.trainloader = self.get_loader(df_train, augment=True, shuffle=True)
         self.testloader = self.get_loader(df_test, augment=False, shuffle=False)
+
+    def _build_dann_heads(self, df_train):
+        """Build one DomainAdversarialHead per MODEL.dann_columns entry,
+        attached to the backend's pooled feature vector (self.net.feat_dim
+        wide). Label maps are built once from df_train's own values (not
+        the global label set) -- fine since DANN heads only ever run on
+        the train split (see _WaveformDataset's augment-gated 3-tuple)."""
+        self.dann_label_maps = {}
+        if not self.cfg.dann_columns:
+            self.dann_heads = None
+            return
+        heads = {}
+        for col in self.cfg.dann_columns:
+            values = sorted(df_train[col].dropna().unique().tolist())
+            if len(values) < 2:
+                self.util.error(
+                    f"MODEL.dann_columns includes '{col}', but df_train has "
+                    f"{len(values)} unique value(s) for it -- DANN needs >=2 "
+                    "classes to discriminate against."
+                )
+            self.dann_label_maps[col] = {v: i for i, v in enumerate(values)}
+            heads[col] = DomainAdversarialHead(
+                feat_dim=self.net.feat_dim,
+                num_classes=len(values),
+                reverse=self.cfg.dann_reverse,
+                lambda_=self.cfg.dann_lambda,
+            )
+        self.dann_heads = nn.ModuleDict(heads).to(self.device)
+        self.util.debug(
+            f"aasist: DANN heads for {self.cfg.dann_columns} "
+            f"(reverse={self.cfg.dann_reverse}, lambda={self.cfg.dann_lambda}, "
+            f"weight={self.cfg.dann_weight})"
+        )
 
     def _build_criterion(self, df_train):
         """CrossEntropyLoss over the fixed 2-way output, with optional
@@ -169,7 +236,13 @@ class AasistModel(Model):
         )
 
     def get_loader(self, df, augment, shuffle):
-        dataset = _WaveformDataset(df, self.target, self.cfg, augment=augment)
+        dataset = _WaveformDataset(
+            df,
+            self.target,
+            self.cfg,
+            augment=augment,
+            dann_label_maps=self.dann_label_maps,
+        )
         # Each __getitem__ does its own audiofile.read() (+ optional
         # RawBoost, which is pure-numpy/scipy FIR filtering) -- CPU-bound
         # work that a single-process loader (num_workers=0) serializes
@@ -213,7 +286,14 @@ class AasistModel(Model):
         self.net.train()
         losses = []
         sam_active = is_sam_optimizer(self.optimizer)
-        for waveforms, labels in self.trainloader:
+        dann_active = bool(self.cfg.dann_columns)
+        for batch in self.trainloader:
+            if dann_active:
+                waveforms, labels, domain_labels = batch
+                domain_labels = domain_labels.to(self.device)
+            else:
+                waveforms, labels = batch
+                domain_labels = None
             waveforms = waveforms.to(self.device)
             labels = labels.long().to(self.device)
 
@@ -225,14 +305,13 @@ class AasistModel(Model):
                 # optimizer actually updates with).
                 def closure():
                     self.optimizer.zero_grad()
-                    loss = self.criterion(self.net(waveforms), labels)
+                    loss = self._aasist_forward_loss(waveforms, labels, domain_labels)
                     loss.backward()
                     return loss
 
                 loss = self.optimizer.step(closure)
             else:
-                logits = self.net(waveforms)
-                loss = self.criterion(logits, labels)
+                loss = self._aasist_forward_loss(waveforms, labels, domain_labels)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -242,6 +321,24 @@ class AasistModel(Model):
 
         step_scheduler(self.scheduler, self.scheduler_type, step_per_batch=False)
         self.loss = float(np.mean(losses)) if losses else 0.0
+
+    def _aasist_forward_loss(self, waveforms, labels, domain_labels):
+        """One forward pass + loss computation -- factored out so the SAM
+        closure above can call it twice per step (see train()), and so
+        DANN's extra per-column adversarial loss terms don't need a
+        separate SAM/plain implementation. `domain_labels` is None
+        whenever DANN is off (see train()'s dann_active branch)."""
+        if self.dann_heads is None:
+            return self.criterion(self.net(waveforms), labels)
+
+        logits, feats = self.net(waveforms, return_features=True)
+        loss = self.criterion(logits, labels)
+        for i, col in enumerate(self.cfg.dann_columns):
+            dann_logits = self.dann_heads[col](feats)
+            loss = loss + self.cfg.dann_weight * torch.nn.functional.cross_entropy(
+                dann_logits, domain_labels[:, i]
+            )
+        return loss
 
     def evaluate(self, loader):
         self.net.eval()

@@ -471,6 +471,20 @@ Model and training specifications. In general, default values should work for cl
   * requires multiple pooled training databases (the `source_db` column `Datasplitter.fill_train_and_tests()` stamps onto every row when pooling); smaller domains are cycled (reshuffled and repeated) to match the largest domain's per-epoch length
   * only applied to the training split; dev/test are unaffected
   * model-agnostic (`nkululeko/data/domain_sampler.py`): currently wired into `type = aasist`, `type = adm`, and `type = mlp`'s `get_loader()`, so the same key/class drives all three
+* **dann_columns**: attach a domain-adversarial (gradient-reversal) head per listed column, trained jointly with the main task loss to push the shared representation toward features that can't predict the listed nuisance label(s) -- e.g. `source_db` for cross-dataset invariance
+  * dann_columns = ['source_db']
+  * default: `[]` (off)
+  * model-agnostic (`nkululeko/models/domain_adversarial.py`: `GradientReversalLayer`, `DomainAdversarialHead`) but currently only wired into `type = aasist`'s `train()` loop -- needs a backbone that exposes a pooled feature vector (`AasistBackend.forward(..., return_features=True)`); a model reading precomputed features (`adm`, `mlp`) would need the equivalent hook added to its own forward pass first
+  * label maps are built once from `df_train`'s own values for each column (not the global label set), so a column only needs >=2 unique values in the training split
+  * only applied to the training split; the adversarial head(s) play no role in evaluation
+  * related parameters:
+    * **dann_lambda**: the gradient-reversal layer's scale (default: 1.0, no ascent schedule -- Ganin et al. 2016's own ramp-up schedule is available as `nkululeko.models.domain_adversarial.grl_lambda_schedule()` but not wired into training automatically)
+      * dann_lambda = 1.0
+    * **dann_weight**: weight applied to each column's adversarial cross-entropy loss before adding it to the main task loss
+      * dann_weight = 1.0
+    * **dann_reverse**: `True` for the standard adversarial (gradient-reversed) head; `False` turns it into a plain multitask auxiliary head instead (no invariance pressure, just an extra supervised signal -- some studies find this ablation outperforms the adversarial version for certain nuisance factors)
+      * dann_reverse = False
+      * default: True
 * **loss**: loss function for neural networks
   * loss = cross
   * possible values:
