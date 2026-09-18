@@ -25,6 +25,7 @@ import torch.nn as nn
 
 from nkululeko.models.aasist_config import AasistConfig
 from nkululeko.models.model_aasist import AasistModel, _WaveformDataset
+from nkululeko.optimizers.sam import SAM
 
 
 def _default_cfg(**overrides):
@@ -300,3 +301,57 @@ class TestEvaluateAndProbas:
         assert list(probas.index) == list(aasist_model.df_test.index)
         row_sums = probas.sum(axis=1).to_numpy()
         np.testing.assert_allclose(row_sums, [1.0, 1.0], rtol=1e-5)
+
+
+class TestTrainSamBranch:
+    """train() must dispatch to the SAM closure path (two forward passes
+    per batch) only when MODEL.sam wrapped self.optimizer in SAM -- and
+    must still work identically to before when it didn't. Mirrors the
+    ADMModel.train() SAM wiring (same is_sam_optimizer() check, same
+    closure shape) -- one mechanism, two independent model types."""
+
+    def _trainable_model(self, optimizer_factory):
+        df_train = pd.DataFrame({"label": [0, 1, 0, 1]})
+        df_test = pd.DataFrame({"label": [1, 0]})
+        with patch.object(AasistModel, "__init__", return_value=None):
+            model = AasistModel(df_train, df_test, pd.DataFrame(), pd.DataFrame())
+            model.target = "label"
+            model.class_num = 2
+            model.device = "cpu"
+            model.net = _TinyNet()
+            model.criterion = nn.CrossEntropyLoss()
+            model.optimizer = optimizer_factory(model.net.parameters())
+            model.scheduler = None
+            model.scheduler_type = "none"
+            model.scheduler_needs_init = False
+            model.trainloader = [
+                (torch.randn(4, 16000), torch.tensor([0, 1, 0, 1])),
+                (torch.randn(4, 16000), torch.tensor([1, 0, 1, 0])),
+            ]
+            return model
+
+    def test_plain_optimizer_trains_one_epoch(self):
+        model = self._trainable_model(lambda params: torch.optim.SGD(params, lr=0.01))
+        before = model.net.fc.weight.clone()
+
+        model.train()
+
+        assert hasattr(model, "loss")
+        assert torch.isfinite(torch.tensor(model.loss))
+        assert not torch.allclose(model.net.fc.weight, before)
+
+    def test_sam_optimizer_trains_one_epoch_via_closure(self):
+        model = self._trainable_model(
+            lambda params: SAM(params, torch.optim.SGD, rho=0.05, lr=0.01)
+        )
+        before = model.net.fc.weight.clone()
+
+        model.train()
+
+        assert hasattr(model, "loss")
+        assert torch.isfinite(torch.tensor(model.loss))
+        # SAM's second_step() restores pre-ascent weights before the base
+        # optimizer's real update -- net effect must still be a real
+        # step away from the starting weights, not a no-op and not left
+        # sitting at the ascent-perturbed point.
+        assert not torch.allclose(model.net.fc.weight, before)

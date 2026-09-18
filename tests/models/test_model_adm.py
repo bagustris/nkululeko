@@ -457,6 +457,25 @@ class TestADMModel:
         assert adm_model.loss is not None
         assert adm_model.loss >= 0
 
+    def test_train_one_epoch_with_sam_optimizer(self, adm_model):
+        """train() must dispatch to the SAM closure path (two
+        forward/backward passes per batch) when self.optimizer is SAM-
+        wrapped -- mirrors AasistModel's TestTrainSamBranch in
+        test_model_aasist.py (same is_sam_optimizer() check, same
+        closure shape)."""
+        from nkululeko.optimizers.sam import SAM
+
+        adm_model.optimizer = SAM(
+            adm_model.model.parameters(), torch.optim.SGD, rho=0.05, lr=0.01
+        )
+        before = next(adm_model.model.parameters()).clone()
+
+        adm_model.train()
+
+        assert adm_model.loss is not None
+        assert adm_model.loss >= 0
+        assert not torch.allclose(next(adm_model.model.parameters()), before)
+
     def test_evaluate(self, adm_model):
         """Test model evaluation."""
         adm_model.train()

@@ -26,6 +26,7 @@ from nkululeko.optimizers import (
     initialize_cosine_scheduler,
     step_scheduler,
 )
+from nkululeko.optimizers.sam import is_sam_optimizer
 from nkululeko.reporting.reporter import Reporter
 
 
@@ -236,36 +237,41 @@ class ADMModel(Model):
 
         self.model.train()
         losses = []
+        sam_active = is_sam_optimizer(self.optimizer)
         for features, labels in self.trainloader:
             features = features.float()
             labels_float = labels.float().to(self.device)
 
-            # Feature-level Gaussian noise augmentation for regularization
-            if self.feature_noise > 0:
-                noise = torch.randn_like(features) * self.feature_noise
-                features = features + noise
+            if sam_active:
+                # SAM needs two forward/backward passes per step (see
+                # nkululeko.optimizers.sam's docstring): the closure below
+                # is called once at the current weights (ascent direction)
+                # and once at the perturbed point (the actual gradient
+                # used for the base optimizer's update). Each call
+                # independently redraws feature_noise, same as any other
+                # stochastic augmentation would under SAM.
+                def closure():
+                    self.optimizer.zero_grad()
+                    loss = self._adm_forward_loss(features, labels_float)
+                    loss.backward()
+                    if self.max_grad_norm > 0:
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=self.max_grad_norm
+                        )
+                    return loss
 
-            ssl_feats, spec_feats, phase_feats, extra_feats = (
-                self._split_feature_streams(features)
-            )
+                loss = self.optimizer.step(closure)
+            else:
+                loss = self._adm_forward_loss(features, labels_float)
+                self.optimizer.zero_grad()
+                loss.backward()
+                if self.max_grad_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), max_norm=self.max_grad_norm
+                    )
+                self.optimizer.step()
 
-            logits = self.model(
-                ssl_feats.to(self.device),
-                spec_feats.to(self.device),
-                phase_feats.to(self.device),
-                {k: v.to(self.device) for k, v in extra_feats.items()},
-            )
-
-            loss = self.criterion(logits, labels_float)
             losses.append(loss.item())
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            if self.max_grad_norm > 0:
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), max_norm=self.max_grad_norm
-                )
-            self.optimizer.step()
 
             # Step scheduler per batch (for cosine)
             step_scheduler(self.scheduler, self.scheduler_type, step_per_batch=True)
@@ -274,6 +280,26 @@ class ADMModel(Model):
         step_scheduler(self.scheduler, self.scheduler_type, step_per_batch=False)
 
         self.loss = (np.asarray(losses)).mean()
+
+    def _adm_forward_loss(self, features, labels_float):
+        """One forward pass + loss computation -- factored out so the
+        SAM branch above can call it twice per step (see train())."""
+        # Feature-level Gaussian noise augmentation for regularization
+        if self.feature_noise > 0:
+            noise = torch.randn_like(features) * self.feature_noise
+            features = features + noise
+
+        ssl_feats, spec_feats, phase_feats, extra_feats = self._split_feature_streams(
+            features
+        )
+
+        logits = self.model(
+            ssl_feats.to(self.device),
+            spec_feats.to(self.device),
+            phase_feats.to(self.device),
+            {k: v.to(self.device) for k, v in extra_feats.items()},
+        )
+        return self.criterion(logits, labels_float)
 
     def _split_features(self, features):
         """Split concatenated features into SSL, spectral, and phase streams.

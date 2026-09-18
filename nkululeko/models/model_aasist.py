@@ -43,6 +43,7 @@ from nkululeko.optimizers import (
     initialize_cosine_scheduler,
     step_scheduler,
 )
+from nkululeko.optimizers.sam import is_sam_optimizer
 from nkululeko.reporting.reporter import Reporter
 
 
@@ -211,16 +212,31 @@ class AasistModel(Model):
 
         self.net.train()
         losses = []
+        sam_active = is_sam_optimizer(self.optimizer)
         for waveforms, labels in self.trainloader:
             waveforms = waveforms.to(self.device)
             labels = labels.long().to(self.device)
 
-            logits = self.net(waveforms)
-            loss = self.criterion(logits, labels)
+            if sam_active:
+                # SAM needs two forward/backward passes per step (see
+                # nkululeko.optimizers.sam's docstring) -- the closure is
+                # called once at the current weights (ascent direction)
+                # and once at the perturbed point (the gradient the base
+                # optimizer actually updates with).
+                def closure():
+                    self.optimizer.zero_grad()
+                    loss = self.criterion(self.net(waveforms), labels)
+                    loss.backward()
+                    return loss
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                loss = self.optimizer.step(closure)
+            else:
+                logits = self.net(waveforms)
+                loss = self.criterion(logits, labels)
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
             step_scheduler(self.scheduler, self.scheduler_type, step_per_batch=True)
             losses.append(loss.item())
 
