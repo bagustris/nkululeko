@@ -205,21 +205,21 @@ class TestGetLoaderDomainBalancedDispatch:
     def test_uses_batch_sampler_for_train_when_enabled(self):
         model = self._model_with_cfg(domain_balanced_sampling=True)
         loader = model.get_loader(self._df_with_domains(), augment=True, shuffle=True)
-        from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 
         assert isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
 
     def test_plain_loader_for_dev_test_even_when_enabled(self):
         model = self._model_with_cfg(domain_balanced_sampling=True)
         loader = model.get_loader(self._df_with_domains(), augment=False, shuffle=False)
-        from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 
         assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
 
     def test_plain_loader_for_train_when_disabled(self):
         model = self._model_with_cfg(domain_balanced_sampling=False)
         loader = model.get_loader(self._df_with_domains(), augment=True, shuffle=True)
-        from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 
         assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
 

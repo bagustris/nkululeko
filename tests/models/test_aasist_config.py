@@ -103,7 +103,10 @@ class TestOverrides:
         assert cfg.rawboost_algo == 4
 
     def test_domain_balanced_sampling_overridable(self, tmp_path):
-        util = make_util(tmp_path, {"domain_balanced_sampling": "True"})
+        # domain_balanced_sampling reads from the shared [MODEL] section,
+        # not [AASIST] -- ADMModel reads the same key the same way.
+        util = make_util(tmp_path)
+        glob_conf.config["MODEL"]["domain_balanced_sampling"] = "True"
         cfg = AasistConfig.from_util(util)
         assert cfg.domain_balanced_sampling is True
 

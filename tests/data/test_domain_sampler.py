@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
+from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 
 
 def _df(counts):

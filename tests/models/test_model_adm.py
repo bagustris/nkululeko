@@ -354,6 +354,7 @@ def adm_model(dummy_data, monkeypatch):
         model.n_jobs = 1
         model.target = "label"
         model.class_num = 2
+        model.domain_balanced_sampling = False
         model.device = "cpu"
         model.learning_rate = 0.0001
         model.batch_size = 2
@@ -646,3 +647,49 @@ class TestADMModelFusionMethods:
 
         out = model(ssl, sptk, sptk)
         assert out.shape == (4,)
+
+
+class TestGetLoaderDomainBalancedDispatch:
+    """get_loader() must only reach for DomainBalancedBatchSampler on the
+    training split (shuffle=True) when MODEL.domain_balanced_sampling is
+    on -- never for dev/test, never when the flag is off. Mirrors
+    AasistModel's TestGetLoaderDomainBalancedDispatch in
+    test_model_aasist.py -- same key, same shared sampler class, two
+    independent model types wiring it into their own get_loader()."""
+
+    def _model_with(self, domain_balanced_sampling):
+        with patch.object(ADMModel, "__init__", return_value=None):
+            model = ADMModel(pd.DataFrame(), pd.DataFrame(), None, None)
+            model.target = "label"
+            model.batch_size = 2
+            model.domain_balanced_sampling = domain_balanced_sampling
+            return model
+
+    def _feats_and_labels(self):
+        feats = pd.DataFrame(np.random.rand(8, 4))
+        labels = pd.DataFrame({"label": [0, 1] * 4, "source_db": (["a", "b"] * 4)})
+        return feats, labels
+
+    def test_uses_batch_sampler_for_train_when_enabled(self):
+        model = self._model_with(domain_balanced_sampling=True)
+        feats, labels = self._feats_and_labels()
+        loader = model.get_loader(feats, labels, shuffle=True)
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
+
+        assert isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+    def test_plain_loader_for_dev_test_even_when_enabled(self):
+        model = self._model_with(domain_balanced_sampling=True)
+        feats, labels = self._feats_and_labels()
+        loader = model.get_loader(feats, labels, shuffle=False)
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
+
+        assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+    def test_plain_loader_for_train_when_disabled(self):
+        model = self._model_with(domain_balanced_sampling=False)
+        feats, labels = self._feats_and_labels()
+        loader = model.get_loader(feats, labels, shuffle=True)
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
+
+        assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)

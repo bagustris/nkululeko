@@ -17,6 +17,7 @@ import pandas as pd
 import torch
 from sklearn.metrics import recall_score
 
+from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 from nkululeko.models.model import Model
 from nkululeko.models.model_adm_core import DeepfakeADMModel
 from nkululeko.optimizers import (
@@ -189,6 +190,14 @@ class ADMModel(Model):
         # Batch size
         self.batch_size = int(self.util.config_val("MODEL", "batch_size", 32))
         self.num_workers = self.n_jobs
+
+        # Domain-balanced batch sampling: same MODEL.domain_balanced_sampling
+        # key AasistModel reads, same DomainBalancedBatchSampler class --
+        # draws equal per-source_db representation into every training
+        # batch instead of plain shuffling. Off by default.
+        self.domain_balanced_sampling = self.util.config_val_bool(
+            "MODEL", "domain_balanced_sampling", False
+        )
 
         # Training hyperparameters (read once to avoid repeated logging)
         self.max_grad_norm = float(
@@ -447,6 +456,12 @@ class ADMModel(Model):
         label_values = self._encode_labels(df_y[self.target])
         labels_tensor = torch.tensor(label_values, dtype=torch.float32)
         dataset = torch.utils.data.TensorDataset(features_tensor, labels_tensor)
+        # shuffle=True uniquely marks the training split (df_test/dev never
+        # pass shuffle=True) -- domain-balanced sampling, like for AASIST,
+        # only ever applies to training batches.
+        if shuffle and self.domain_balanced_sampling:
+            sampler = DomainBalancedBatchSampler(df_y, self.batch_size)
+            return torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
         return torch.utils.data.DataLoader(
             dataset, shuffle=shuffle, batch_size=self.batch_size
         )

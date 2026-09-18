@@ -18,11 +18,11 @@ RawBoost augmentation (MODEL section: AASIST.rawboost_algo, 0 = off) is
 applied to the *train* split only, before pad/truncate, inside
 _WaveformDataset.__getitem__ -- see aasist_rawboost.py.
 
-Domain-balanced batch sampling (AASIST.domain_balanced_sampling, off by
-default) replaces plain shuffling on the train loader with
-DomainBalancedBatchSampler (aasist_sampler.py), which draws equal
-representation from every source_db domain in every batch -- see that
-module's docstring for why.
+Domain-balanced batch sampling (MODEL.domain_balanced_sampling, off by
+default, shared with ADMModel) replaces plain shuffling on the train
+loader with DomainBalancedBatchSampler (nkululeko/data/domain_sampler.py,
+model-agnostic), which draws equal representation from every source_db
+domain in every batch -- see that module's docstring for why.
 """
 
 import numpy as np
@@ -32,9 +32,9 @@ from sklearn.metrics import recall_score
 from sklearn.utils.class_weight import compute_class_weight
 from torch.utils.data import DataLoader, Dataset
 
+from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 from nkululeko.models.aasist_config import AasistConfig
 from nkululeko.models.aasist_rawboost import apply_rawboost
-from nkululeko.models.aasist_sampler import DomainBalancedBatchSampler
 from nkululeko.models.model import Model
 from nkululeko.models.model_aasist_core import AasistBackend
 from nkululeko.optimizers import (

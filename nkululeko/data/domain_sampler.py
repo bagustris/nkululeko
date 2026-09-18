@@ -1,18 +1,23 @@
-"""Domain-balanced batch sampling for AasistModel's training loader.
+"""Domain-balanced batch sampling, usable by any nkululeko model's
+training loader (not AASIST-specific -- it only needs positional access
+into a DataFrame's rows plus a domain column, so any Model subclass that
+builds a torch DataLoader can pass its train split's df through this).
 
-Motivation: the full LODO training pool (not the stratified-equal
-subsample this session's AASIST baselines actually train on) has wildly
-uneven per-database row counts -- LA19 alone is ~121k rows against itw's
-~32k in the full pool -- so plain shuffling lets the largest pooled
+Motivation: a pooled multi-database training set has wildly uneven
+per-database row counts -- e.g. LA19 alone is ~121k rows against itw's
+~32k in the full LODO pool -- so plain shuffling lets the largest pooled
 dataset dominate batch gradients by sheer count. DomainBalancedBatchSampler
 draws (as close to) equal representation from every source_db domain in
 every batch, cycling (reshuffling and repeating) smaller domains to match
 the largest domain's per-epoch length -- the standard round-robin
 balanced-batch strategy from domain-adaptation training.
 
-Requires the source_db column Datasplitter.fill_train_and_tests() now
-stamps onto every pooled row (see nkululeko/data/datasplitter.py) --
-without it there is no domain to balance by.
+Requires the source_db column Datasplitter.fill_train_and_tests() stamps
+onto every pooled row (see nkululeko/data/datasplitter.py) -- without it
+there is no domain to balance by. Wired in via MODEL.domain_balanced_sampling
+(a shared MODEL-section key, not tied to any one model type) -- see
+AasistModel.get_loader() and ADMModel.get_loader() for two independent
+call sites built from this same class.
 """
 
 import numpy as np
@@ -34,7 +39,7 @@ class DomainBalancedBatchSampler(Sampler):
                 "DomainBalancedBatchSampler requires a source_db column "
                 "(added by Datasplitter when pooling multiple databases); "
                 f"got columns: {list(df.columns)}. If you just enabled "
-                "AASIST.domain_balanced_sampling on an experiment that has "
+                "MODEL.domain_balanced_sampling on an experiment that has "
                 "run before, this split may be a cached selection from "
                 "before source_db existed (Datasplitter.fill_train_and_tests() "
                 "reuses the last split by default) -- set DATA.no_reuse=True "

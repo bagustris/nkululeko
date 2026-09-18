@@ -107,8 +107,11 @@ class AasistConfig:
 
         # domain_balanced_sampling: draw each training batch with equal
         # representation from every source_db domain in the pool (see
-        # aasist_sampler.DomainBalancedBatchSampler), instead of plain
-        # shuffling -- default off, matching the bare-AASIST baseline.
+        # nkululeko.data.domain_sampler.DomainBalancedBatchSampler), instead
+        # of plain shuffling -- default off, matching the bare-AASIST
+        # baseline. Reads from the shared [MODEL] section (not [AASIST]):
+        # ADMModel.get_loader() reads the same key from the same section,
+        # so this one technique/one key drives both model types.
 
         # RawBoost hyperparameters: defaults copied verbatim from upstream's
         # main_SSL_LA.py argparse defaults (the published ASVspoof2021
@@ -146,6 +149,6 @@ class AasistConfig:
             rawboost_snr_min=int(util.config_val("AASIST", "rawboost_snr_min", "10")),
             rawboost_snr_max=int(util.config_val("AASIST", "rawboost_snr_max", "40")),
             domain_balanced_sampling=util.config_val_bool(
-                "AASIST", "domain_balanced_sampling", False
+                "MODEL", "domain_balanced_sampling", False
             ),
         )
