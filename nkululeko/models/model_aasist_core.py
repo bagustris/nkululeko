@@ -377,9 +377,10 @@ class AasistBackend(nn.Module):
         self.pool_hs2 = GraphPool(_POOL_RATIOS[2], _GAT_DIMS[1], 0.3)
         self.pool_ht2 = GraphPool(_POOL_RATIOS[2], _GAT_DIMS[1], 0.3)
 
-        self.out_layer = nn.Linear(5 * _GAT_DIMS[1], 2)
+        self.feat_dim = 5 * _GAT_DIMS[1]
+        self.out_layer = nn.Linear(self.feat_dim, 2)
 
-    def forward(self, x):
+    def forward(self, x, return_features=False):
         x_ssl_feat = self.ssl_model.extract_feat(x.squeeze(-1))
         x = self.ll(x_ssl_feat)  # (bs, frames, 128)
 
@@ -440,4 +441,11 @@ class AasistBackend(nn.Module):
 
         last_hidden = torch.cat([t_max, t_avg, s_max, s_avg, master.squeeze(1)], dim=1)
         last_hidden = self.drop(last_hidden)
-        return self.out_layer(last_hidden)
+        logits = self.out_layer(last_hidden)
+        if return_features:
+            # last_hidden (5 * _GAT_DIMS[1]-dim pooled readout, pre
+            # out_layer) is the attachment point for
+            # nkululeko.models.domain_adversarial.DomainAdversarialHead --
+            # see AasistModel.train()'s DANN branch.
+            return logits, last_hidden
+        return logits

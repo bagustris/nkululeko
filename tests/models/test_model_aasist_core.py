@@ -213,6 +213,34 @@ class TestAasistBackendForward:
         assert torch.all(torch.isfinite(logits))
 
 
+    def test_return_features_exposes_pooled_readout(self, monkeypatch):
+        """return_features=True must additionally return the pooled
+        last_hidden vector (pre out_layer) -- the attachment point for
+        DomainAdversarialHead (see domain_adversarial.py) -- without
+        changing the plain (default) single-logits return."""
+        tiny = _tiny_wav2vec2(hidden_size=32)
+        monkeypatch.setattr(Wav2Vec2Model, "from_pretrained", lambda *a, **k: tiny)
+
+        backend = core.AasistBackend("dummy/checkpoint")
+        backend.eval()
+        x = torch.randn(3, 16000)
+
+        with torch.no_grad():
+            logits_only = backend(x)
+            logits, features = backend(x, return_features=True)
+
+        assert torch.equal(logits_only, logits)
+        assert features.shape == (3, backend.feat_dim)
+
+    def test_feat_dim_matches_out_layer_input_width(self, monkeypatch):
+        tiny = _tiny_wav2vec2(hidden_size=32)
+        monkeypatch.setattr(Wav2Vec2Model, "from_pretrained", lambda *a, **k: tiny)
+
+        backend = core.AasistBackend("dummy/checkpoint")
+
+        assert backend.feat_dim == backend.out_layer.in_features
+
+
 class TestGraphSubmodules:
     def test_graph_attention_layer_preserves_node_count(self):
         layer = core.GraphAttentionLayer(in_dim=8, out_dim=4)

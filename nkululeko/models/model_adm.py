@@ -375,14 +375,20 @@ class ADMModel(Model):
         losses = []
 
         with torch.no_grad():
-            for index, (features, labels) in enumerate(loader):
-                start_index = index * loader.batch_size
+            start_index = 0
+            for features, labels in loader:
+                # A running offset (not index * loader.batch_size) --
+                # loader.batch_size is None when the loader was built
+                # with batch_sampler= (domain-balanced sampling), and
+                # even a plain loader's last batch can be shorter than
+                # batch_size.
                 end_index = start_index + len(labels)
                 batch_logits, batch_targets, loss = self._evaluate_batch(
                     model, features, labels, device
                 )
                 logits[start_index:end_index] = batch_logits
                 targets[start_index:end_index] = batch_targets
+                start_index = end_index
                 losses.append(loss)
 
         self.loss_eval = (np.asarray(losses)).mean()

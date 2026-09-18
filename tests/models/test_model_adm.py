@@ -476,6 +476,27 @@ class TestADMModel:
         assert adm_model.loss >= 0
         assert not torch.allclose(next(adm_model.model.parameters()), before)
 
+    def test_evaluate_works_with_batch_sampler_loader(self, adm_model, dummy_data):
+        """Regression test: evaluate() used to index output tensors via
+        `index * loader.batch_size`, which is None for a loader built
+        with batch_sampler= (domain-balanced sampling) -- crashed with
+        TypeError as soon as predict() called evaluate() on such a
+        trainloader (see ADMModel.predict()). evaluate() must work off a
+        running offset instead, for both loader kinds."""
+        df_train, df_test, feats_train, feats_test = dummy_data
+        df_train = df_train.assign(source_db=["a", "b"] * 2)
+        adm_model.domain_balanced_sampling = True
+        adm_model.trainloader = adm_model.get_loader(feats_train, df_train, shuffle=True)
+        assert adm_model.trainloader.batch_size is None  # batch_sampler in use
+
+        uar, targets, predictions, logits = adm_model.evaluate(
+            adm_model.model, adm_model.trainloader, adm_model.device
+        )
+
+        assert len(targets) == 4
+        assert len(predictions) == 4
+        assert 0.0 <= uar <= 1.0
+
     def test_evaluate(self, adm_model):
         """Test model evaluation."""
         adm_model.train()
