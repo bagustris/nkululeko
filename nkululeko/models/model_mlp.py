@@ -7,8 +7,10 @@ import pandas as pd
 import torch
 from sklearn.metrics import recall_score
 
+from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 from nkululeko.models.model import Model
 from nkululeko.optimizers import get_optimizer
+from nkululeko.optimizers.sam import is_sam_optimizer
 from nkululeko.reporting.reporter import Reporter
 
 
@@ -79,6 +81,14 @@ class MLPModel(Model):
         self.batch_size = int(self.util.config_val("MODEL", "batch_size", 8))
         # number of parallel processes
         self.num_workers = self.n_jobs
+        # domain-balanced batch sampling and SAM: same shared MODEL.*
+        # keys and same nkululeko.data.domain_sampler /
+        # nkululeko.optimizers.sam machinery AasistModel and ADMModel
+        # already use -- MLPModel is the third model type this
+        # session wires them into, from the same implementation.
+        self.domain_balanced_sampling = self.util.config_val_bool(
+            "MODEL", "domain_balanced_sampling", False
+        )
         feats_train = self._handle_model_nan(feats_train, "Model, train")
         feats_test = self._handle_model_nan(feats_test, "Model, test")
         # set up the data_loaders
@@ -112,13 +122,31 @@ class MLPModel(Model):
     def train(self):
         self.model.train()
         losses = []
+        sam_active = is_sam_optimizer(self.optimizer)
         for features, labels in self.trainloader:
-            logits = self.model(features.to(self.device))
-            loss = self.criterion(logits, labels.to(self.device, dtype=torch.int64))
+            labels_int = labels.to(self.device, dtype=torch.int64)
+
+            if sam_active:
+                # SAM needs two forward/backward passes per step (see
+                # nkululeko.optimizers.sam's docstring) -- mirrors
+                # AasistModel.train()/ADMModel.train()'s SAM branch.
+                def closure():
+                    self.optimizer.zero_grad()
+                    loss = self.criterion(
+                        self.model(features.to(self.device)), labels_int
+                    )
+                    loss.backward()
+                    return loss
+
+                loss = self.optimizer.step(closure)
+            else:
+                logits = self.model(features.to(self.device))
+                loss = self.criterion(logits, labels_int)
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
             losses.append(loss.item())
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
         self.loss = (np.asarray(losses)).mean()
 
     def evaluate(self, model, loader, device):
@@ -127,11 +155,13 @@ class MLPModel(Model):
         model.eval()
         losses = []
         with torch.no_grad():
-            for index, (features, labels) in enumerate(loader):
-                start_index = index * loader.batch_size
-                end_index = (index + 1) * loader.batch_size
-                if end_index > len(loader.dataset):
-                    end_index = len(loader.dataset)
+            start_index = 0
+            for features, labels in loader:
+                # A running offset (not index * loader.batch_size) --
+                # loader.batch_size is None when the loader was built
+                # with batch_sampler= (domain-balanced sampling); see
+                # ADMModel.evaluate()'s identical fix for why.
+                end_index = start_index + len(labels)
                 logits[start_index:end_index, :] = model(features.to(device))
                 targets[start_index:end_index] = labels
                 loss = self.criterion(
@@ -139,6 +169,7 @@ class MLPModel(Model):
                     labels.to(device, dtype=torch.int64),
                 )
                 losses.append(loss.item())
+                start_index = end_index
 
         self.loss_eval = (np.asarray(losses)).mean()
         predictions = logits.argmax(dim=1)
@@ -193,6 +224,11 @@ class MLPModel(Model):
         data = []
         for i in range(len(df_x)):
             data.append([df_x.values[i], df_y[self.target].iloc[i]])
+        # shuffle=True uniquely marks the training split -- domain-balanced
+        # sampling, like for AASIST/ADM, only ever applies to training batches.
+        if shuffle and self.domain_balanced_sampling:
+            sampler = DomainBalancedBatchSampler(df_y, self.batch_size)
+            return torch.utils.data.DataLoader(data, batch_sampler=sampler)
         return torch.utils.data.DataLoader(
             data, shuffle=shuffle, batch_size=self.batch_size
         )

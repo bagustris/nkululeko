@@ -5,20 +5,20 @@ import re
 
 # MODEL.type values backed by an artificial neural network (see
 # Model.is_ann() and the model_type "ann"/"finetuned" tags set by these
-# models' __init__). All five read MODEL.loss (mlp/cnn via the shared
-# Model._setup_criterion(), mlp_reg/adm/finetune each directly); the other
-# ANN-only options below are read by narrower subsets of this group.
-ANN_MODEL_TYPES = frozenset({"cnn", "mlp", "mlp_reg", "adm", "finetune"})
+# models' __init__). All six read MODEL.loss (mlp/cnn via the shared
+# Model._setup_criterion(), mlp_reg/adm/finetune/aasist each directly); the
+# other ANN-only options below are read by narrower subsets of this group.
+ANN_MODEL_TYPES = frozenset({"cnn", "mlp", "mlp_reg", "adm", "finetune", "aasist"})
 # MODEL.type values backed by a kernel SVM — only these read
 # MODEL.C_val / MODEL.kernel.
 SVM_MODEL_TYPES = frozenset({"svm", "svr"})
 # MODEL.type values with a configurable layer stack — only these read
-# MODEL.layers (adm and finetune have a fixed architecture instead).
+# MODEL.layers (adm, finetune and aasist have a fixed architecture instead).
 LAYERED_MODEL_TYPES = frozenset({"cnn", "mlp", "mlp_reg"})
 # ANN types that build their optimizer via optimizer_factory.get_optimizer()
 # and thus read MODEL.optimizer. TunedModel (finetune) configures its own
 # optimizer elsewhere and never reads it.
-OPTIMIZER_MODEL_TYPES = frozenset({"cnn", "mlp", "mlp_reg", "adm"})
+OPTIMIZER_MODEL_TYPES = frozenset({"cnn", "mlp", "mlp_reg", "adm", "aasist"})
 # ANN types that read MODEL.drop for dropout. model_adm.py has no dropout
 # config of its own.
 DROPOUT_MODEL_TYPES = frozenset({"cnn", "mlp", "mlp_reg", "finetune"})
@@ -193,9 +193,7 @@ class NamingMixin:
             applicable_types = MODEL_OPTION_TYPES.get(name)
             if applicable_types is not None and mt not in applicable_types:
                 continue
-            return_string += self._get_value_descript(section, name).replace(
-                ".", "-"
-            )
+            return_string += self._get_value_descript(section, name).replace(".", "-")
             return_string = return_string.replace("__", "_").strip("_")
 
         return_string += self._get_adm_branch_suffix()

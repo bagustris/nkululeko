@@ -354,6 +354,7 @@ def adm_model(dummy_data, monkeypatch):
         model.n_jobs = 1
         model.target = "label"
         model.class_num = 2
+        model.domain_balanced_sampling = False
         model.device = "cpu"
         model.learning_rate = 0.0001
         model.batch_size = 2
@@ -455,6 +456,46 @@ class TestADMModel:
         adm_model.train()
         assert adm_model.loss is not None
         assert adm_model.loss >= 0
+
+    def test_train_one_epoch_with_sam_optimizer(self, adm_model):
+        """train() must dispatch to the SAM closure path (two
+        forward/backward passes per batch) when self.optimizer is SAM-
+        wrapped -- mirrors AasistModel's TestTrainSamBranch in
+        test_model_aasist.py (same is_sam_optimizer() check, same
+        closure shape)."""
+        from nkululeko.optimizers.sam import SAM
+
+        adm_model.optimizer = SAM(
+            adm_model.model.parameters(), torch.optim.SGD, rho=0.05, lr=0.01
+        )
+        before = next(adm_model.model.parameters()).clone()
+
+        adm_model.train()
+
+        assert adm_model.loss is not None
+        assert adm_model.loss >= 0
+        assert not torch.allclose(next(adm_model.model.parameters()), before)
+
+    def test_evaluate_works_with_batch_sampler_loader(self, adm_model, dummy_data):
+        """Regression test: evaluate() used to index output tensors via
+        `index * loader.batch_size`, which is None for a loader built
+        with batch_sampler= (domain-balanced sampling) -- crashed with
+        TypeError as soon as predict() called evaluate() on such a
+        trainloader (see ADMModel.predict()). evaluate() must work off a
+        running offset instead, for both loader kinds."""
+        df_train, df_test, feats_train, feats_test = dummy_data
+        df_train = df_train.assign(source_db=["a", "b"] * 2)
+        adm_model.domain_balanced_sampling = True
+        adm_model.trainloader = adm_model.get_loader(feats_train, df_train, shuffle=True)
+        assert adm_model.trainloader.batch_size is None  # batch_sampler in use
+
+        uar, targets, predictions, logits = adm_model.evaluate(
+            adm_model.model, adm_model.trainloader, adm_model.device
+        )
+
+        assert len(targets) == 4
+        assert len(predictions) == 4
+        assert 0.0 <= uar <= 1.0
 
     def test_evaluate(self, adm_model):
         """Test model evaluation."""
@@ -646,3 +687,49 @@ class TestADMModelFusionMethods:
 
         out = model(ssl, sptk, sptk)
         assert out.shape == (4,)
+
+
+class TestGetLoaderDomainBalancedDispatch:
+    """get_loader() must only reach for DomainBalancedBatchSampler on the
+    training split (shuffle=True) when MODEL.domain_balanced_sampling is
+    on -- never for dev/test, never when the flag is off. Mirrors
+    AasistModel's TestGetLoaderDomainBalancedDispatch in
+    test_model_aasist.py -- same key, same shared sampler class, two
+    independent model types wiring it into their own get_loader()."""
+
+    def _model_with(self, domain_balanced_sampling):
+        with patch.object(ADMModel, "__init__", return_value=None):
+            model = ADMModel(pd.DataFrame(), pd.DataFrame(), None, None)
+            model.target = "label"
+            model.batch_size = 2
+            model.domain_balanced_sampling = domain_balanced_sampling
+            return model
+
+    def _feats_and_labels(self):
+        feats = pd.DataFrame(np.random.rand(8, 4))
+        labels = pd.DataFrame({"label": [0, 1] * 4, "source_db": (["a", "b"] * 4)})
+        return feats, labels
+
+    def test_uses_batch_sampler_for_train_when_enabled(self):
+        model = self._model_with(domain_balanced_sampling=True)
+        feats, labels = self._feats_and_labels()
+        loader = model.get_loader(feats, labels, shuffle=True)
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
+
+        assert isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+    def test_plain_loader_for_dev_test_even_when_enabled(self):
+        model = self._model_with(domain_balanced_sampling=True)
+        feats, labels = self._feats_and_labels()
+        loader = model.get_loader(feats, labels, shuffle=False)
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
+
+        assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)
+
+    def test_plain_loader_for_train_when_disabled(self):
+        model = self._model_with(domain_balanced_sampling=False)
+        feats, labels = self._feats_and_labels()
+        loader = model.get_loader(feats, labels, shuffle=True)
+        from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
+
+        assert not isinstance(loader.batch_sampler, DomainBalancedBatchSampler)

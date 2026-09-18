@@ -17,6 +17,7 @@ import pandas as pd
 import torch
 from sklearn.metrics import recall_score
 
+from nkululeko.data.domain_sampler import DomainBalancedBatchSampler
 from nkululeko.models.model import Model
 from nkululeko.models.model_adm_core import DeepfakeADMModel
 from nkululeko.optimizers import (
@@ -25,6 +26,7 @@ from nkululeko.optimizers import (
     initialize_cosine_scheduler,
     step_scheduler,
 )
+from nkululeko.optimizers.sam import is_sam_optimizer
 from nkululeko.reporting.reporter import Reporter
 
 
@@ -190,6 +192,14 @@ class ADMModel(Model):
         self.batch_size = int(self.util.config_val("MODEL", "batch_size", 32))
         self.num_workers = self.n_jobs
 
+        # Domain-balanced batch sampling: same MODEL.domain_balanced_sampling
+        # key AasistModel reads, same DomainBalancedBatchSampler class --
+        # draws equal per-source_db representation into every training
+        # batch instead of plain shuffling. Off by default.
+        self.domain_balanced_sampling = self.util.config_val_bool(
+            "MODEL", "domain_balanced_sampling", False
+        )
+
         # Training hyperparameters (read once to avoid repeated logging)
         self.max_grad_norm = float(
             self.util.config_val("MODEL", "max_grad_norm", "0.0")
@@ -227,36 +237,41 @@ class ADMModel(Model):
 
         self.model.train()
         losses = []
+        sam_active = is_sam_optimizer(self.optimizer)
         for features, labels in self.trainloader:
             features = features.float()
             labels_float = labels.float().to(self.device)
 
-            # Feature-level Gaussian noise augmentation for regularization
-            if self.feature_noise > 0:
-                noise = torch.randn_like(features) * self.feature_noise
-                features = features + noise
+            if sam_active:
+                # SAM needs two forward/backward passes per step (see
+                # nkululeko.optimizers.sam's docstring): the closure below
+                # is called once at the current weights (ascent direction)
+                # and once at the perturbed point (the actual gradient
+                # used for the base optimizer's update). Each call
+                # independently redraws feature_noise, same as any other
+                # stochastic augmentation would under SAM.
+                def closure():
+                    self.optimizer.zero_grad()
+                    loss = self._adm_forward_loss(features, labels_float)
+                    loss.backward()
+                    if self.max_grad_norm > 0:
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=self.max_grad_norm
+                        )
+                    return loss
 
-            ssl_feats, spec_feats, phase_feats, extra_feats = (
-                self._split_feature_streams(features)
-            )
+                loss = self.optimizer.step(closure)
+            else:
+                loss = self._adm_forward_loss(features, labels_float)
+                self.optimizer.zero_grad()
+                loss.backward()
+                if self.max_grad_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), max_norm=self.max_grad_norm
+                    )
+                self.optimizer.step()
 
-            logits = self.model(
-                ssl_feats.to(self.device),
-                spec_feats.to(self.device),
-                phase_feats.to(self.device),
-                {k: v.to(self.device) for k, v in extra_feats.items()},
-            )
-
-            loss = self.criterion(logits, labels_float)
             losses.append(loss.item())
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            if self.max_grad_norm > 0:
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), max_norm=self.max_grad_norm
-                )
-            self.optimizer.step()
 
             # Step scheduler per batch (for cosine)
             step_scheduler(self.scheduler, self.scheduler_type, step_per_batch=True)
@@ -265,6 +280,26 @@ class ADMModel(Model):
         step_scheduler(self.scheduler, self.scheduler_type, step_per_batch=False)
 
         self.loss = (np.asarray(losses)).mean()
+
+    def _adm_forward_loss(self, features, labels_float):
+        """One forward pass + loss computation -- factored out so the
+        SAM branch above can call it twice per step (see train())."""
+        # Feature-level Gaussian noise augmentation for regularization
+        if self.feature_noise > 0:
+            noise = torch.randn_like(features) * self.feature_noise
+            features = features + noise
+
+        ssl_feats, spec_feats, phase_feats, extra_feats = self._split_feature_streams(
+            features
+        )
+
+        logits = self.model(
+            ssl_feats.to(self.device),
+            spec_feats.to(self.device),
+            phase_feats.to(self.device),
+            {k: v.to(self.device) for k, v in extra_feats.items()},
+        )
+        return self.criterion(logits, labels_float)
 
     def _split_features(self, features):
         """Split concatenated features into SSL, spectral, and phase streams.
@@ -340,14 +375,20 @@ class ADMModel(Model):
         losses = []
 
         with torch.no_grad():
-            for index, (features, labels) in enumerate(loader):
-                start_index = index * loader.batch_size
+            start_index = 0
+            for features, labels in loader:
+                # A running offset (not index * loader.batch_size) --
+                # loader.batch_size is None when the loader was built
+                # with batch_sampler= (domain-balanced sampling), and
+                # even a plain loader's last batch can be shorter than
+                # batch_size.
                 end_index = start_index + len(labels)
                 batch_logits, batch_targets, loss = self._evaluate_batch(
                     model, features, labels, device
                 )
                 logits[start_index:end_index] = batch_logits
                 targets[start_index:end_index] = batch_targets
+                start_index = end_index
                 losses.append(loss)
 
         self.loss_eval = (np.asarray(losses)).mean()
@@ -447,6 +488,12 @@ class ADMModel(Model):
         label_values = self._encode_labels(df_y[self.target])
         labels_tensor = torch.tensor(label_values, dtype=torch.float32)
         dataset = torch.utils.data.TensorDataset(features_tensor, labels_tensor)
+        # shuffle=True uniquely marks the training split (df_test/dev never
+        # pass shuffle=True) -- domain-balanced sampling, like for AASIST,
+        # only ever applies to training batches.
+        if shuffle and self.domain_balanced_sampling:
+            sampler = DomainBalancedBatchSampler(df_y, self.batch_size)
+            return torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
         return torch.utils.data.DataLoader(
             dataset, shuffle=shuffle, batch_size=self.batch_size
         )

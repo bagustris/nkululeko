@@ -18,6 +18,7 @@
     - [FEATS](#feats)
     - [MODEL](#model)
     - [FINETUNE](#finetune)
+    - [AASIST](#aasist)
     - [EXPL](#expl)
     - [PREDICT](#predict)
     - [EXPORT](#export)
@@ -437,6 +438,14 @@ Model and training specifications. In general, default values should work for cl
       * weight_decay = 0.01
     * **momentum**: momentum for SGD optimizer (default: 0.9)
       * momentum = 0.9
+* **sam**: wrap the chosen optimizer in Sharpness-Aware Minimization (Foret et al., ICLR 2021) -- seeks flat loss-landscape regions instead of merely low loss, reported to substantially improve cross-domain generalization for audio deepfake detection specifically (Huang et al., Interspeech 2025; Shim et al. 2023)
+  * sam = True
+  * default: False
+  * model-agnostic (`nkululeko/optimizers/sam.py`): any neural model whose `train()` loop reads its optimizer from `get_optimizer()` and branches on `is_sam_optimizer()` can use this -- currently wired into `type = aasist`, `type = adm`, and `type = mlp`
+  * SAM needs two forward/backward passes per training step (an ascent step to find the worst-case point in a neighborhood of the current weights, then a descent step using the gradient computed there), so it is roughly 2x slower per step than the wrapped base optimizer alone
+  * related parameter:
+    * **sam_rho**: SAM's neighborhood size (default: 0.05, matching the paper)
+      * sam_rho = 0.05
 * **scheduler**: learning rate scheduler for neural networks (case insensitive)
   * scheduler = cosine
   * possible values:
@@ -456,6 +465,26 @@ Model and training specifications. In general, default values should work for cl
   * drop = 0.1
 * **batch_size**: batch size for neural networks
   * batch_size = 8
+* **domain_balanced_sampling**: draw each training batch with equal representation from every `source_db` domain in the pooled training set, instead of plain shuffling
+  * domain_balanced_sampling = True
+  * default: False
+  * requires multiple pooled training databases (the `source_db` column `Datasplitter.fill_train_and_tests()` stamps onto every row when pooling); smaller domains are cycled (reshuffled and repeated) to match the largest domain's per-epoch length
+  * only applied to the training split; dev/test are unaffected
+  * model-agnostic (`nkululeko/data/domain_sampler.py`): currently wired into `type = aasist`, `type = adm`, and `type = mlp`'s `get_loader()`, so the same key/class drives all three
+* **dann_columns**: attach a domain-adversarial (gradient-reversal) head per listed column, trained jointly with the main task loss to push the shared representation toward features that can't predict the listed nuisance label(s) -- e.g. `source_db` for cross-dataset invariance
+  * dann_columns = ['source_db']
+  * default: `[]` (off)
+  * model-agnostic (`nkululeko/models/domain_adversarial.py`: `GradientReversalLayer`, `DomainAdversarialHead`) but currently only wired into `type = aasist`'s `train()` loop -- needs a backbone that exposes a pooled feature vector (`AasistBackend.forward(..., return_features=True)`); a model reading precomputed features (`adm`, `mlp`) would need the equivalent hook added to its own forward pass first
+  * label maps are built once from `df_train`'s own values for each column (not the global label set), so a column only needs >=2 unique values in the training split
+  * only applied to the training split; the adversarial head(s) play no role in evaluation
+  * related parameters:
+    * **dann_lambda**: the gradient-reversal layer's scale (default: 1.0, no ascent schedule -- Ganin et al. 2016's own ramp-up schedule is available as `nkululeko.models.domain_adversarial.grl_lambda_schedule()` but not wired into training automatically)
+      * dann_lambda = 1.0
+    * **dann_weight**: weight applied to each column's adversarial cross-entropy loss before adding it to the main task loss
+      * dann_weight = 1.0
+    * **dann_reverse**: `True` for the standard adversarial (gradient-reversed) head; `False` turns it into a plain multitask auxiliary head instead (no invariance pressure, just an extra supervised signal -- some studies find this ablation outperforms the adversarial version for certain nuisance factors)
+      * dann_reverse = False
+      * default: True
 * **loss**: loss function for neural networks
   * loss = cross
   * possible values:
@@ -584,6 +613,37 @@ Settings specific to `[MODEL] type = finetune` - finetuning a pretrained transfo
   * measure = ccc
   * possible values: ccc, pcc, mse, mae
   * default: ccc
+
+### AASIST
+
+Settings specific to `[MODEL] type = aasist` - AASIST (spectro-temporal graph attention network, Jung et al., ICASSP 2022) with an SSL (wav2vec2/XLS-R) frontend, trained end-to-end on raw waveforms. Only read when `[MODEL] type = aasist`; every key below is optional and has a default. Requires `[FEATS] type = []` (no precomputed features - the model reads audio directly, the same way `[MODEL] type = finetune` does). `[MODEL] learning_rate`/`optimizer`/`weight_decay`/`loss`/`class_weight`/`patience`/`random_seed`/`device`/`n_jobs` are read from the shared `[MODEL]` section (matching `adm`), not from `[AASIST]`, for direct comparability between the two model types.
+
+* **ssl_model**: HuggingFace SSL frontend checkpoint
+  * ssl_model = facebook/wav2vec2-xls-r-300m
+* **max_len**: fixed waveform length in samples every clip is padded (by tiling) or truncated to
+  * max_len = 64600
+  * default: 64600 (~4.0375s at 16kHz), matching the upstream AASIST paper's own setting
+* **batch_size**: batch size (reduce if you hit out-of-memory errors)
+  * batch_size = 24
+  * `[MODEL] n_jobs` (shared, default 8) sets the DataLoader's `num_workers`, parallelizing each sample's audio read (+ optional RawBoost, itself CPU-bound numpy/scipy FIR filtering) against GPU compute -- set `n_jobs = 0` to fall back to a single-process loader
+* **ssl_layer_pooling**: which SSL encoder layer(s) feed the AASIST backend
+  * ssl_layer_pooling = weighted
+  * default: last
+  * possible values:
+    * **last**: only the final encoder layer's hidden states (default, matches every AASIST run before this option existed)
+    * **weighted**: a learnable, softmax-normalized scalar per hidden-state layer (the CNN feature-extractor's output plus every transformer layer) combines all of them -- the same technique `[FINETUNE] layer_pooling=weighted` already offers for `type = finetune`. Motivation: artifact-discriminating signal in wav2vec2/XLS-R concentrates in lower/middle layers, not necessarily the last one (Pascu et al., Interspeech 2024; Beheshti et al. 2026)
+  * `weighted` disables the SSL model's own LayerDrop regularization internally (forces it to 0), since LayerDrop's random per-layer skipping during training makes the number of returned hidden-state layers vary call to call, which a fixed-size learned combination can't tolerate
+* **freeze_ssl_frontend**: skip training the SSL frontend's own parameters entirely
+  * freeze_ssl_frontend = True
+  * default: False
+  * PyTorch's autograd then builds no backward graph through the frontend at all (not just skipping its weight update), which is the actual source of the reported speedup for a frozen SSL frontend in the layer-selection literature above -- expect roughly 3-5x faster training, not a small constant-factor change
+* **rawboost_algo**: RawBoost waveform augmentation algorithm, applied to the training split only
+  * rawboost_algo = 4
+  * default: 0 (disabled)
+  * possible values: 0 none, 1 linear/non-linear convolutive noise, 2 impulsive signal-dependent noise, 3 stationary signal-independent noise, 4 series (1+2+3), 5 series (1+2), 6 series (1+3), 7 series (2+3), 8 parallel (1 and 2)
+  * the remaining `rawboost_*` keys (`rawboost_n_f`, `rawboost_n_bands`, `rawboost_min_f`/`max_f`, `rawboost_min_bw`/`max_bw`, `rawboost_min_coeff`/`max_coeff`, `rawboost_min_g`/`max_g`, `rawboost_min_bias_lin_nonlin`/`max_bias_lin_nonlin`, `rawboost_p`, `rawboost_g_sd`, `rawboost_snr_min`/`snr_max`) tune those algorithms; defaults match upstream's published ASVspoof2021 baseline configuration
+
+`domain_balanced_sampling` also applies here but is documented once, under the shared [`[MODEL]`](#model) section above, since `type = adm` reads the same key.
 
 ### EXPL
 
