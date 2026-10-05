@@ -14,8 +14,9 @@ project's environment doesn't carry. HFWav2Vec2Frontend below swaps in
 HuggingFace's Wav2Vec2Model (already used elsewhere in nkululeko, e.g.
 feat_extract/feats_wav2vec2.py and models/model_tuned.py) for the exact
 same architecture family (wav2vec2/XLS-R), so the AASIST *backend* below
-is unmodified from upstream and only its frontend's loading mechanism
-differs.
+follows upstream except for two deliberate fixes (marked in
+ResidualBlock.forward and AasistBackend.forward) and the frontend's loading
+mechanism.
 """
 
 from typing import Union
@@ -288,8 +289,13 @@ class ResidualBlock(nn.Module):
 
     def forward(self, x):
         identity = x
+        # Deliberate deviation from upstream SSL_Anti-spoofing, which computes
+        # the BN+SELU pre-activation here but then feeds the raw `x` to conv1
+        # (silently discarding it for every non-first block). We apply it, as
+        # the standard pre-activation residual block intends. Pretrained
+        # upstream AASIST weights are not loaded, so this costs no parity.
         out = self.selu(self.bn1(x)) if not self.first else x
-        out = self.conv1(x)
+        out = self.conv1(out)
         out = self.selu(self.bn2(out))
         out = self.conv2(out)
         if self.downsample:
@@ -403,10 +409,12 @@ class AasistBackend(nn.Module):
         e_t = m1.transpose(1, 2)
         out_t = self.pool_t(self.gat_layer_t(e_t))
 
+        # Pass the batch-expanded masters to the first HTRG layers too (upstream
+        # passes the unexpanded (1, 1, D) parameter and relies on broadcasting).
         master1 = self.master1.expand(x.size(0), -1, -1)
         master2 = self.master2.expand(x.size(0), -1, -1)
 
-        out_t1, out_s1, master1 = self.htrg_gat_st11(out_t, out_s, master=self.master1)
+        out_t1, out_s1, master1 = self.htrg_gat_st11(out_t, out_s, master=master1)
         out_s1 = self.pool_hs1(out_s1)
         out_t1 = self.pool_ht1(out_t1)
         out_t_aug, out_s_aug, master_aug = self.htrg_gat_st12(
@@ -416,7 +424,7 @@ class AasistBackend(nn.Module):
         out_s1 = out_s1 + out_s_aug
         master1 = master1 + master_aug
 
-        out_t2, out_s2, master2 = self.htrg_gat_st21(out_t, out_s, master=self.master2)
+        out_t2, out_s2, master2 = self.htrg_gat_st21(out_t, out_s, master=master2)
         out_s2 = self.pool_hs2(out_s2)
         out_t2 = self.pool_ht2(out_t2)
         out_t_aug, out_s_aug, master_aug = self.htrg_gat_st22(
