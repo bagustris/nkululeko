@@ -22,10 +22,11 @@ def _rand_range(x1, x2, integer):
 
 
 def _norm_wav(x, always):
-    if always:
-        x = x / np.amax(abs(x))
-    elif np.amax(abs(x)) > 1:
-        x = x / np.amax(abs(x))
+    peak = np.amax(abs(x))
+    if peak == 0:
+        return x
+    if always or peak > 1:
+        x = x / peak
     return x
 
 

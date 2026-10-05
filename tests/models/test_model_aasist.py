@@ -194,7 +194,7 @@ def aasist_model():
 
 class TestGetLoaderDomainBalancedDispatch:
     """get_loader() must only reach for DomainBalancedBatchSampler on the
-    training split (augment=True) when AASIST.domain_balanced_sampling is
+    training split (augment=True) when MODEL.domain_balanced_sampling is
     on -- never for dev/test, and never when the flag is off."""
 
     def _model_with_cfg(self, domain_balanced_sampling, n_jobs=0):

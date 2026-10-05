@@ -117,3 +117,18 @@ class TestLnLConvolutiveNoiseGainBiasPersistence:
         assert seen_gains[1] == (-5, -20)  # i=1: bias first applied
         assert seen_gains[2] == (-5, -20)  # i=2: bias must persist
         assert seen_gains[3] == (-5, -20)  # i=3: bias must persist
+
+
+def test_norm_wav_silent_input_is_not_nan():
+    x = np.zeros(16000, dtype=np.float32)
+    for always in (True, False):
+        out = rb._norm_wav(x, always)
+        assert np.isfinite(out).all()
+        assert not out.any()
+
+
+def test_norm_wav_scales_peak_to_one():
+    x = np.array([0.0, 2.0, -4.0])
+    assert np.amax(abs(rb._norm_wav(x, False))) == 1.0
+    assert np.amax(abs(rb._norm_wav(np.array([0.5, -0.25]), True))) == 1.0
+    assert np.amax(abs(rb._norm_wav(np.array([0.5, -0.25]), False))) == 0.5
