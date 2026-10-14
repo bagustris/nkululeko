@@ -43,11 +43,22 @@ SAM and domain-balanced sampling; those are not in upstream (see §6).
 
 ### Building the CSVs
 
-The configs read `./data/multidb_ood/_aasist_subsample_2500_lang/<db>.csv`,
-with the audio under `./data/...` (relative to the directory you run
-nkululeko from; a relative `file` entry is resolved against the database's
-`audio_path`). The CSVs are not part of this repository. Each has the columns
-`file` and `label` (`fake` / `real`); all but `had` also have `speaker`.
+The configs read `./data/multidb_ood/_aasist_subsample_2500_lang/<db>.csv`.
+They use `absolute_path = True`, so nkululeko prepends each database's
+`audio_path` (relative to the directory you run nkululeko from) to every
+`file` entry; an entry that is already an absolute path is left as it is. The
+CSVs are not part of this repository. Each has the columns `file` and `label`
+(`fake` / `real`); all but `had` also have `speaker`. Expected layout under
+`./data/`, with the `file` entries relative to the `audio_path` in the config:
+
+| database | `audio_path` | example `file` entry |
+|---|---|---|
+| `itw` | `./data/itw/release_in_the_wild` | `13546.wav` |
+| `la` | `./data` | `LA/ASVspoof2019_LA_eval/flac/LA_E_3201158.flac` |
+| `cvoicefake` | `./data/CVoiceFake_small` | `it/world_generated/common_voice_it_38044006_Gen.mp3` |
+| `habla` | `./data` | `HABLA/StarGAN-clf_09697_00850736547-clf_08784_0205087.wav` |
+| `for2sec` | `./data/for-2sec` | `for-2seconds/training/fake/file6415.mp3.wav_16k.wav_norm.wav_mono.wav_silence.wav_2sec.wav` |
+| `had` | `./data` | `HAD/HAD_train/conbine/HAD_train_fake_00015549.wav` |
 
 The `language` column is only used by the `language` DANN config:
 
@@ -78,15 +89,19 @@ below with that in mind.
 
 ## 3. Why single runs cannot be trusted
 
-The first bare-AASIST run on `had` gave 7.95% EER. Reseeded, three more
-runs of the same config gave:
+The first bare-AASIST run on `had` gave 7.95% EER. Three reseeded runs of
+the same config gave (std here is the population standard deviation):
 
 | bare AASIST, `had` | run 1 | run 2 | run 3 | mean | std |
 |---|---|---|---|---|---|
 | EER | 14.90% | 27.15% | 18.80% | 20.28% | 5.11pp |
 
-The first run was below the minimum of the three reseeded runs. With five
-runs the bare baseline is **17.30% +- 6.04pp**. Run-to-run std is about a
+The first run was below the minimum of the three reseeded runs. A five-run
+bare baseline gave a mean of **17.30% +- 6.04pp**. This report does not list
+those five EERs or say how they overlap with the three above (the run logs
+are not part of this repository), so that mean and std cannot be recomputed
+from here; the standard-deviation convention of that row, and of the 8-run
+rows in §4, was not recorded. Run-to-run std is about a
 third of the mean, so several single-run conclusions flipped sign once
 reseeded. Every comparison below therefore reports its number of runs and a
 significance test.
